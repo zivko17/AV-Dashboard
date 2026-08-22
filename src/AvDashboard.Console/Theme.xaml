@@ -143,6 +143,57 @@
     </Style>
 
     <!--
+        Expander de cabecera de grupo. El de serie de WPF dibuja su flecha con los colores
+        del sistema y sobre fondo oscuro casi no se ve, asi que la cabecera es propia: un
+        caret de texto mas el contenido, sin cromo de boton.
+    -->
+    <Style TargetType="Expander">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <StackPanel>
+                        <ToggleButton x:Name="Toggle" Focusable="True" Cursor="Hand"
+                                      Content="{TemplateBinding Header}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay,
+                                                  RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="Root" Background="Transparent" Padding="2,6"
+                                            CornerRadius="4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="Caret" Text="▾" Width="16"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextMutedBrush}" />
+                                            <ContentPresenter VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="False">
+                                            <Setter TargetName="Caret" Property="Text" Value="▸" />
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Root" Property="Background"
+                                                    Value="{StaticResource SurfaceBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+
+                        <ContentPresenter x:Name="Body" Visibility="Collapsed" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
         Fila seleccionable de una lista de datos. El rail tiene su propio estilo porque es
         navegacion; esto es para tablas donde la seleccion solo tiene que verse, sin barra
         de acento a la izquierda.

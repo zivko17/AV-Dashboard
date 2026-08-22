@@ -43,36 +43,95 @@
             </Border>
         </UniformGrid>
 
-        <!-- Los toggles debajo, cada uno con su valor actual y el que espera el perfil. -->
+        <!--
+            El catalogo, agrupado y filtrado. Arranca mostrando solo lo que difiere del
+            objetivo: cuarenta y dos filas en una lista plana no se leen, y el dia del show
+            lo que quieres son las cinco que hay que mirar.
+        -->
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="AJUSTES" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
-                <ItemsControl ItemsSource="{Binding Settings}">
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding OnlyDeviations}"
+                              VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Grid.Column="1" Text="Solo lo que difiere del objetivo"
+                               VerticalAlignment="Center" Margin="0,0,24,0" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <CheckBox IsChecked="{Binding OnlyHighImpact}" VerticalAlignment="Center"
+                                  Margin="0,0,6,0" />
+                        <TextBlock Text="Solo impacto alto" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,0,0,14" />
+
+                <ItemsControl ItemsSource="{Binding Groups}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="0,5">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="300" />
-                                    <ColumnDefinition Width="200" />
-                                    <ColumnDefinition Width="180" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
-                                         Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="10,0,0,0" />
-                                <TextBlock Grid.Column="2" Text="{Binding Current}" FontFamily="Consolas" />
-                                <TextBlock Grid.Column="3" Text="{Binding Desired}"
-                                           Style="{StaticResource CaptionText}" />
-                                <TextBlock Grid.Column="4" Text="{Binding Note}" TextWrapping="Wrap"
-                                           Style="{StaticResource CaptionText}" />
-                            </Grid>
+                            <Expander IsExpanded="True" Margin="0,0,0,10">
+                                <Expander.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                 Margin="0,0,10,0"
+                                                 Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Counters}" Margin="14,0,0,0"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="12" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Expander.Header>
+
+                                <ItemsControl ItemsSource="{Binding Rows}" Margin="18,8,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="300" />
+                                                    <ColumnDefinition Width="210" />
+                                                    <ColumnDefinition Width="230" />
+                                                    <ColumnDefinition Width="60" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+
+                                                <Ellipse Grid.Row="0" Grid.Column="0" Width="8" Height="8"
+                                                         VerticalAlignment="Center" Margin="0,0,10,0"
+                                                         Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Source}" />
+                                                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Current}"
+                                                           FontFamily="Consolas"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Row="0" Grid.Column="3" Text="{Binding Target}"
+                                                           Style="{StaticResource CaptionText}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Row="0" Grid.Column="4" Text="{Binding Impact}"
+                                                           Style="{StaticResource CaptionText}" />
+
+                                                <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4"
+                                                           Text="{Binding Rationale}" TextWrapping="Wrap"
+                                                           Margin="0,2,0,0"
+                                                           Style="{StaticResource CaptionText}"
+                                                           Visibility="{Binding Rationale, Converter={StaticResource StringToVisibility}}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
                 <TextBlock Style="{StaticResource CaptionText}" Margin="0,14,0,0" TextWrapping="Wrap"
-                           Text="Solo lectura en la Fase 1. La escritura llega con los actuadores, con snapshot previo, diff antes de aplicar y rollback." />
+                           Text="Solo lectura en la Fase 1. La escritura llega con los actuadores, con snapshot previo, diff antes de aplicar y rollback. Los ajustes marcados como de riesgo de seguridad quedan fuera de los perfiles automáticos aunque haya actuador." />
             </StackPanel>
         </Border>
 

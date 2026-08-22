@@ -47,6 +47,7 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | Método | Ruta | Estado |
 |---|---|---|
 | GET | `/system` | ✅ Telemetría y ajustes de M1 |
+| GET | `/system/audit` | ✅ Los 42 ajustes del catálogo contra su objetivo, con impacto y motivo |
 | POST | `/system/{setting}` | 501 — Fase 2 |
 
 ### Audio

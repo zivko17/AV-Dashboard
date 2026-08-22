@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
+using AvDashboard.Core.Settings;
 
 namespace AvDashboard.Console.Services;
 
@@ -60,6 +61,9 @@ public sealed class ApiClient : IDisposable
 
     public Task<ApiResult<ServicesResponse>> GetServicesAsync(CancellationToken ct = default) =>
         GetAsync<ServicesResponse>(ApiRoutes.Services, ct);
+
+    public Task<ApiResult<SettingsAudit>> GetSystemAuditAsync(CancellationToken ct = default) =>
+        GetAsync<SettingsAudit>(ApiRoutes.SystemAudit, ct);
 
     public Task<ApiResult<DisplayTopology>> GetDisplaysAsync(CancellationToken ct = default) =>
         GetAsync<DisplayTopology>(ApiRoutes.VideoDisplays, ct);

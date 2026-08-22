@@ -83,7 +83,7 @@ Para configurar el ping continuo a tus dispositivos críticos, edita
 
 | Módulo | Estado |
 |---|---|
-| M1 Sistema | Telemetría a 1 s, plan de energía, MMCSS, Fast Startup, HAGS, Windows Update, Defender (lectura) |
+| M1 Sistema | Telemetría a 1 s y auditoría de 42 ajustes contra el objetivo de un rig, con impacto y motivo: energía, MMCSS, Delivery Optimization, Game DVR, acceso controlado a carpetas, apagados inesperados… |
 | M3 Audio | Endpoints, formato en uso vs. declarado, mismatch de sample rate, medidores a 20 fps, drivers ASIO, watchdog de dispositivo desaparecido |
 | M4 Vídeo | Topología con conector físico, refresco como fracción exacta (59,94 no se redondea a 60), HDR y alerta de display desaparecido. DeckLink y NVAPI, pendientes |
 | M18 EDID | Lectura del EDID crudo, decodificación completa, validación de coherencia y diff entre dos monitores. Volcado a `.bin` para CRU o una matriz |
