@@ -67,6 +67,7 @@ builder.Services.AddSingleton<NodeState>();
 builder.Services.AddSingleton<EventRepository>();
 builder.Services.AddSingleton<PingRepository>();
 builder.Services.AddSingleton<ModuleRegistry>();
+builder.Services.AddSingleton<AvDashboard.Agent.Video.EdidLibrary>();
 builder.Services.AddSingleton<ServiceTaxonomy>(_ => new ServiceTaxonomy());
 
 builder.Services.AddSignalR();

@@ -30,6 +30,15 @@ public static class ApiRoutes
     public const string VideoDeckLink = Base + "/video/decklink";
     public const string VideoSync = Base + "/video/sync";
     public const string VideoLedProcessors = Base + "/video/led-processors";
+
+    /// <summary>Biblioteca de EDID: los conectados y los que Windows recuerda (M18).</summary>
+    public const string VideoEdid = Base + "/video/edid";
+
+    /// <summary>Bytes crudos de un EDID, para volcarlos a .bin (`edid-dump`).</summary>
+    public const string VideoEdidRaw = Base + "/video/edid/raw";
+
+    /// <summary>Comparacion entre dos EDID (`edid-diff`).</summary>
+    public const string VideoEdidDiff = Base + "/video/edid/diff";
     public const string VideoGpu = Base + "/video/gpu";
 
     public const string NetworkInterfaces = Base + "/network/interfaces";

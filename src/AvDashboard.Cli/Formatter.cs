@@ -11,7 +11,7 @@ namespace AvDashboard.Cli;
 /// </summary>
 public static class Formatter
 {
-    public static void Print(string command, string json)
+    public static void Print(string command, string json, string[]? arguments = null)
     {
         try
         {
@@ -36,6 +36,18 @@ public static class Formatter
                     return;
                 case "preshow":
                     PrintPreShow(document.RootElement);
+                    return;
+                case "edid-list":
+                    PrintEdidList(document.RootElement);
+                    return;
+                case "edid-check":
+                    PrintEdidCheck(document.RootElement);
+                    return;
+                case "edid-info":
+                    PrintEdidInfo(document.RootElement, arguments);
+                    return;
+                case "edid-diff":
+                    PrintEdidDiff(document.RootElement);
                     return;
                 default:
                     Console.WriteLine(Pretty(document));
@@ -178,6 +190,188 @@ public static class Formatter
         Console.WriteLine(failures == 0
             ? "VERDE: no hay nada que revisar."
             : $"ROJO: {failures} comprobaciones requieren atención.");
+    }
+
+    // --- M18 ---
+
+    private static void PrintEdidList(JsonElement root)
+    {
+        string reason = Text(root, "unavailableReason");
+        if (reason.Length > 0)
+        {
+            Console.WriteLine(reason);
+            return;
+        }
+
+        foreach (JsonElement entry in Array(root, "entries"))
+        {
+            string marker = Bool(entry, "connected") ? "*" : " ";
+            string device = Text(entry, "deviceName");
+
+            Console.WriteLine($"{marker} {Label(entry),-42} {device,-16} " +
+                              $"{Text(entry, "fingerprint")}  {Text(entry, "health")}");
+            Console.WriteLine($"    {Text(entry, "id")}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("  * conectado ahora mismo. El identificador de la segunda línea es el que");
+        Console.WriteLine("    piden edid-info, edid-diff y edid-dump.");
+    }
+
+    private static void PrintEdidCheck(JsonElement root)
+    {
+        int problemas = 0;
+
+        foreach (JsonElement entry in Array(root, "entries"))
+        {
+            List<JsonElement> findings = Array(entry, "findings").ToList();
+
+            Console.WriteLine($"{(findings.Count == 0 ? "[OK ]" : "[!  ]")} {Label(entry)}");
+
+            foreach (JsonElement finding in findings)
+            {
+                problemas++;
+                Console.WriteLine($"        {Text(finding, "severity"),-8} {Text(finding, "message")}");
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine(problemas == 0
+            ? "Ningún EDID presenta problemas."
+            : $"{problemas} problemas encontrados.");
+    }
+
+    private static void PrintEdidInfo(JsonElement root, string[]? arguments)
+    {
+        string? id = arguments?.FirstOrDefault(a => !a.StartsWith('-'));
+
+        JsonElement? match = null;
+        foreach (JsonElement entry in Array(root, "entries"))
+        {
+            if (id is null || Text(entry, "id") == id)
+            {
+                match = entry;
+                break;
+            }
+        }
+
+        if (match is not JsonElement entryFound)
+        {
+            Console.Error.WriteLine("No hay ningún EDID con ese identificador.");
+            return;
+        }
+
+        if (!entryFound.TryGetProperty("parsed", out JsonElement edid) ||
+            edid.ValueKind != JsonValueKind.Object)
+        {
+            Console.WriteLine("La entrada existe pero no se ha podido decodificar.");
+            return;
+        }
+
+        Console.WriteLine($"  {Label(entryFound)}");
+        Console.WriteLine($"  {Text(entryFound, "hardwareId")}  ·  huella {Text(entryFound, "fingerprint")}" +
+                          $"  ·  {Text(entryFound, "byteCount")} bytes");
+        Console.WriteLine();
+
+        Console.WriteLine($"  Fabricante        {Text(edid, "manufacturerId")}");
+        Console.WriteLine($"  Producto          {Text(edid, "productCode")}");
+        Console.WriteLine($"  Versión           {Text(edid, "version")}.{Text(edid, "revision")}");
+        Console.WriteLine($"  Entrada           {(Bool(edid, "isDigitalInput") ? "digital" : "analógica")}" +
+                          $" {Text(edid, "digitalInterface")} {Text(edid, "bitsPerColor")} bit");
+
+        if (edid.TryGetProperty("rangeLimits", out JsonElement limits) &&
+            limits.ValueKind == JsonValueKind.Object)
+        {
+            Console.WriteLine($"  Límites           {Text(limits, "minVerticalHz")}-{Text(limits, "maxVerticalHz")} Hz, " +
+                              $"{Text(limits, "minHorizontalKhz")}-{Text(limits, "maxHorizontalKhz")} kHz, " +
+                              $"≤{Text(limits, "maxPixelClockMhz")} MHz");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("  TIMINGS DETALLADOS (el primero es el preferido)");
+        foreach (JsonElement timing in Array(edid, "detailedTimings"))
+        {
+            double? refresh = OptionalDouble(timing, "refreshHz");
+            Console.WriteLine($"    {Text(timing, "horizontalActive")}×{Text(timing, "verticalActive")}" +
+                              $"{(Bool(timing, "interlaced") ? "i" : "p")}" +
+                              $" @ {refresh:0.###} Hz   reloj {Number(timing, "pixelClockKhz") / 1000.0:0.###} MHz" +
+                              $"   total {Text(timing, "horizontalTotal")}×{Text(timing, "verticalTotal")}");
+        }
+
+        List<string> established = Array(edid, "establishedTimings")
+            .Select(e => e.GetString() ?? string.Empty).ToList();
+        if (established.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("  ESTABLECIDOS      " + string.Join(", ", established));
+        }
+
+        if (edid.TryGetProperty("cta", out JsonElement cta) && cta.ValueKind == JsonValueKind.Object)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"  CTA-861 rev {Text(cta, "revision")}   " +
+                              $"audio básico {(Bool(cta, "basicAudioSupported") ? "sí" : "no")}   " +
+                              $"YCbCr 4:4:4 {(Bool(cta, "yCbCr444Supported") ? "sí" : "no")}");
+
+            foreach (JsonElement audio in Array(cta, "audioDescriptors"))
+            {
+                string rates = string.Join("/", Array(audio, "sampleRates")
+                    .Select(r => (r.GetInt32() / 1000.0).ToString("0.#")));
+
+                Console.WriteLine($"    audio           {Text(audio, "formatName")} " +
+                                  $"{Text(audio, "maxChannels")}ch @ {rates} kHz");
+            }
+
+            if (cta.TryGetProperty("hdr", out JsonElement hdr) && hdr.ValueKind == JsonValueKind.Object)
+            {
+                string eotf = string.Join(", ", Array(hdr, "supportedEotf")
+                    .Select(e => e.GetString() ?? string.Empty));
+
+                Console.WriteLine($"    HDR             {eotf}");
+            }
+        }
+    }
+
+    private static void PrintEdidDiff(JsonElement root)
+    {
+        Console.WriteLine($"  izquierda: {Text(root, "leftLabel")}");
+        Console.WriteLine($"  derecha:   {Text(root, "rightLabel")}");
+        Console.WriteLine();
+
+        List<JsonElement> differences = Array(root, "differences").ToList();
+
+        if (differences.Count == 0)
+        {
+            Console.WriteLine("  Son idénticos.");
+            return;
+        }
+
+        foreach (JsonElement difference in differences)
+        {
+            string marker = Bool(difference, "significant") ? "!" : " ";
+            Console.WriteLine($"{marker} {Text(difference, "field"),-32} {Text(difference, "left"),-28} → " +
+                              Text(difference, "right"));
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("  ! marca lo que cambia lo que se negocia en el cable.");
+    }
+
+    private static string Label(JsonElement entry)
+    {
+        if (entry.TryGetProperty("parsed", out JsonElement parsed) &&
+            parsed.ValueKind == JsonValueKind.Object)
+        {
+            string name = Text(parsed, "monitorName");
+            string manufacturer = Text(parsed, "manufacturerId");
+
+            if (name.Length > 0)
+            {
+                return $"{manufacturer} · {name}";
+            }
+        }
+
+        return Text(entry, "hardwareId");
     }
 
     private static string Pretty(JsonDocument document) =>

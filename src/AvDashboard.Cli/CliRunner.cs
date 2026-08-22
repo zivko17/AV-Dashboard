@@ -69,6 +69,18 @@ public static class CliRunner
             return 5;
         }
 
+        if (command.Name == "edid-diff" && arguments.Count(a => !a.StartsWith('-')) < 2)
+        {
+            Console.Error.WriteLine(
+                "edid-diff necesita dos identificadores. Sácalos de `avdash edid-list`.");
+            return 2;
+        }
+
+        if (command.Name == "edid-dump")
+        {
+            return await DumpEdidAsync(connection, arguments).ConfigureAwait(false);
+        }
+
         string payload = command.Method == CommandMethod.Get
             ? await connection.GetAsync(BuildRoute(command, arguments)).ConfigureAwait(false)
             : await connection.PostAsync(BuildRoute(command, arguments)).ConfigureAwait(false);
@@ -79,7 +91,51 @@ public static class CliRunner
             return 0;
         }
 
-        Formatter.Print(command.Name, payload);
+        Formatter.Print(command.Name, payload, arguments);
+        return 0;
+    }
+
+    /// <summary>
+    /// `edid-dump <id> [fichero]`. El volcado en binario es lo que come CRU, AW EDID
+    /// Editor o una matriz, asi que se escribe tal cual y no en base64.
+    /// </summary>
+    private static async Task<int> DumpEdidAsync(AgentConnection connection, string[] arguments)
+    {
+        string? id = arguments.FirstOrDefault(a => !a.StartsWith('-'));
+        if (id is null)
+        {
+            Console.Error.WriteLine("Falta el identificador. Sácalo de `avdash edid-list`.");
+            return 2;
+        }
+
+        string payload = await connection
+            .GetAsync($"{ApiRoutes.VideoEdidRaw}?id={Uri.EscapeDataString(id)}")
+            .ConfigureAwait(false);
+
+        using JsonDocument document = JsonDocument.Parse(payload);
+        JsonElement root = document.RootElement;
+
+        if (!root.TryGetProperty("base64", out JsonElement base64) ||
+            base64.GetString() is not string encoded)
+        {
+            Console.Error.WriteLine("El agente no ha devuelto los bytes del EDID.");
+            return 6;
+        }
+
+        string suggested = root.TryGetProperty("suggestedFileName", out JsonElement name)
+            ? name.GetString() ?? "edid.bin"
+            : "edid.bin";
+
+        // El segundo argumento posicional, si lo hay, manda sobre el nombre sugerido.
+        string destination = arguments
+            .Where(a => !a.StartsWith('-'))
+            .Skip(1)
+            .FirstOrDefault() ?? suggested;
+
+        byte[] bytes = Convert.FromBase64String(encoded);
+        await File.WriteAllBytesAsync(destination, bytes).ConfigureAwait(false);
+
+        Console.WriteLine($"{bytes.Length} bytes escritos en {Path.GetFullPath(destination)}");
         return 0;
     }
 
@@ -92,6 +148,16 @@ public static class CliRunner
             DateTimeOffset from = to.AddMinutes(-minutes);
             return $"{command.Route}?from={Uri.EscapeDataString(from.ToString("O"))}" +
                    $"&to={Uri.EscapeDataString(to.ToString("O"))}";
+        }
+
+        if (command.Name == "edid-diff")
+        {
+            string[] ids = arguments.Where(a => !a.StartsWith('-')).Take(2).ToArray();
+            if (ids.Length == 2)
+            {
+                return $"{command.Route}?left={Uri.EscapeDataString(ids[0])}" +
+                       $"&right={Uri.EscapeDataString(ids[1])}";
+            }
         }
 
         return command.Route;

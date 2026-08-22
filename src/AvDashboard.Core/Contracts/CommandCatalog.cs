@@ -105,6 +105,39 @@ public static class CommandCatalog
         },
         new()
         {
+            Name = "edid-list", ModuleId = "M18", Sector = Sector.Video,
+            Summary = "Los EDID que conoce la máquina, conectados y recordados.",
+            Route = ApiRoutes.VideoEdid, Method = CommandMethod.Get,
+        },
+        new()
+        {
+            Name = "edid-info", ModuleId = "M18", Sector = Sector.Video,
+            Summary = "Decodificación completa de un EDID: timings, límites, audio y HDR.",
+            Usage = "edid-info <id>",
+            Route = ApiRoutes.VideoEdid, Method = CommandMethod.Get,
+        },
+        new()
+        {
+            Name = "edid-check", ModuleId = "M18", Sector = Sector.Video,
+            Summary = "Valida checksums y coherencia entre los timings y los límites declarados.",
+            Route = ApiRoutes.VideoEdid, Method = CommandMethod.Get,
+        },
+        new()
+        {
+            Name = "edid-diff", ModuleId = "M18", Sector = Sector.Video,
+            Summary = "Compara dos EDID y marca lo que cambia la negociación del cable.",
+            Usage = "edid-diff <id-izquierda> <id-derecha>",
+            Route = ApiRoutes.VideoEdidDiff, Method = CommandMethod.Get,
+        },
+        new()
+        {
+            Name = "edid-dump", ModuleId = "M18", Sector = Sector.Video,
+            Summary = "Vuelca un EDID a .bin, para CRU, AW EDID Editor o cargarlo en una matriz.",
+            Usage = "edid-dump <id> [fichero]",
+            Route = ApiRoutes.VideoEdidRaw, Method = CommandMethod.Get,
+        },
+        new()
+        {
             Name = "tele", Aliases = new[] { "top" }, ModuleId = "M1", Sector = Sector.SystemEssential,
             Summary = "Telemetría de CPU, RAM y temperaturas.",
             Route = ApiRoutes.System, Method = CommandMethod.Get,

@@ -23,7 +23,8 @@ public sealed class ModuleRegistry
         Add("M3", "Audio y reloj", ModuleAvailability.Available);
         Add("M3-PTP", "PTP / IEEE 1588", ModuleAvailability.MissingDependency,
             "Requiere Npcap en modo compatible con WinPcap. PTP no se puede leer con sockets normales.");
-        Add("M4", "Vídeo", ModuleAvailability.Available, "Solo enumeración de displays; EDID y NVAPI en la Fase 4.");
+        Add("M4", "Vídeo", ModuleAvailability.Available,
+            "Topología con conector físico, refresco exacto y HDR. DeckLink y NVAPI siguen pendientes.");
         Add("M4-LED", "Procesadores LED", ModuleAvailability.NotImplemented,
             "Capa 1 (alcanzabilidad) en la Fase 7; las capas 2 y 3 necesitan el hardware delante.");
         Add("M5", "Red", ModuleAvailability.Available);
@@ -41,7 +42,8 @@ public sealed class ModuleRegistry
         Add("M15", "Acciones de pánico", ModuleAvailability.NotImplemented, "Fase 2.");
         Add("M16", "Puente con Companion", ModuleAvailability.NotImplemented, "Fase 6.");
         Add("M17", "Inventario de flota", ModuleAvailability.Available);
-        Add("M18", "EDID Toolkit", ModuleAvailability.NotImplemented, "Fase 4.");
+        Add("M18", "EDID Toolkit", ModuleAvailability.Available,
+            "Lectura, decodificación, validación y diff. El forzado por NVAPI sigue pendiente.");
 
         if (options.PortableMode)
         {

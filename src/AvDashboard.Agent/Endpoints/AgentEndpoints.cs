@@ -1,5 +1,7 @@
 using AvDashboard.Agent.Modules;
 using AvDashboard.Agent.Storage;
+using AvDashboard.Agent.Video;
+using AvDashboard.Core.Video;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
@@ -233,6 +235,8 @@ public static class AgentEndpoints
         app.MapGet(ApiRoutes.VideoDisplays, (NodeState state) =>
             Results.Ok(state.Displays ?? new DisplayTopology()));
 
+        MapEdid(app);
+
         app.MapGet(ApiRoutes.Timeline, async (
             EventRepository events,
             DateTimeOffset? from,
@@ -274,6 +278,88 @@ public static class AgentEndpoints
                 state.PingStatistics.Values.ToList(),
                 state.Volumes,
                 state.Power)));
+    }
+
+    /// <summary>
+    /// Biblioteca de EDID (M18): `edid-list`, `edid-dump` y `edid-diff`.
+    ///
+    /// El diff va en GET y no en POST porque no cambia nada: es una consulta con dos
+    /// parametros, y asi se puede pegar la URL en un navegador cuando estas depurando.
+    /// </summary>
+    private static void MapEdid(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.VideoEdid, (EdidLibrary library) => Results.Ok(library.List()));
+
+        app.MapGet(ApiRoutes.VideoEdidRaw, (EdidLibrary library, string id) =>
+        {
+            AvDashboard.Native.Video.RawEdid? raw = library.Get(id);
+
+            if (raw is null)
+            {
+                return Results.NotFound(new ApiError
+                {
+                    Code = "edid_not_found",
+                    Message = "No hay ningún EDID con ese identificador.",
+                });
+            }
+
+            EdidParser.TryParse(raw.Bytes, out Edid? parsed, out _);
+
+            return Results.Ok(new EdidRawResponse
+            {
+                Id = id,
+                Base64 = Convert.ToBase64String(raw.Bytes),
+                ByteCount = raw.Bytes.Length,
+                SuggestedFileName = SuggestEdidFileName(parsed, raw.HardwareId),
+            });
+        });
+
+        app.MapGet(ApiRoutes.VideoEdidDiff, (EdidLibrary library, string left, string right) =>
+        {
+            Edid? a = library.GetParsed(left);
+            Edid? b = library.GetParsed(right);
+
+            if (a is null || b is null)
+            {
+                return Results.NotFound(new ApiError
+                {
+                    Code = "edid_not_found",
+                    Message = a is null
+                        ? "No se ha podido leer el EDID de la izquierda."
+                        : "No se ha podido leer el EDID de la derecha.",
+                });
+            }
+
+            return Results.Ok(new EdidDiffResponse
+            {
+                LeftId = left,
+                RightId = right,
+                LeftLabel = a.DisplayLabel,
+                RightLabel = b.DisplayLabel,
+                Differences = EdidComparer.Compare(a, b),
+            });
+        });
+    }
+
+    /// <summary>
+    /// Nombre de fichero con el modelo dentro, para que un cajon lleno de volcados siga
+    /// siendo legible dentro de seis meses.
+    /// </summary>
+    private static string SuggestEdidFileName(Edid? parsed, string fallback)
+    {
+        string raw = parsed?.MonitorName is { Length: > 0 } name
+            ? $"{parsed.ManufacturerId}-{name}"
+            : fallback;
+
+        Span<char> cleaned = stackalloc char[raw.Length];
+        int written = 0;
+
+        foreach (char c in raw)
+        {
+            cleaned[written++] = char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-';
+        }
+
+        return new string(cleaned[..written]).Trim('-') + ".bin";
     }
 
     /// <summary>

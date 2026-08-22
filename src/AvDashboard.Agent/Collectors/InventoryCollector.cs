@@ -38,7 +38,7 @@ public sealed class InventoryCollector : PeriodicCollector
     {
         _state.Volumes = StorageProvider.GetVolumes();
 
-        DisplayTopology topology = DisplayEnumerator.GetTopology();
+        DisplayTopology topology = DisplayTopologyProvider.GetTopology();
         _state.Displays = topology;
 
         if (_lastActiveDisplays >= 0 && topology.ActiveCount < _lastActiveDisplays)
