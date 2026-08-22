@@ -1,0 +1,325 @@
+using AvDashboard.Agent.Modules;
+using AvDashboard.Agent.Storage;
+using AvDashboard.Core.Contracts;
+using AvDashboard.Core.Diagnostics;
+using AvDashboard.Core.Models;
+using AvDashboard.Core.Taxonomy;
+using AvDashboard.Native;
+using AvDashboard.Native.Network;
+using AvDashboard.Native.System;
+
+namespace AvDashboard.Agent.Endpoints;
+
+/// <summary>
+/// Superficie HTTP del agente.
+///
+/// Solo lectura en la Fase 1. Los endpoints de escritura estan declarados y responden
+/// 501 con el motivo: es mejor que la consola sepa que la ruta existe y aun no hace nada
+/// a que reciba un 404 y no sepa si es un fallo de version.
+/// </summary>
+public static class AgentEndpoints
+{
+    public static void MapAgentApi(this WebApplication app)
+    {
+        app.MapGet("/health", () => Results.Ok(new { status = "ok", version = NodeIdentity.AgentVersion }));
+
+        MapNode(app);
+        MapSystem(app);
+        MapAudio(app);
+        MapNetwork(app);
+        MapServices(app);
+        MapStorageAndReports(app);
+        MapNotYetImplemented(app);
+    }
+
+    private static void MapNode(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.Node, async (
+            NodeState state, NodeIdentity identity, EventRepository events) =>
+        {
+            IReadOnlyList<Alert> alerts = await events.GetActiveAlertsAsync().ConfigureAwait(false);
+
+            return Results.Ok(new NodeResponse
+            {
+                Node = identity.Describe(
+                    isService: OperatingSystem.IsWindows() && Platform.IsLocalSystem,
+                    activeProfile: state.ActiveProfile),
+                Health = state.Overall(),
+                ActiveAlerts = alerts.Count,
+            });
+        });
+
+        app.MapGet(ApiRoutes.Modules, (ModuleRegistry modules) => Results.Ok(modules.All));
+
+        app.MapGet(ApiRoutes.Alerts, async (EventRepository events) =>
+            Results.Ok(await events.GetActiveAlertsAsync().ConfigureAwait(false)));
+
+        app.MapGet(ApiRoutes.Manifest, (NodeIdentity identity) =>
+            Results.Ok(ManifestProvider.Build(identity.Id)));
+    }
+
+    private static void MapSystem(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.System, (NodeState state) =>
+        {
+            SystemStatus? status = state.System;
+            SystemSettings? settings = state.SystemSettings;
+
+            if (status is null || settings is null)
+            {
+                // El primer ciclo del colector aun no ha corrido. 503 con Retry-After es
+                // mas honesto que devolver ceros que parecen datos.
+                return Results.Json(new ApiError
+                {
+                    Code = "warming_up",
+                    Message = "El agente todavía no tiene una primera lectura de sistema.",
+                }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            return Results.Ok(new SystemResponse
+            {
+                Status = status,
+                Settings = settings,
+            });
+        });
+    }
+
+    private static void MapAudio(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.AudioDevices, (NodeState state) => Results.Ok(new AudioResponse
+        {
+            Devices = state.AudioDevices,
+            AsioDrivers = state.AsioDrivers,
+            Health = AudioDiagnostics.Evaluate(state.AudioDevices),
+            SampleRateMismatches = AudioDiagnostics
+                .FindSampleRateMismatches(state.AudioDevices)
+                .Select(d => d.FriendlyName)
+                .ToList(),
+        }));
+
+        app.MapGet(ApiRoutes.AudioAsio, (NodeState state) => Results.Ok(state.AsioDrivers));
+
+        app.MapGet(ApiRoutes.AudioPtp, (ModuleRegistry modules) =>
+        {
+            ModuleDescriptor? module = modules.Get("M3-PTP");
+
+            return Results.Ok(new PtpStatus
+            {
+                Available = module?.IsAvailable ?? false,
+                UnavailableReason = module?.Reason,
+            });
+        });
+    }
+
+    private static void MapNetwork(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.NetworkInterfaces, (NodeState state) => Results.Ok(new NetworkResponse
+        {
+            Interfaces = state.Interfaces,
+            Health = state.EvaluateSectors().TryGetValue(Sector.Network, out HealthState health)
+                ? health
+                : HealthState.Unknown,
+        }));
+
+        app.MapGet(ApiRoutes.NetworkPing, (NodeState state) => Results.Ok(state.PingStatistics.Values));
+
+        // Ventana en vivo por dispositivo, o todas de golpe si no se indica cual. Sale de
+        // memoria: el dashboard la pide cada pocos segundos y no puede costar una consulta.
+        app.MapGet(ApiRoutes.NetworkPingSamples, (NodeState state, string? device) =>
+        {
+            if (device is null)
+            {
+                return Results.Ok(state.PingWindows);
+            }
+
+            return state.PingWindows.TryGetValue(device, out IReadOnlyList<PingSample>? window)
+                ? Results.Ok(window)
+                : Results.Ok(Array.Empty<PingSample>());
+        });
+
+        app.MapPost(ApiRoutes.NetworkScan, async (
+            ScanRequest request, NodeState state, CancellationToken cancellationToken) =>
+        {
+            string? cidr = request.Cidr;
+
+            if (cidr is null)
+            {
+                NetworkInterfaceInfo? nic = request.InterfaceId is string id
+                    ? state.Interfaces.FirstOrDefault(i => i.Id == id)
+                    : state.Interfaces.FirstOrDefault(i => i.IsUp && i.Ipv4Addresses.Count > 0);
+
+                cidr = nic is null ? null : SubnetScanner.CidrFor(nic);
+            }
+
+            if (cidr is null)
+            {
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "no_range",
+                    Message = "No se ha podido deducir el rango a escanear. Indica un CIDR.",
+                });
+            }
+
+            SubnetScanner scanner = new();
+
+            try
+            {
+                return Results.Ok(await scanner.ScanAsync(cidr, request, cancellationToken)
+                    .ConfigureAwait(false));
+            }
+            catch (Exception ex) when (ex is FormatException or ArgumentOutOfRangeException or NotSupportedException)
+            {
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "bad_range",
+                    Message = ex.Message,
+                });
+            }
+        });
+    }
+
+    private static void MapServices(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.Services, (NodeState state) =>
+        {
+            List<ServiceSectorGroup> groups = SectorNames.DisplayOrder
+                .Select(sector => new ServiceSectorGroup
+                {
+                    Sector = sector,
+                    DisplayName = SectorNames.Display(sector),
+                    Services = state.Services
+                        .Where(s => s.Sector == sector)
+                        .OrderBy(s => s.DisplayName, StringComparer.CurrentCulture)
+                        .ToList(),
+                })
+                .Where(g => g.Services.Count > 0)
+                .ToList();
+
+            return Results.Ok(new ServicesResponse
+            {
+                Sectors = groups,
+                Health = state.Services.Any(s => s.IsUnexpectedlyStopped)
+                    ? HealthState.Critical
+                    : state.Services.Count == 0 ? HealthState.Unknown : HealthState.Ok,
+                BaselineTakenAt = state.ServiceBaselineTakenAt,
+            });
+        });
+
+        app.MapGet(ApiRoutes.ServicesBaseline, (NodeState state) =>
+        {
+            if (state.ServiceBaseline.Count == 0)
+            {
+                return Results.Ok(Array.Empty<ServiceDiffEntry>());
+            }
+
+            return Results.Ok(WindowsServiceReader.Diff(state.ServiceBaseline, state.Services));
+        });
+
+        app.MapPost(ApiRoutes.ServicesBaseline, (NodeState state) =>
+        {
+            // Tomar baseline es escritura, pero sobre el estado del agente, no sobre la
+            // maquina: no toca nada del sistema y por eso si esta en la Fase 1.
+            state.ServiceBaseline = state.Services;
+            state.ServiceBaselineTakenAt = DateTimeOffset.UtcNow;
+
+            return Results.Ok(new { taken = state.ServiceBaselineTakenAt, count = state.Services.Count });
+        });
+    }
+
+    private static void MapStorageAndReports(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.Storage, (NodeState state) => Results.Ok(state.Volumes));
+
+        app.MapGet(ApiRoutes.VideoDisplays, (NodeState state) =>
+            Results.Ok(state.Displays ?? new DisplayTopology()));
+
+        app.MapGet(ApiRoutes.Timeline, async (
+            EventRepository events,
+            DateTimeOffset? from,
+            DateTimeOffset? to,
+            string? modules,
+            int? limit,
+            CancellationToken cancellationToken) =>
+        {
+            DateTimeOffset start = from ?? DateTimeOffset.UtcNow.AddHours(-2);
+            DateTimeOffset end = to ?? DateTimeOffset.UtcNow;
+
+            string[]? moduleFilter = string.IsNullOrWhiteSpace(modules)
+                ? null
+                : modules.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            int cap = Math.Clamp(limit ?? 2000, 1, 10000);
+
+            IReadOnlyList<TimelineEvent> found = await events
+                .QueryAsync(start, end, moduleFilter, limit: cap, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return Results.Ok(new TimelineResponse
+            {
+                Events = found,
+                From = start,
+                To = end,
+                Truncated = found.Count >= cap,
+            });
+        });
+
+        app.MapPost(ApiRoutes.ReportPreShow, (NodeState state, NodeIdentity identity) =>
+            Results.Ok(PreShowChecklist.Build(
+                identity.Id,
+                state.System,
+                state.SystemSettings,
+                state.AudioDevices,
+                state.Interfaces,
+                state.Services,
+                state.PingStatistics.Values.ToList(),
+                state.Volumes,
+                state.Power)));
+    }
+
+    /// <summary>
+    /// Rutas declaradas del diseno que todavia no existen. Responden 501 con el motivo y
+    /// la fase en la que llegan, para que la consola pueda pintarlas en gris con una
+    /// explicacion en lugar de fallar con un 404 ambiguo.
+    /// </summary>
+    private static void MapNotYetImplemented(WebApplication app)
+    {
+        (string Route, string What)[] pending =
+        {
+            (ApiRoutes.SystemSetting, "La escritura de ajustes de sistema (Fase 2)"),
+            (ApiRoutes.AudioDefault, "Cambiar el dispositivo de audio por defecto (Fase 2)"),
+            (ApiRoutes.NetworkProfile, "Aplicar un perfil de IP (Fase 2)"),
+            (ApiRoutes.Service, "Controlar servicios (Fase 2)"),
+            (ApiRoutes.ProfileApply, "Aplicar un perfil de escenario (Fase 2)"),
+            (ApiRoutes.RunRollback, "El rollback de una ejecución (Fase 2)"),
+            (ApiRoutes.Panic, "Las acciones de pánico (Fase 2)"),
+            (ApiRoutes.VideoDisplaysRestore, "Restaurar el layout de pantallas (Fase 4)"),
+            (ApiRoutes.VideoWindowsRestore, "Restaurar posiciones de ventanas (Fase 4)"),
+            (ApiRoutes.MediaScan, "El validador de contenido (Fase 5)"),
+            (ApiRoutes.NetworkNdiDiscovery, "El conmutador de NDI Discovery (Fase 5)"),
+        };
+
+        foreach ((string route, string what) in pending)
+        {
+            app.MapPost(route, () => Results.Json(
+                ApiError.NotImplemented(what), statusCode: StatusCodes.Status501NotImplemented));
+        }
+
+        (string Route, string What)[] pendingReads =
+        {
+            (ApiRoutes.VideoDeckLink, "La lectura de DeckLink (Fase 4)"),
+            (ApiRoutes.VideoSync, "La desviación de refresh (Fase 4)"),
+            (ApiRoutes.VideoLedProcessors, "Los procesadores LED (Fase 7)"),
+            (ApiRoutes.NetworkArtNet, "El sniffer de Art-Net (Fase 5)"),
+            (ApiRoutes.NetworkSacn, "El sniffer de sACN (Fase 5)"),
+            (ApiRoutes.Licenses, "El estado de licencias y dongles (Fase 5)"),
+            (ApiRoutes.PowerUps, "El estado del SAI (Fase 5)"),
+            (ApiRoutes.CompanionVariables, "El puente con Companion (Fase 6)"),
+        };
+
+        foreach ((string route, string what) in pendingReads)
+        {
+            app.MapGet(route, () => Results.Json(
+                ApiError.NotImplemented(what), statusCode: StatusCodes.Status501NotImplemented));
+        }
+    }
+}

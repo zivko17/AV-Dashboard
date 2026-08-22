@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>AvDashboard.Core</RootNamespace>
+    <!--
+      Core es deliberadamente multiplataforma y sin dependencias: es la unica capa
+      que se puede compilar y testear en CI sin un runner de Windows, y donde vive
+      toda la logica que merece la pena tener cubierta por pruebas.
+    -->
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+</Project>

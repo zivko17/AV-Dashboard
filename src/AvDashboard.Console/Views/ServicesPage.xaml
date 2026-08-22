@@ -1,0 +1,100 @@
+<UserControl x:Class="AvDashboard.Console.Views.ServicesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
+    <UserControl.Resources>
+        <controls:HealthBrushConverter x:Key="HealthBrush" />
+        <controls:SectorNameConverter x:Key="SectorName" />
+        <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
+    </UserControl.Resources>
+
+    <StackPanel>
+        <TextBlock Text="Servicios" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+
+        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel Orientation="Horizontal">
+                <TextBox Width="260" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                <CheckBox Content="Solo AV" IsChecked="{Binding OnlyAv}" Foreground="{StaticResource TextBrush}"
+                          VerticalAlignment="Center" Margin="14,0,0,0" />
+                <Button Content="Tomar baseline" Command="{Binding TakeBaselineCommand}" Margin="20,0,0,0" />
+                <TextBlock Text="{Binding BaselineSummary}" Style="{StaticResource CaptionText}"
+                           VerticalAlignment="Center" Margin="14,0,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Agrupado por sector AV, no por el orden alfabetico de services.msc. -->
+        <ItemsControl ItemsSource="{Binding Sectors}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontWeight="SemiBold"
+                                           FontSize="15" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource CaptionText}" VerticalAlignment="Center">
+                                        <Run Text="{Binding RunningExpected, Mode=OneWay}" />
+                                        <Run Text="/" />
+                                        <Run Text="{Binding TotalExpected, Mode=OneWay}" />
+                                        <Run Text="esperados" />
+                                    </TextBlock>
+                                    <Ellipse Width="9" Height="9" Margin="10,0,0,0" VerticalAlignment="Center"
+                                             Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                </StackPanel>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Services}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="360" />
+                                                <ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="150" />
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding State}" FontFamily="Consolas" />
+                                            <TextBlock Grid.Column="2" Text="{Binding StartMode}"
+                                                       Style="{StaticResource CaptionText}" />
+                                            <TextBlock Grid.Column="3" Text="{Binding ProcessId}"
+                                                       Style="{StaticResource CaptionText}" FontFamily="Consolas" />
+                                            <TextBlock Grid.Column="4" Foreground="{StaticResource CriticalBrush}"
+                                                       FontSize="12">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsUnexpectedlyStopped}" Value="True">
+                                                                <Setter Property="Text" Value="⚠ se esperaba en marcha" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel Orientation="Horizontal" Margin="6,4,0,20">
+            <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+            <TextBlock Style="{StaticResource CaptionText}" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Text="Arrancar y parar servicios llega en la Fase 2, con confirmación en el sector Sistema." />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,167 @@
+<UserControl x:Class="AvDashboard.Console.Views.DashboardPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
+    <UserControl.Resources>
+        <controls:HealthBrushConverter x:Key="HealthBrush" />
+        <controls:SeverityBrushConverter x:Key="SeverityBrush" />
+        <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
+        <controls:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+    </UserControl.Resources>
+
+    <StackPanel>
+        <TextBlock Text="{Binding NodeSummary}" Style="{StaticResource CaptionText}" Margin="6,0,0,8" />
+
+        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+
+        <!-- Tarjetas. Un indicador y dos o tres cifras por tarjeta; nada mas. -->
+        <ItemsControl ItemsSource="{Binding Cards}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="5" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource Card}" MinHeight="150" Cursor="Hand"
+                            ToolTip="Ir a la sección con el contexto ya filtrado">
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding ActivateCommand}" />
+                        </Border.InputBindings>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <Ellipse Width="10" Height="10" VerticalAlignment="Center"
+                                         Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                <TextBlock Text="{Binding Title}" Margin="8,0,0,0" FontWeight="SemiBold"
+                                           FontSize="12" Foreground="{StaticResource TextMutedBrush}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding Primary}" Style="{StaticResource MetricText}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <ItemsControl ItemsSource="{Binding Lines}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" Style="{StaticResource CaptionText}"
+                                                   Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Latencia: va en el dashboard y no escondida en Red, porque es lo que mas
+             veces da la pista primero. -->
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="LATENCIA — dispositivos críticos" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <ItemsControl ItemsSource="{Binding PingSeries}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="300" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                             Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                    <TextBlock Text="{Binding Target}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <controls:PingSparkline Grid.Column="1" Height="34" Margin="10,0"
+                                                        Samples="{Binding Samples}"
+                                                        CeilingMs="{Binding CeilingMs}"
+                                                        LineBrush="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Summary}" FontFamily="Consolas"
+                                           Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                           Text="Sin dispositivos críticos configurados: añádelos en appsettings.json del agente, sección Agent:CriticalDevices.">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PingSeries.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Alertas activas -->
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="ALERTAS ACTIVAS" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <ItemsControl ItemsSource="{Binding ActiveAlerts}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="90" />
+                                    <ColumnDefinition Width="70" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                         Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
+                                <TextBlock Grid.Column="1" Margin="10,0,0,0" FontFamily="Consolas"
+                                           Text="{Binding RaisedAt, StringFormat='{}{0:HH:mm:ss}'}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Module}"
+                                           Style="{StaticResource CaptionText}" />
+                                <TextBlock Grid.Column="3" Text="{Binding Message}" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- Franja de acciones rapidas: lo que se pulsa con prisa no se busca. -->
+        <StackPanel Orientation="Horizontal" Margin="6,4,0,20">
+            <Button Content="Check pre-show" Command="{Binding RunPreShowCommand}" />
+            <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+            <Button Content="Aplicar perfil" IsEnabled="False" ToolTip="M10 — Fase 2" />
+            <Button Content="Restaurar pantallas" IsEnabled="False" ToolTip="M15 — Fase 2" />
+        </StackPanel>
+
+        <!-- Veredicto de la checklist: un semaforo con la lista de lo que falla. -->
+        <Border Style="{StaticResource Card}" Margin="6,0,6,20"
+                Visibility="{Binding PreShowResult, Converter={StaticResource NotNullToVisibility}}">
+            <StackPanel>
+                <TextBlock Text="CHECKLIST PRE-SHOW" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <ItemsControl ItemsSource="{Binding PreShowResult.Checks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="320" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                         Fill="{Binding State, Converter={StaticResource HealthBrush}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="10,0,0,0" />
+                                <TextBlock Grid.Column="2" Text="{Binding Detail}"
+                                           Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

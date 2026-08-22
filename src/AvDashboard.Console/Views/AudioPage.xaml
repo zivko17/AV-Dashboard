@@ -1,0 +1,116 @@
+<UserControl x:Class="AvDashboard.Console.Views.AudioPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
+    <UserControl.Resources>
+        <controls:HealthBrushConverter x:Key="HealthBrush" />
+        <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
+    </UserControl.Resources>
+
+    <StackPanel>
+        <TextBlock Text="Audio y reloj" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+
+        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+
+        <Border Style="{StaticResource Card}">
+            <TextBlock Text="{Binding MismatchSummary}" TextWrapping="Wrap" />
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="DISPOSITIVOS" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="340" />
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="1" Text="Dispositivo" Style="{StaticResource CaptionText}" Margin="10,0,0,0" />
+                    <TextBlock Grid.Column="2" Text="Dirección" Style="{StaticResource CaptionText}" />
+                    <TextBlock Grid.Column="3" Text="Formato en uso" Style="{StaticResource CaptionText}" />
+                    <TextBlock Grid.Column="4" Text="Declarado" Style="{StaticResource CaptionText}" />
+                    <TextBlock Grid.Column="5" Text="Nivel" Style="{StaticResource CaptionText}" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Devices}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="340" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="230" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                         Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                <TextBlock Grid.Column="1" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"
+                                           Text="{Binding Name}" ToolTip="{Binding Name}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Direction}"
+                                           Style="{StaticResource CaptionText}" />
+                                <TextBlock Grid.Column="3" Text="{Binding Format}" FontFamily="Consolas" />
+                                <TextBlock Grid.Column="4" Text="{Binding Declared}" FontFamily="Consolas">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasMismatch}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                                    <Setter Property="FontWeight" Value="Bold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <controls:LevelMeter Grid.Column="5" Height="12" MinWidth="120"
+                                                     VerticalAlignment="Center" Peak="{Binding Peak}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="DRIVERS ASIO" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <ItemsControl ItemsSource="{Binding AsioDrivers}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="280" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Name}" />
+                                <TextBlock Grid.Column="1" Text="{Binding DriverPath}"
+                                           Style="{StaticResource CaptionText}" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Margin="6,0,6,20">
+            <StackPanel>
+                <TextBlock Text="PTP / IEEE 1588" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionText}"
+                           Text="Requiere Npcap en modo compatible con WinPcap. PTP no se puede leer con sockets normales, así que este panel se queda vacío hasta la Fase 5 y hasta que Npcap esté instalado. Cuando lo esté: Grandmaster del segmento, offset, deriva y aviso de cambio de Grandmaster." />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" Margin="6,4,0,20">
+            <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

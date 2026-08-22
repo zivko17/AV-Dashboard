@@ -1,0 +1,30 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <Product>AV Dashboard</Product>
+    <Company>AV Dashboard</Company>
+    <Authors>zivko17</Authors>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <NeutralLanguage>es-ES</NeutralLanguage>
+    <!-- El agente corre en maquinas en produccion: no queremos telemetria de .NET. -->
+    <DotNetCliToolTelemetryOptOut>true</DotNetCliToolTelemetryOptOut>
+  </PropertyGroup>
+
+  <!--
+    Windows 10 1809 (build 17763) es el minimo con el que las APIs de Core Audio y
+    QueryDisplayConfig que usamos se comportan de forma consistente. El objetivo real
+    es Windows 11 22H2, pero no hay razon para excluir un rig con W10 LTSC.
+  -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+</Project>

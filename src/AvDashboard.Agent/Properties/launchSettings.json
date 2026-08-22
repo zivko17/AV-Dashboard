@@ -1,0 +1,17 @@
+{
+  "profiles": {
+    "Agente (servicio simulado)": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Agente (modo portátil)": {
+      "commandName": "Project",
+      "commandLineArgs": "--portable",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

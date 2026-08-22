@@ -1,0 +1,83 @@
+<UserControl x:Class="AvDashboard.Console.Views.SystemPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
+    <UserControl.Resources>
+        <controls:HealthBrushConverter x:Key="HealthBrush" />
+        <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
+    </UserControl.Resources>
+
+    <StackPanel>
+        <TextBlock Text="Sistema y rendimiento" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+
+        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+
+        <!-- Estado antes que control. -->
+        <UniformGrid Columns="4">
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="CPU" Style="{StaticResource CaptionText}" />
+                    <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0:0}%'}" Style="{StaticResource MetricText}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="RAM" Style="{StaticResource CaptionText}" />
+                    <TextBlock Text="{Binding MemoryPercent, StringFormat='{}{0:0}%'}" Style="{StaticResource MetricText}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="ACTIVO DESDE" Style="{StaticResource CaptionText}" />
+                    <TextBlock Text="{Binding Uptime}" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="PLAN DE ENERGÍA" Style="{StaticResource CaptionText}" />
+                    <TextBlock Text="{Binding PowerPlan}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </UniformGrid>
+
+        <!-- Los toggles debajo, cada uno con su valor actual y el que espera el perfil. -->
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="AJUSTES" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <ItemsControl ItemsSource="{Binding Settings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="300" />
+                                    <ColumnDefinition Width="200" />
+                                    <ColumnDefinition Width="180" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                         Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="10,0,0,0" />
+                                <TextBlock Grid.Column="2" Text="{Binding Current}" FontFamily="Consolas" />
+                                <TextBlock Grid.Column="3" Text="{Binding Desired}"
+                                           Style="{StaticResource CaptionText}" />
+                                <TextBlock Grid.Column="4" Text="{Binding Note}" TextWrapping="Wrap"
+                                           Style="{StaticResource CaptionText}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource CaptionText}" Margin="0,14,0,0" TextWrapping="Wrap"
+                           Text="Solo lectura en la Fase 1. La escritura llega con los actuadores, con snapshot previo, diff antes de aplicar y rollback." />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" Margin="6,4,0,20">
+            <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

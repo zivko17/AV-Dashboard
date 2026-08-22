@@ -1,0 +1,47 @@
+# .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+artifacts/
+publish/
+TestResults/
+*.trx
+*.coverage
+coverage*.json
+coverage*.xml
+
+# Rider / VS / VS Code
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.DotSettings.user
+
+# Salidas de build del instalador
+build/out/
+
+# Datos locales del agente (nunca deben viajar en el repo)
+*.db
+*.db-shm
+*.db-wal
+agent.token
+*.pfx
+appsettings.Local.json
+appsettings.Development.json
+
+# SDKs propietarios que no se redistribuyen (ver docs/dependencies.md)
+vendor/DeckLinkSDK/
+vendor/NdiSdk/
+vendor/nvapi/
+
+# Varios
+*.log
+Thumbs.db
+desktop.ini

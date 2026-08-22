@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>AvDashboard.Console</RootNamespace>
+    <AssemblyName>AvDashboard</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AvDashboard.Core\AvDashboard.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Deliberadamente sin librerias de UI de terceros de momento. Ver
+      docs/adr/0005-ui-sin-dependencias-en-fase-1.md: el tema oscuro, el rail y los
+      graficos son propios para que la Fase 1 compile y arranque sin nada mas, y
+      WPF-UI entra con un punto de enganche ya preparado en App.xaml.
+    -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

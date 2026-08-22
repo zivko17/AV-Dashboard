@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>AvDashboard.Cli</RootNamespace>
+    <AssemblyName>avdash</AssemblyName>
+    <!--
+      El CLI es el puente con Companion y con tu $PROFILE. Los nombres de comando son
+      los mismos que en av-light-tools para poder migrar funcion a funcion sin romper
+      la memoria muscular.
+    -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AvDashboard.Core\AvDashboard.Core.csproj" />
+  </ItemGroup>
+
+</Project>

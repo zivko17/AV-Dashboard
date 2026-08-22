@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>AvDashboard.Agent</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>avdashboard-agent</UserSecretsId>
+    <!--
+      El mismo binario corre como servicio (LocalSystem) y en modo portatil desde un USB.
+      Un solo ejecutable, sin variantes: los modulos se auto-desactivan si falta hardware.
+    -->
+    <AssemblyName>AvDashboard.Agent</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AvDashboard.Core\AvDashboard.Core.csproj" />
+    <ProjectReference Include="..\AvDashboard.Native\AvDashboard.Native.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
