@@ -80,8 +80,12 @@ public sealed partial class SystemViewModel : PageViewModel
     /// <summary>El catálogo entero, agrupado, para la pestaña de configuración.</summary>
     public ObservableCollection<SettingGroupViewModel> Groups { get; } = new();
 
+    /// <summary>
+    /// El resultado de la última escritura, y nada más. El titular del estado tiene su
+    /// propio sitio arriba; repetirlo aquí solo hace dudar de si son dos cosas distintas.
+    /// </summary>
     [ObservableProperty]
-    private string _summary = "Sin auditar.";
+    private string _summary = string.Empty;
 
     [ObservableProperty]
     private string _stateHeadline = "Sin auditar.";
@@ -133,8 +137,8 @@ public sealed partial class SystemViewModel : PageViewModel
 
         if (!audit.Success)
         {
-            Summary = audit.Error ?? "No se ha podido auditar el sistema.";
-            StateHeadline = Summary;
+            StateHeadline = audit.Error ?? "No se ha podido auditar el sistema.";
+            Summary = string.Empty;
             Findings.Clear();
             Unreadable.Clear();
             Diagnostics.Clear();
@@ -169,21 +173,21 @@ public sealed partial class SystemViewModel : PageViewModel
                      .ThenByDescending(e => e.Definition.Impact)
                      .ThenBy(e => e.Definition.Name, StringComparer.CurrentCulture))
         {
-            Findings.Add(new SettingRow(evaluation));
+            Findings.Add(new SettingRow(evaluation, showGroup: true));
         }
 
         foreach (SettingEvaluation evaluation in all
                      .Where(e => e.Verdict == SettingVerdict.Unknown)
                      .OrderBy(e => e.Definition.Name, StringComparer.CurrentCulture))
         {
-            Unreadable.Add(new SettingRow(evaluation));
+            Unreadable.Add(new SettingRow(evaluation, showGroup: true));
         }
 
         foreach (SettingEvaluation evaluation in all
                      .Where(e => e.Verdict == SettingVerdict.Informational)
                      .OrderBy(e => e.Definition.Name, StringComparer.CurrentCulture))
         {
-            Diagnostics.Add(new SettingRow(evaluation));
+            Diagnostics.Add(new SettingRow(evaluation, showGroup: true));
         }
 
         CriticalCount = audit.CriticalCount;
@@ -200,8 +204,6 @@ public sealed partial class SystemViewModel : PageViewModel
                 ? $"{WarningCount} conviene revisarlos antes del próximo show."
                 : $"{CriticalCount} afectan a producción" +
                   (WarningCount > 0 ? $" y {WarningCount} más conviene revisarlos." : ".");
-
-        Summary = StateHeadline;
     }
 
     /// <summary>La pestaña de configuración: el catálogo entero, filtrado solo si se busca.</summary>
@@ -364,37 +366,34 @@ public sealed class SettingGroupViewModel
         _ => "\uE713",
     };
 
-    /// <summary>«3 filas · 2 en rojo», que es lo que se lee con el grupo plegado.</summary>
-    public string Counters
-    {
-        get
-        {
-            List<string> parts = new() { $"{Rows.Count} ajustes" };
+    /// <summary>
+    /// El recuento va en texto y los avisos en chips de color al lado. Todo junto en una
+    /// línea gris —«13 ajustes · 1 en rojo · 1 en ámbar»— hay que leerlo entero para saber
+    /// si el grupo tiene algo; en chips se ve de un barrido.
+    /// </summary>
+    public string TotalText => Rows.Count == 1 ? "1 ajuste" : $"{Rows.Count} ajustes";
 
-            if (CriticalCount > 0)
-            {
-                parts.Add($"{CriticalCount} en rojo");
-            }
+    public string CriticalText => $"{CriticalCount} en rojo";
 
-            if (WarningCount > 0)
-            {
-                parts.Add($"{WarningCount} en ámbar");
-            }
-
-            return string.Join(" · ", parts);
-        }
-    }
+    public string WarningText => $"{WarningCount} en ámbar";
 }
 
 /// <summary>Una fila del catálogo tal y como se pinta.</summary>
 public sealed partial class SettingRow : ObservableObject
 {
-    public SettingRow(SettingEvaluation evaluation)
+    public SettingRow(SettingEvaluation evaluation, bool showGroup = false)
     {
         Evaluation = evaluation;
+        ShowGroup = showGroup;
     }
 
     public SettingEvaluation Evaluation { get; }
+
+    /// <summary>
+    /// En la pestaña de estado las filas vienen de grupos distintos y hay que decir de
+    /// cuál; en la de configuración están dentro de su grupo y repetirlo sería ruido.
+    /// </summary>
+    public bool ShowGroup { get; }
 
     /// <summary>Mientras se escribe, el control se bloquea para no encadenar clics.</summary>
     [ObservableProperty]
@@ -447,10 +446,41 @@ public sealed partial class SettingRow : ObservableObject
     /// </summary>
     public string Rationale => Evaluation.Definition.Rationale;
 
-    /// <summary>«Debería ser: Ultimate Performance», para la lista de hallazgos.</summary>
-    public string? TargetLine => Evaluation.Definition.TargetDescription is { Length: > 0 } target
-        ? $"Debería ser: {target}"
-        : null;
+    /// <summary>
+    /// «Objetivo: Ultimate Performance», debajo del valor actual. Solo cuando el valor no
+    /// coincide: en una fila correcta, repetir el objetivo al lado del valor que ya lo
+    /// cumple es una línea de texto que no dice nada.
+    /// </summary>
+    public string? TargetLine =>
+        Evaluation.IsDeviation && Evaluation.Definition.TargetDescription is { Length: > 0 } target
+            ? $"Objetivo: {target}"
+            : null;
+
+    /// <summary>Etiqueta al lado del nombre. Solo en los de impacto alto: si sale en todos, no marca nada.</summary>
+    public string? ImpactChip =>
+        Evaluation.Definition.Impact == SettingImpact.High ? "Impacto alto" : null;
+
+    /// <summary>Etiqueta de la contrapartida, con el texto largo en el tooltip.</summary>
+    public string? RiskChip => Evaluation.Definition.Risk switch
+    {
+        SettingRisk.Security => "Seguridad",
+        SettingRisk.Tradeoff => "A medir aquí",
+        _ => null,
+    };
+
+    /// <summary>Versión corta del motivo de que no haya control; el largo va en el tooltip.</summary>
+    public string? NotWritableShort
+    {
+        get
+        {
+            if (Evaluation.Writable || !Evaluation.Definition.HasTarget)
+            {
+                return null;
+            }
+
+            return Evaluation.Definition.Risk == SettingRisk.Security ? "A mano" : "Solo lectura";
+        }
+    }
 
     /// <summary>
     /// Aviso de los que no son un interruptor normal: bajarlos reduce la seguridad de la

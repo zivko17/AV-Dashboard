@@ -96,8 +96,6 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Audio y reloj" Style="{StaticResource TitleText}" />
-
         <Border Style="{StaticResource InfoBarCritical}"
                 Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
             <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />

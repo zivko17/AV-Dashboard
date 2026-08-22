@@ -12,8 +12,6 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Vídeo" Style="{StaticResource TitleText}" />
-
         <Border Style="{StaticResource InfoBarCritical}"
                 Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
             <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />

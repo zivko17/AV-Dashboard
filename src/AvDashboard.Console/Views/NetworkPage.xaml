@@ -9,8 +9,6 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Red" Style="{StaticResource TitleText}" />
-
         <Border Style="{StaticResource InfoBarCritical}"
                 Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
             <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />

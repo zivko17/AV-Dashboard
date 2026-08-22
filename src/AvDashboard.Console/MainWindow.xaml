@@ -129,7 +129,12 @@
                 CornerRadius="8,0,0,0">
             <Grid>
                 <DockPanel>
-                    <!-- Cabecera: nodo, semaforo, perfil y alertas. -->
+                    <!--
+                        Cabecera: el titulo de la pagina a la izquierda y la identidad del
+                        nodo a la derecha. El titulo vive aqui y no dentro de cada pagina
+                        porque asi no se mueve al cambiar de seccion y no gasta una linea
+                        de contenido, que es como lo hace la Configuracion de Windows.
+                    -->
                     <Border DockPanel.Dock="Top" Padding="28,14,28,12"
                             BorderBrush="{StaticResource RuleBrush}" BorderThickness="0,0,0,1">
                         <Grid>
@@ -139,17 +144,19 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="10" Height="10" VerticalAlignment="Center"
-                                         Fill="{Binding NodeHealth, Converter={StaticResource HealthBrush}}" />
-                                <TextBlock Text="{Binding NodeName}" Margin="10,0,0,0"
-                                           Style="{StaticResource BodyStrongText}"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding ConnectionStatus}" Margin="10,0,0,0"
-                                           Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <TextBlock Grid.Column="0" Text="{Binding Current.Title}"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontSize="20" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="9" Height="9" VerticalAlignment="Center"
+                                         Fill="{Binding NodeHealth, Converter={StaticResource HealthBrush}}" />
+                                <TextBlock Text="{Binding NodeName}" Margin="9,0,0,0"
+                                           Style="{StaticResource BodyStrongText}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding ConnectionStatus}" Margin="9,0,18,0"
+                                           Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
                                 <TextBlock Text="Perfil" Style="{StaticResource CaptionText}"
                                            VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding ActiveProfile}" Margin="6,0,14,0"

@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border Style="{StaticResource Card}" Margin="0,12,0,8" MaxWidth="720" HorizontalAlignment="Left">
         <StackPanel>
-            <TextBlock Text="{Binding Title}" Style="{StaticResource TitleText}" />
             <Border Background="{StaticResource SurfaceRaisedBrush}" CornerRadius="10" Padding="10,3"
                     HorizontalAlignment="Left" Margin="0,0,0,14">
                 <TextBlock Text="{Binding Phase}" Foreground="{StaticResource AccentBrush}" FontSize="12" />
