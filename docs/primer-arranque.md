@@ -166,6 +166,21 @@ Verificado en una máquina con Focusrite, NVIDIA, AMD, VB-Cable y NDI Tools:
 | Telemetría de CPU por core | 24 cores, valores plausibles |
 | Colectores | Cero avisos: ninguno falla en silencio |
 
+### La consola, misma máquina
+
+| Qué | Resultado |
+|---|---|
+| Arranque de la ventana y navegación por el rail | Correcto |
+| Iconos de Segoe Fluent Icons | Se ven bien, ninguno sale como caja |
+| Semáforo global y contador de alertas | Ámbar y «1 alertas» por el mismatch de las webcams |
+| Recorrido completo de una alerta | Core Audio → colector → alerta → API → dashboard, con su hora y su módulo |
+| Página de Sistema | Valor actual contra valor esperado, con punto de color por fila |
+| Medidores de audio a 20 fps | **Se mueven.** Valida el hub, la suscripción por canal y el `LevelMeter` |
+| Secciones de fases futuras | Se presentan con su etiqueta de fase, no vacías |
+
+Con eso, la Fase 1 queda verificada de punta a punta en hardware real: interop,
+agente, API, SQLite, WebSocket y UI.
+
 ### Huecos conocidos que salieron de ahí
 
 - **`measuredRefreshHz` viene `null`.** `DwmGetCompositionTimingInfo` no devuelve nada útil
