@@ -11,3 +11,4 @@ consecuencias — incluidas las malas.
 | [0004](0004-npcap-opcional.md) | Npcap como dependencia opcional detectada en runtime | Aceptada |
 | [0005](0005-ui-sin-dependencias-en-fase-1.md) | Sin WPF-UI ni ScottPlot en la Fase 1 | Aceptada |
 | [0006](0006-fase-1-solo-lectura.md) | La Fase 1 no escribe nada | Aceptada |
+| [0007](0007-fluent-a-mano-y-sistema-en-dos.md) | Fluent con los tokens de WinUI, y Sistema partido en dos | Aceptada |

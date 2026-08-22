@@ -21,11 +21,31 @@ public sealed partial class AudioViewModel : PageViewModel
     public override string Title => "Audio";
     public override string Glyph => "\uE767";
 
-    public ObservableCollection<AudioDeviceRow> Devices { get; } = new();
+    /// <summary>
+    /// Los endpoints en uso. Van en su propia tarjeta y arriba porque son los únicos que
+    /// pueden estar mal: un dispositivo que Windows recuerda pero que no está enchufado no
+    /// tiene formato en uso ni nivel, y mezclarlo con los activos convierte una tabla de
+    /// cinco filas útiles en una de veinticinco donde no se distingue nada.
+    /// </summary>
+    public ObservableCollection<AudioDeviceRow> ActiveDevices { get; } = new();
+
+    /// <summary>
+    /// Los que Windows tiene registrados y ahora mismo no están: desenchufados, apagados o
+    /// de una tarjeta que ya no está. Se enseñan porque son la respuesta a «¿dónde está la
+    /// Focusrite?», pero plegados y sin ocupar la pantalla.
+    /// </summary>
+    public ObservableCollection<AudioDeviceRow> InactiveDevices { get; } = new();
+
     public ObservableCollection<AsioDriver> AsioDrivers { get; } = new();
 
     [ObservableProperty]
     private string _mismatchSummary = string.Empty;
+
+    [ObservableProperty]
+    private int _activeCount;
+
+    [ObservableProperty]
+    private int _inactiveCount;
 
     public override async Task ActivateAsync()
     {
@@ -57,13 +77,27 @@ public sealed partial class AudioViewModel : PageViewModel
 
         Health = audio.Health;
 
-        Devices.Clear();
+        ActiveDevices.Clear();
+        InactiveDevices.Clear();
+
         foreach (AudioDevice device in audio.Devices.OrderByDescending(d => d.IsDefault)
                      .ThenBy(d => d.DataFlow)
                      .ThenBy(d => d.FriendlyName, StringComparer.CurrentCulture))
         {
-            Devices.Add(new AudioDeviceRow(device));
+            AudioDeviceRow row = new(device);
+
+            if (device.State == AudioDeviceState.Active)
+            {
+                ActiveDevices.Add(row);
+            }
+            else
+            {
+                InactiveDevices.Add(row);
+            }
         }
+
+        ActiveCount = ActiveDevices.Count;
+        InactiveCount = InactiveDevices.Count;
 
         AsioDrivers.Clear();
         foreach (AsioDriver driver in audio.AsioDrivers)
@@ -81,9 +115,11 @@ public sealed partial class AudioViewModel : PageViewModel
         // El hub entrega en un hilo del pool; la coleccion esta enlazada a la UI.
         System.Windows.Application.Current?.Dispatcher.Invoke(() =>
         {
+            // Solo se buscan en los activos: un endpoint desenchufado no entrega nivel, y
+            // recorrer la lista larga por cada trama de medidores es trabajo tirado.
             foreach (AudioMeterReading reading in frame.Readings)
             {
-                AudioDeviceRow? row = Devices.FirstOrDefault(d => d.Id == reading.Id);
+                AudioDeviceRow? row = ActiveDevices.FirstOrDefault(d => d.Id == reading.Id);
                 row?.UpdatePeak(reading.Peak);
             }
         });
@@ -114,6 +150,16 @@ public sealed partial class AudioDeviceRow : ObservableObject
         : "—";
 
     public bool HasMismatch => Device.HasSampleRateMismatch;
+
+    /// <summary>Por qué este dispositivo no está en uso. Solo se pinta en la tabla de abajo.</summary>
+    public string StateText => Device.State switch
+    {
+        AudioDeviceState.Unplugged => "desenchufado",
+        AudioDeviceState.Disabled => "deshabilitado",
+        AudioDeviceState.NotPresent => "no presente",
+        AudioDeviceState.Active => "activo",
+        _ => "desconocido",
+    };
 
     public HealthState Health => Device.State switch
     {

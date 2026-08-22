@@ -10,14 +10,15 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="{Binding NodeSummary}" Style="{StaticResource CaptionText}" Margin="6,0,0,8" />
+        <TextBlock Text="{Binding NodeSummary}" Style="{StaticResource CaptionText}" Margin="2,0,0,10" />
 
-        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
-                   TextWrapping="Wrap"
-                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+        <Border Style="{StaticResource InfoBarCritical}"
+                Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+        </Border>
 
         <!-- Tarjetas. Un indicador y dos o tres cifras por tarjeta; nada mas. -->
-        <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-8,0">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <UniformGrid Columns="5" />
@@ -25,7 +26,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border Style="{StaticResource Card}" MinHeight="150" Cursor="Hand"
+                    <Border Style="{StaticResource Card}" Margin="0,0,8,8" MinHeight="150" Cursor="Hand"
                             ToolTip="Ir a la sección con el contexto ya filtrado">
                         <Border.InputBindings>
                             <MouseBinding MouseAction="LeftClick" Command="{Binding ActivateCommand}" />
@@ -57,8 +58,7 @@
              veces da la pista primero. -->
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="LATENCIA — dispositivos críticos" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <TextBlock Text="Latencia — dispositivos críticos" Style="{StaticResource SectionText}" />
                 <ItemsControl ItemsSource="{Binding PingSeries}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -78,7 +78,7 @@
                                                         Samples="{Binding Samples}"
                                                         CeilingMs="{Binding CeilingMs}"
                                                         LineBrush="{Binding Health, Converter={StaticResource HealthBrush}}" />
-                                <TextBlock Grid.Column="2" Text="{Binding Summary}" FontFamily="Consolas"
+                                <TextBlock Grid.Column="2" Text="{Binding Summary}" FontFamily="{StaticResource MonoFont}"
                                            Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
@@ -103,8 +103,7 @@
         <!-- Alertas activas -->
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="ALERTAS ACTIVAS" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <TextBlock Text="Alertas activas" Style="{StaticResource SectionText}" />
                 <ItemsControl ItemsSource="{Binding ActiveAlerts}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -117,7 +116,7 @@
                                 </Grid.ColumnDefinitions>
                                 <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
                                          Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
-                                <TextBlock Grid.Column="1" Margin="10,0,0,0" FontFamily="Consolas"
+                                <TextBlock Grid.Column="1" Margin="10,0,0,0" FontFamily="{StaticResource MonoFont}"
                                            Text="{Binding RaisedAt, StringFormat='{}{0:HH:mm:ss}'}" />
                                 <TextBlock Grid.Column="2" Text="{Binding Module}"
                                            Style="{StaticResource CaptionText}" />
@@ -138,11 +137,10 @@
         </StackPanel>
 
         <!-- Veredicto de la checklist: un semaforo con la lista de lo que falla. -->
-        <Border Style="{StaticResource Card}" Margin="6,0,6,20"
+        <Border Style="{StaticResource Card}" Margin="0,0,0,20"
                 Visibility="{Binding PreShowResult, Converter={StaticResource NotNullToVisibility}}">
             <StackPanel>
-                <TextBlock Text="CHECKLIST PRE-SHOW" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <TextBlock Text="Checklist pre-show" Style="{StaticResource SectionText}" />
                 <ItemsControl ItemsSource="{Binding PreShowResult.Checks}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

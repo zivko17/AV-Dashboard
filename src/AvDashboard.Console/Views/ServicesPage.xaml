@@ -9,11 +9,12 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Servicios" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+        <TextBlock Text="Servicios" Style="{StaticResource TitleText}" />
 
-        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
-                   TextWrapping="Wrap"
-                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+        <Border Style="{StaticResource InfoBarCritical}"
+                Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+        </Border>
 
         <Border Style="{StaticResource Card}">
             <StackPanel Orientation="Horizontal">
@@ -63,11 +64,11 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Margin="0,0,14,0"
                                                        TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
-                                            <TextBlock Grid.Column="1" Text="{Binding State}" FontFamily="Consolas" />
+                                            <TextBlock Grid.Column="1" Text="{Binding State}" FontFamily="{StaticResource MonoFont}" />
                                             <TextBlock Grid.Column="2" Text="{Binding StartMode}"
                                                        Style="{StaticResource CaptionText}" />
                                             <TextBlock Grid.Column="3" Text="{Binding ProcessId}"
-                                                       Style="{StaticResource CaptionText}" FontFamily="Consolas" />
+                                                       Style="{StaticResource CaptionText}" FontFamily="{StaticResource MonoFont}" />
                                             <TextBlock Grid.Column="4" Foreground="{StaticResource CriticalBrush}"
                                                        FontSize="12">
                                                 <TextBlock.Style>

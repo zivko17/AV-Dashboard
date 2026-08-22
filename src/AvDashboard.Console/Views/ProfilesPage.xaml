@@ -8,16 +8,16 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Perfiles de escenario" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+        <TextBlock Text="Perfiles de escenario" Style="{StaticResource TitleText}" />
 
-        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
-                   TextWrapping="Wrap"
-                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+        <Border Style="{StaticResource InfoBarCritical}"
+                Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+        </Border>
 
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="PERFILES" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <TextBlock Text="Perfiles" Style="{StaticResource SectionText}" />
 
                 <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding Selected}"
                          ItemContainerStyle="{StaticResource RowItem}"
@@ -85,9 +85,9 @@
                                     <ColumnDefinition Width="260" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding Order}" FontFamily="Consolas"
+                                <TextBlock Grid.Column="0" Text="{Binding Order}" FontFamily="{StaticResource MonoFont}"
                                            Style="{StaticResource CaptionText}" />
-                                <TextBlock Grid.Column="1" Text="{Binding ActionId}" FontFamily="Consolas"
+                                <TextBlock Grid.Column="1" Text="{Binding ActionId}" FontFamily="{StaticResource MonoFont}"
                                            TextTrimming="CharacterEllipsis" />
                                 <TextBlock Grid.Column="2" Text="{Binding Label}"
                                            TextTrimming="CharacterEllipsis" />

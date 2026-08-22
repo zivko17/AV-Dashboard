@@ -22,6 +22,10 @@ public partial class App : Application
 
         DispatcherUnhandledException += OnUnhandledException;
 
+        // Antes de crear la ventana: los estilos leen los pinceles de acento al aplicarse,
+        // y aplicarlos ya tenidos evita un parpadeo de azul de fabrica en el arranque.
+        DesktopChrome.ApplySystemAccent(Resources);
+
         _nodes = new NodeManager();
         MainWindowViewModel viewModel = new(_nodes);
 

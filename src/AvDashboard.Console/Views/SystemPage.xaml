@@ -6,190 +6,365 @@
         <controls:HealthBrushConverter x:Key="HealthBrush" />
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
         <controls:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <controls:CountToVisibilityConverter x:Key="CountToVisibility" />
         <controls:InverseBooleanConverter x:Key="BoolNot" />
+
+        <!--
+            El control de una fila: interruptor, botón de llevar al objetivo, o el motivo de
+            que no haya ninguno. Es lo mismo en las dos pestañas, así que va una sola vez.
+        -->
+        <DataTemplate x:Key="RowControl">
+            <Grid HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="140">
+                <ToggleButton Style="{StaticResource Switch}"
+                              HorizontalAlignment="Right"
+                              IsChecked="{Binding IsOn, Mode=OneWay}"
+                              IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
+                              Command="{Binding DataContext.ToggleCommand,
+                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                              CommandParameter="{Binding}"
+                              Visibility="{Binding CanToggle, Converter={StaticResource BoolToVisibility}}" />
+
+                <Button Content="Aplicar objetivo" HorizontalAlignment="Right" Margin="0"
+                        Padding="12,5" FontSize="13"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
+                        Command="{Binding DataContext.ApplyTargetCommand,
+                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}"
+                        Visibility="{Binding CanApplyTarget, Converter={StaticResource BoolToVisibility}}" />
+
+                <TextBlock Text="{Binding NotWritableReason}" TextWrapping="Wrap"
+                           TextAlignment="Right" FontSize="11"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           Visibility="{Binding NotWritableReason, Converter={StaticResource StringToVisibility}}" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- Fila del catálogo, con la forma del SettingsCard de Windows 11. -->
+        <DataTemplate x:Key="SettingRowTemplate">
+            <Border Style="{StaticResource TableRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="280" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                             Margin="0,0,14,0"
+                             Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+
+                    <StackPanel Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Rationale}" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   Style="{StaticResource CaptionText}" />
+                        <TextBlock Text="{Binding Warning}" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   FontSize="12" Foreground="{StaticResource WarningBrush}"
+                                   Visibility="{Binding Warning, Converter={StaticResource StringToVisibility}}" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="2" Text="{Binding Current}"
+                               Style="{StaticResource MonoText}" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Source}" />
+
+                    <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{Binding Target}" TextWrapping="Wrap"
+                                   Style="{StaticResource CaptionText}" />
+                        <TextBlock Text="{Binding Impact}" Style="{StaticResource CaptionText}"
+                                   Margin="0,2,0,0" Opacity="0.7" />
+                    </StackPanel>
+
+                    <ContentPresenter Grid.Column="4" Content="{Binding}"
+                                      ContentTemplate="{StaticResource RowControl}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!--
+            Hallazgo: lo mismo pero contando la historia al revés. Aquí lo que importa no es
+            dónde vive el ajuste sino qué pasa y qué debería pasar, y por eso el objetivo va
+            en la frase y no en una columna que hay que ir a buscar.
+        -->
+        <DataTemplate x:Key="FindingRowTemplate">
+            <Border Style="{StaticResource TableRow}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" MinWidth="320" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Top"
+                             Margin="0,7,14,0"
+                             Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+
+                    <StackPanel Grid.Column="1" Margin="0,0,20,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" Style="{StaticResource BodyStrongText}" />
+                            <TextBlock Text="{Binding GroupName}" Style="{StaticResource CaptionText}"
+                                       Margin="10,2,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">
+                            <Run Text="Ahora:" Foreground="{StaticResource TextMutedBrush}" FontSize="12" />
+                            <Run Text="{Binding Current, Mode=OneWay}" FontFamily="{StaticResource MonoFont}" FontSize="13" />
+                        </TextBlock>
+
+                        <TextBlock Text="{Binding TargetLine}" Style="{StaticResource CaptionText}"
+                                   Margin="0,2,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding TargetLine, Converter={StaticResource StringToVisibility}}" />
+
+                        <TextBlock Text="{Binding Rationale}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Style="{StaticResource CaptionText}" />
+
+                        <TextBlock Text="{Binding Warning}" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   FontSize="12" Foreground="{StaticResource WarningBrush}"
+                                   Visibility="{Binding Warning, Converter={StaticResource StringToVisibility}}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <ContentPresenter Content="{Binding}"
+                                          ContentTemplate="{StaticResource RowControl}" />
+                        <!-- Para lo que no se arregla desde aquí: al menos llevar hasta ello. -->
+                        <Button Content="Ver en configuración" Style="{StaticResource SubtleButton}"
+                                HorizontalAlignment="Right" Margin="0,6,0,0" FontSize="12"
+                                Foreground="{StaticResource AccentBrush}"
+                                Command="{Binding DataContext.LocateCommand,
+                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                Visibility="{Binding CanChange, Converter={StaticResource BoolToVisibility},
+                                             ConverterParameter=invert}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Fila de solo lectura: un hecho, sin objetivo ni control. -->
+        <DataTemplate x:Key="FactRowTemplate">
+            <Border Style="{StaticResource TableRow}" MinHeight="0" Padding="16,11">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="280" />
+                        <ColumnDefinition Width="300" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Rationale}" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   Style="{StaticResource CaptionText}" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1" Text="{Binding Current}"
+                               Style="{StaticResource MonoText}" TextWrapping="Wrap"
+                               VerticalAlignment="Center" ToolTip="{Binding Source}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Sistema y rendimiento" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+        <TextBlock Text="Sistema" Style="{StaticResource TitleText}" Margin="0,0,0,4" />
+        <TextBlock Style="{StaticResource CaptionText}" Margin="0,0,0,16" TextWrapping="Wrap"
+                   MaxWidth="820" HorizontalAlignment="Left"
+                   Text="Estado responde a cómo está la máquina y si hay algo que mirar. Configuración es el catálogo entero de ajustes con su control, esté bien o mal el valor de ahora." />
 
-        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
-                   TextWrapping="Wrap"
-                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+        <Border Style="{StaticResource InfoBarCritical}"
+                Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+        </Border>
 
-        <!-- Estado antes que control. -->
-        <UniformGrid Columns="4">
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="CPU" Style="{StaticResource CaptionText}" />
-                    <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0:0}%'}" Style="{StaticResource MetricText}" />
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="RAM" Style="{StaticResource CaptionText}" />
-                    <TextBlock Text="{Binding MemoryPercent, StringFormat='{}{0:0}%'}" Style="{StaticResource MetricText}" />
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="ACTIVO DESDE" Style="{StaticResource CaptionText}" />
-                    <TextBlock Text="{Binding Uptime}" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0" />
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="PLAN DE ENERGÍA" Style="{StaticResource CaptionText}" />
-                    <TextBlock Text="{Binding PowerPlan}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-        </UniformGrid>
-
-        <!--
-            El catalogo, agrupado y filtrado. Arranca mostrando solo lo que difiere del
-            objetivo: cuarenta y dos filas en una lista plana no se leen, y el dia del show
-            lo que quieres son las cinco que hay que mirar.
-        -->
-        <Border Style="{StaticResource Card}">
-            <StackPanel>
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <CheckBox Grid.Column="0" IsChecked="{Binding OnlyDeviations}"
-                              VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBlock Grid.Column="1" Text="Solo lo que difiere del objetivo"
-                               VerticalAlignment="Center" Margin="0,0,24,0" />
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <CheckBox IsChecked="{Binding OnlyHighImpact}" VerticalAlignment="Center"
-                                  Margin="0,0,6,0" />
-                        <TextBlock Text="Solo impacto alto" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Grid>
-
-                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,0,0,14" />
-
-                <ItemsControl ItemsSource="{Binding Groups}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Expander IsExpanded="True" Margin="0,0,0,14">
-                                <Expander.Header>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Ellipse Width="8" Height="8" VerticalAlignment="Center"
-                                                 Margin="0,0,10,0"
-                                                 Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
-                                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding Counters}" Margin="14,0,0,0"
-                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                   FontSize="12" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Expander.Header>
-
-                                <!--
-                                    Cada ajuste es una fila con linea de separacion: nombre y
-                                    motivo a la izquierda, valor y objetivo en columnas fijas, y
-                                    el control a la derecha. Con cuarenta y ocho filas, las
-                                    lineas son lo que hace que se lea como una tabla.
-                                -->
-                                <Border BorderBrush="{StaticResource RuleBrush}" BorderThickness="0,1,0,0"
-                                        Margin="26,8,0,0">
-                                    <ItemsControl ItemsSource="{Binding Rows}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Style="{StaticResource TableRow}">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="*" MinWidth="260" />
-                                                            <ColumnDefinition Width="210" />
-                                                            <ColumnDefinition Width="220" />
-                                                            <ColumnDefinition Width="60" />
-                                                            <ColumnDefinition Width="150" />
-                                                        </Grid.ColumnDefinitions>
-
-                                                        <Ellipse Grid.Column="0" Width="8" Height="8"
-                                                                 VerticalAlignment="Top" Margin="0,6,12,0"
-                                                                 Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
-
-                                                        <StackPanel Grid.Column="1" Margin="0,0,16,0">
-                                                            <TextBlock Text="{Binding Name}"
-                                                                       TextWrapping="Wrap" />
-                                                            <!--
-                                                                El motivo va siempre visible, como en
-                                                                los ajustes de Windows 11. Solo en los
-                                                                que fallan se leia como un reproche;
-                                                                en todos se lee como una explicacion.
-                                                            -->
-                                                            <TextBlock Text="{Binding Rationale}"
-                                                                       TextWrapping="Wrap" Margin="0,2,0,0"
-                                                                       Style="{StaticResource CaptionText}"
-                                                                       Visibility="{Binding Rationale, Converter={StaticResource StringToVisibility}}" />
-                                                            <TextBlock Text="{Binding Warning}"
-                                                                       TextWrapping="Wrap" Margin="0,2,0,0"
-                                                                       FontSize="12"
-                                                                       Foreground="{StaticResource WarningBrush}"
-                                                                       Visibility="{Binding Warning, Converter={StaticResource StringToVisibility}}" />
-                                                        </StackPanel>
-
-                                                        <TextBlock Grid.Column="2" Text="{Binding Current}"
-                                                                   FontFamily="Consolas"
-                                                                   VerticalAlignment="Top" Margin="0,1,0,0"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   ToolTip="{Binding Source}" />
-
-                                                        <TextBlock Grid.Column="3" Text="{Binding Target}"
-                                                                   Style="{StaticResource CaptionText}"
-                                                                   VerticalAlignment="Top" Margin="0,2,0,0"
-                                                                   TextWrapping="Wrap" />
-
-                                                        <TextBlock Grid.Column="4" Text="{Binding Impact}"
-                                                                   Style="{StaticResource CaptionText}"
-                                                                   VerticalAlignment="Top" Margin="0,2,0,0" />
-
-                                                        <!-- El control. Interruptor, boton, o el motivo de que no haya. -->
-                                                        <Grid Grid.Column="5" HorizontalAlignment="Right"
-                                                              VerticalAlignment="Top">
-                                                            <ToggleButton Style="{StaticResource Switch}"
-                                                                          IsChecked="{Binding IsOn, Mode=OneWay}"
-                                                                          IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
-                                                                          Command="{Binding DataContext.ToggleCommand,
-                                                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                          CommandParameter="{Binding}"
-                                                                          Visibility="{Binding CanToggle, Converter={StaticResource BoolToVisibility}}" />
-
-                                                            <Button Content="Aplicar objetivo"
-                                                                    Padding="10,4" FontSize="12"
-                                                                    IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
-                                                                    Command="{Binding DataContext.ApplyTargetCommand,
-                                                                              RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                    CommandParameter="{Binding}"
-                                                                    Visibility="{Binding CanApplyTarget, Converter={StaticResource BoolToVisibility}}" />
-
-                                                            <TextBlock Text="{Binding NotWritableReason}"
-                                                                       TextWrapping="Wrap" FontSize="11"
-                                                                       Foreground="{StaticResource TextMutedBrush}"
-                                                                       Visibility="{Binding NotWritableReason, Converter={StaticResource StringToVisibility}}" />
-                                                        </Grid>
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Border>
-                            </Expander>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBlock Style="{StaticResource CaptionText}" Margin="0,14,0,0" TextWrapping="Wrap"
-                           Text="Cada cambio queda registrado en el Timeline con el valor que había antes. Los ajustes sin control no se pueden escribir desde aquí: unos porque Windows no deja, y los de riesgo de seguridad porque se tocan a mano a propósito." />
+        <!-- El segmentado. Dos preguntas distintas, dos vistas. -->
+        <Border Background="#FF262626" CornerRadius="6" Padding="3" HorizontalAlignment="Left"
+                Margin="0,0,0,16" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton Style="{StaticResource SegmentItem}" GroupName="SystemTab"
+                             Content="Estado"
+                             IsChecked="{Binding ShowSettings, Converter={StaticResource BoolNot}, Mode=TwoWay}" />
+                <RadioButton Style="{StaticResource SegmentItem}" GroupName="SystemTab"
+                             Content="Configuración" Margin="0"
+                             IsChecked="{Binding ShowSettings, Mode=TwoWay}" />
             </StackPanel>
         </Border>
 
-        <StackPanel Orientation="Horizontal" Margin="6,4,0,20">
+        <!-- ============================================================= ESTADO -->
+        <StackPanel Visibility="{Binding ShowSettings, Converter={StaticResource BoolToVisibility},
+                                 ConverterParameter=invert}">
+
+            <UniformGrid Columns="4" Margin="0,0,0,4">
+                <Border Style="{StaticResource Card}" Margin="0,0,8,8">
+                    <StackPanel>
+                        <TextBlock Text="CPU" Style="{StaticResource CaptionText}" />
+                        <TextBlock Text="{Binding CpuPercent, StringFormat='{}{0:0}%'}"
+                                   Style="{StaticResource MetricText}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,8,8">
+                    <StackPanel>
+                        <TextBlock Text="Memoria" Style="{StaticResource CaptionText}" />
+                        <TextBlock Text="{Binding MemoryPercent, StringFormat='{}{0:0}%'}"
+                                   Style="{StaticResource MetricText}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,8,8">
+                    <StackPanel>
+                        <TextBlock Text="Activo desde" Style="{StaticResource CaptionText}" />
+                        <TextBlock Text="{Binding Uptime}" FontSize="19" FontWeight="SemiBold"
+                                   FontFamily="{StaticResource DisplayFont}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Plan de energía" Style="{StaticResource CaptionText}" />
+                        <TextBlock Text="{Binding PowerPlan}" FontSize="17" FontWeight="SemiBold"
+                                   FontFamily="{StaticResource DisplayFont}" Margin="0,6,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- El titular, con el recuento detrás. -->
+            <Border Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StateHeadline}" Style="{StaticResource BodyStrongText}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,4,0,0" TextWrapping="Wrap">
+                            <Run Text="{Binding OkCount, Mode=OneWay}" />
+                            <Run Text="ajustes coinciden con el objetivo, de" />
+                            <Run Text="{Binding CatalogCount, Mode=OneWay}" />
+                            <Run Text="del catálogo." />
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Badge}" Margin="8,0,0,0"
+                                Visibility="{Binding CriticalCount, Converter={StaticResource CountToVisibility}}">
+                            <TextBlock Foreground="{StaticResource CriticalBrush}" FontSize="12"
+                                       Text="{Binding CriticalCount, StringFormat='{}{0} en rojo'}" />
+                        </Border>
+                        <Border Style="{StaticResource Badge}" Margin="8,0,0,0"
+                                Visibility="{Binding WarningCount, Converter={StaticResource CountToVisibility}}">
+                            <TextBlock Foreground="{StaticResource WarningBrush}" FontSize="12"
+                                       Text="{Binding WarningCount, StringFormat='{}{0} en ámbar'}" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Lo que hay que mirar. -->
+            <Border Style="{StaticResource Card}" Padding="0,4,0,0"
+                    Visibility="{Binding Findings.Count, Converter={StaticResource CountToVisibility}}">
+                <StackPanel>
+                    <TextBlock Text="Lo que hay que mirar" Style="{StaticResource SectionText}"
+                               Margin="16,12,0,4" />
+                    <ItemsControl ItemsSource="{Binding Findings}"
+                                  ItemTemplate="{StaticResource FindingRowTemplate}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Diagnóstico: hechos que no se configuran. -->
+            <Border Style="{StaticResource Card}" Padding="0,4,0,0"
+                    Visibility="{Binding Diagnostics.Count, Converter={StaticResource CountToVisibility}}">
+                <StackPanel>
+                    <TextBlock Text="Diagnóstico" Style="{StaticResource SectionText}"
+                               Margin="16,12,0,0" />
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="16,0,16,4" TextWrapping="Wrap"
+                               Text="Hechos de esta máquina. No hay nada que configurar aquí; son la respuesta a «¿qué le pasa a este equipo?»." />
+                    <ItemsControl ItemsSource="{Binding Diagnostics}"
+                                  ItemTemplate="{StaticResource FactRowTemplate}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Lo que no se ha podido leer. -->
+            <Expander Visibility="{Binding Unreadable.Count, Converter={StaticResource CountToVisibility}}">
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE9CE;" FontFamily="{StaticResource IconFont}" FontSize="16"
+                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"
+                                   Margin="0,0,14,0" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Sin lectura" Style="{StaticResource BodyStrongText}" />
+                            <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                       Text="Windows no ha dejado consultarlos. No es un fallo del equipo: casi siempre es falta de privilegios." />
+                        </StackPanel>
+                        <Border Style="{StaticResource Badge}" Margin="14,0,0,0">
+                            <TextBlock Text="{Binding Unreadable.Count}" FontSize="12" />
+                        </Border>
+                    </StackPanel>
+                </Expander.Header>
+                <ItemsControl ItemsSource="{Binding Unreadable}"
+                              ItemTemplate="{StaticResource FactRowTemplate}" Margin="0,4,0,4" />
+            </Expander>
+        </StackPanel>
+
+        <!-- ====================================================== CONFIGURACIÓN -->
+        <StackPanel Visibility="{Binding ShowSettings, Converter={StaticResource BoolToVisibility}}">
+
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="360" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Busca por nombre, motivo o clave del registro" />
+                <TextBlock Grid.Column="1" Style="{StaticResource CaptionText}" Margin="16,0,0,0"
+                           VerticalAlignment="Center" TextWrapping="Wrap">
+                    <Run Text="{Binding CatalogCount, Mode=OneWay}" />
+                    <Run Text="ajustes en el catálogo," />
+                    <Run Text="{Binding WritableCount, Mode=OneWay}" />
+                    <Run Text="se pueden cambiar desde aquí." />
+                </TextBlock>
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Expander IsExpanded="True">
+                            <Expander.Header>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="{Binding Glyph}"
+                                               FontFamily="{StaticResource IconFont}" FontSize="18"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" Margin="0,0,16,0" />
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource BodyStrongText}" />
+                                        <TextBlock Text="{Binding Counters}" Style="{StaticResource CaptionText}"
+                                                   Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <Ellipse Grid.Column="2" Width="8" Height="8" VerticalAlignment="Center"
+                                             Margin="0,0,4,0"
+                                             Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                </Grid>
+                            </Expander.Header>
+
+                            <ItemsControl ItemsSource="{Binding Rows}"
+                                          ItemTemplate="{StaticResource SettingRowTemplate}" />
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Style="{StaticResource CaptionText}" Margin="2,14,0,0" TextWrapping="Wrap"
+                       MaxWidth="900" HorizontalAlignment="Left"
+                       Text="Cada cambio queda registrado en el Timeline con el valor que había antes. Los ajustes sin control no se pueden escribir desde aquí: unos porque Windows no deja, y los de riesgo de seguridad porque se tocan a mano a propósito." />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Margin="0,16,0,20">
             <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+            <TextBlock Text="{Binding Summary}" Style="{StaticResource CaptionText}"
+                       VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap" MaxWidth="700" />
         </StackPanel>
     </StackPanel>
 </UserControl>

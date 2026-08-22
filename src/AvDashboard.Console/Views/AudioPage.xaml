@@ -5,87 +5,198 @@
     <UserControl.Resources>
         <controls:HealthBrushConverter x:Key="HealthBrush" />
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
-    </UserControl.Resources>
+        <controls:CountToVisibilityConverter x:Key="CountToVisibility" />
 
-    <StackPanel>
-        <TextBlock Text="Audio y reloj" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
-
-        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
-                   TextWrapping="Wrap"
-                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
-
-        <Border Style="{StaticResource Card}">
-            <TextBlock Text="{Binding MismatchSummary}" TextWrapping="Wrap" />
-        </Border>
-
-        <Border Style="{StaticResource Card}">
-            <StackPanel>
-                <TextBlock Text="DISPOSITIVOS" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
-                <Grid Margin="0,0,0,6">
+        <DataTemplate x:Key="DeviceRow">
+            <Border Style="{StaticResource TableRow}" Padding="4,9" MinHeight="0">
+                <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="340" />
-                        <ColumnDefinition Width="80" />
-                        <ColumnDefinition Width="230" />
-                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="86" />
+                        <ColumnDefinition Width="210" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="*" MinWidth="120" />
+                    </Grid.ColumnDefinitions>
+
+                    <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                             Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+
+                    <StackPanel Grid.Column="1" Margin="12,0,14,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Name}" />
+                        <TextBlock Text="Predeterminado" Margin="0,1,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDefault}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="2" Text="{Binding Direction}"
+                               Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Column="3" Text="{Binding Format}"
+                               Style="{StaticResource MonoText}" VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Column="4" Text="{Binding Declared}" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+                                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasMismatch}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <controls:LevelMeter Grid.Column="5" Height="10" MinWidth="120"
+                                         VerticalAlignment="Center" Peak="{Binding Peak}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Los inactivos no tienen formato ni nivel: enseñar columnas vacías es ruido. -->
+        <DataTemplate x:Key="InactiveDeviceRow">
+            <Border Style="{StaticResource TableRow}" Padding="4,8" MinHeight="0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="340" />
+                        <ColumnDefinition Width="86" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="Dispositivo" Style="{StaticResource CaptionText}" Margin="10,0,0,0" />
+
+                    <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                             Fill="{StaticResource UnknownBrush}" />
+
+                    <TextBlock Grid.Column="1" Margin="12,0,14,0" Text="{Binding Name}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"
+                               VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Column="2" Text="{Binding Direction}"
+                               Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Column="3" Text="{Binding StateText}"
+                               Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <StackPanel>
+        <TextBlock Text="Audio y reloj" Style="{StaticResource TitleText}" />
+
+        <Border Style="{StaticResource InfoBarCritical}"
+                Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+        </Border>
+
+        <Border Style="{StaticResource InfoBarCaution}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource IconFont}" FontSize="16"
+                           Foreground="{StaticResource WarningBrush}" VerticalAlignment="Top"
+                           Margin="0,1,12,0" />
+                <TextBlock Text="{Binding MismatchSummary}" TextWrapping="Wrap" MaxWidth="900" />
+            </StackPanel>
+        </Border>
+
+        <!-- Los que están sonando. -->
+        <Border Style="{StaticResource Card}" Padding="12,4,12,4">
+            <StackPanel>
+                <Grid Margin="4,12,4,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Dispositivos activos"
+                               Style="{StaticResource SectionText}" Margin="0" />
+                    <Border Grid.Column="1" Style="{StaticResource Badge}">
+                        <TextBlock Text="{Binding ActiveCount}" FontSize="12" />
+                    </Border>
+                </Grid>
+
+                <Grid Margin="4,6,4,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="340" />
+                        <ColumnDefinition Width="86" />
+                        <ColumnDefinition Width="210" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="*" MinWidth="120" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="8" />
+                    <TextBlock Grid.Column="1" Text="Dispositivo" Style="{StaticResource CaptionText}" Margin="12,0,0,0" />
                     <TextBlock Grid.Column="2" Text="Dirección" Style="{StaticResource CaptionText}" />
                     <TextBlock Grid.Column="3" Text="Formato en uso" Style="{StaticResource CaptionText}" />
                     <TextBlock Grid.Column="4" Text="Declarado" Style="{StaticResource CaptionText}" />
                     <TextBlock Grid.Column="5" Text="Nivel" Style="{StaticResource CaptionText}" />
                 </Grid>
-                <ItemsControl ItemsSource="{Binding Devices}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="340" />
-                                    <ColumnDefinition Width="80" />
-                                    <ColumnDefinition Width="230" />
-                                    <ColumnDefinition Width="110" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
-                                         Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
-                                <TextBlock Grid.Column="1" Margin="10,0,14,0" TextTrimming="CharacterEllipsis"
-                                           Text="{Binding Name}" ToolTip="{Binding Name}" />
-                                <TextBlock Grid.Column="2" Text="{Binding Direction}"
-                                           Style="{StaticResource CaptionText}" />
-                                <TextBlock Grid.Column="3" Text="{Binding Format}" FontFamily="Consolas" />
-                                <TextBlock Grid.Column="4" Text="{Binding Declared}" FontFamily="Consolas">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding HasMismatch}" Value="True">
-                                                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
-                                                    <Setter Property="FontWeight" Value="Bold" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <controls:LevelMeter Grid.Column="5" Height="12" MinWidth="120"
-                                                     VerticalAlignment="Center" Peak="{Binding Peak}" />
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+
+                <ItemsControl ItemsSource="{Binding ActiveDevices}"
+                              ItemTemplate="{StaticResource DeviceRow}" />
+
+                <TextBlock Text="Ningún endpoint activo. Si esperabas alguno, mira la lista de abajo."
+                           Margin="4,10,0,12">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveCount}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
         </Border>
 
-        <Border Style="{StaticResource Card}">
+        <!--
+            Los que Windows recuerda. Plegado por defecto: nadie abre esta página para ver
+            una tarjeta de sonido que quitó hace un año, pero cuando falta una interfaz es
+            lo primero que hay que mirar.
+        -->
+        <Expander Visibility="{Binding InactiveCount, Converter={StaticResource CountToVisibility}}">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE7B3;" FontFamily="{StaticResource IconFont}" FontSize="16"
+                               Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"
+                               Margin="0,0,14,0" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Dispositivos inactivos" Style="{StaticResource BodyStrongText}" />
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                   Text="Registrados en Windows y ahora mismo desenchufados, apagados o ausentes." />
+                    </StackPanel>
+                    <Border Style="{StaticResource Badge}" Margin="14,0,0,0">
+                        <TextBlock Text="{Binding InactiveCount}" FontSize="12" />
+                    </Border>
+                </StackPanel>
+            </Expander.Header>
+
+            <ItemsControl ItemsSource="{Binding InactiveDevices}"
+                          ItemTemplate="{StaticResource InactiveDeviceRow}"
+                          Margin="12,4,12,8" />
+        </Expander>
+
+        <Border Style="{StaticResource Card}" Margin="0,12,0,8">
             <StackPanel>
-                <TextBlock Text="DRIVERS ASIO" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <TextBlock Text="Drivers ASIO" Style="{StaticResource SectionText}" />
                 <ItemsControl ItemsSource="{Binding AsioDrivers}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="0,3">
+                            <Grid Margin="0,4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="280" />
                                     <ColumnDefinition Width="*" />
@@ -100,16 +211,16 @@
             </StackPanel>
         </Border>
 
-        <Border Style="{StaticResource Card}" Margin="6,0,6,20">
+        <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="PTP / IEEE 1588" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
-                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionText}"
+                <TextBlock Text="PTP / IEEE 1588" Style="{StaticResource SectionText}" />
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionText}" MaxWidth="900"
+                           HorizontalAlignment="Left"
                            Text="Requiere Npcap en modo compatible con WinPcap. PTP no se puede leer con sockets normales, así que este panel se queda vacío hasta la Fase 5 y hasta que Npcap esté instalado. Cuando lo esté: Grandmaster del segmento, offset, deriva y aviso de cambio de Grandmaster." />
             </StackPanel>
         </Border>
 
-        <StackPanel Orientation="Horizontal" Margin="6,4,0,20">
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,20">
             <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
         </StackPanel>
     </StackPanel>

@@ -1,5 +1,7 @@
+using System;
 using System.Windows;
 using System.Windows.Input;
+using AvDashboard.Console.Services;
 using AvDashboard.Console.ViewModels;
 
 namespace AvDashboard.Console;
@@ -10,6 +12,16 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+    }
+
+    /// <summary>
+    /// Barra de titulo oscura, esquinas redondeadas y fondo Mica. Aqui y no en el
+    /// constructor porque hasta este momento la ventana no tiene identificador nativo.
+    /// </summary>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        DesktopChrome.Apply(this);
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

@@ -12,17 +12,17 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <TextBlock Text="Vídeo" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+        <TextBlock Text="Vídeo" Style="{StaticResource TitleText}" />
 
-        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
-                   TextWrapping="Wrap"
-                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+        <Border Style="{StaticResource InfoBarCritical}"
+                Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+        </Border>
 
         <!-- Salidas activas -->
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="SALIDAS ACTIVAS" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <TextBlock Text="Salidas activas" Style="{StaticResource SectionText}" />
                 <ItemsControl ItemsSource="{Binding Outputs}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -56,8 +56,8 @@
                                            TextTrimming="CharacterEllipsis" />
                                 <TextBlock Grid.Column="2" Text="{Binding Connector}"
                                            Foreground="{StaticResource AccentBrush}" />
-                                <TextBlock Grid.Column="3" Text="{Binding Mode}" FontFamily="Consolas" />
-                                <TextBlock Grid.Column="4" Text="{Binding Refresh}" FontFamily="Consolas" />
+                                <TextBlock Grid.Column="3" Text="{Binding Mode}" FontFamily="{StaticResource MonoFont}" />
+                                <TextBlock Grid.Column="4" Text="{Binding Refresh}" FontFamily="{StaticResource MonoFont}" />
                                 <TextBlock Grid.Column="5" Text="{Binding Color}"
                                            Style="{StaticResource CaptionText}"
                                            TextTrimming="CharacterEllipsis"
@@ -75,8 +75,7 @@
         <!-- Biblioteca de EDID -->
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="BIBLIOTECA DE EDID" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
+                <TextBlock Text="Biblioteca de EDID" Style="{StaticResource SectionText}" />
                 <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,0,0,10"
                            Text="Incluye los monitores que Windows recuerda aunque no estén enchufados: son la referencia contra la que comparar cuando vuelvan." />
 
@@ -113,7 +112,7 @@
                                 <TextBlock Grid.Column="4" Text="{Binding Summary}"
                                            Style="{StaticResource CaptionText}"
                                            TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="5" Text="{Binding Fingerprint}" FontFamily="Consolas"
+                                <TextBlock Grid.Column="5" Text="{Binding Fingerprint}" FontFamily="{StaticResource MonoFont}"
                                            Style="{StaticResource CaptionText}" />
                             </Grid>
                         </DataTemplate>
@@ -190,14 +189,13 @@
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Límites declarados"
                                Style="{StaticResource CaptionText}" Width="160" />
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding RangeLimits}" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding RangeLimits}" FontFamily="{StaticResource MonoFont}" />
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="HDR"
                                Style="{StaticResource CaptionText}" Width="160" />
                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Hdr}" />
                 </Grid>
 
-                <TextBlock Text="TIMINGS DETALLADOS" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,6" />
+                <TextBlock Text="Timings detallados" Style="{StaticResource SectionText}" />
                 <ItemsControl ItemsSource="{Binding DetailedTimings}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -208,8 +206,8 @@
                                     <ColumnDefinition Width="140" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" FontFamily="Consolas" Text="{Binding}" />
-                                <TextBlock Grid.Column="1" FontFamily="Consolas"
+                                <TextBlock Grid.Column="0" FontFamily="{StaticResource MonoFont}" Text="{Binding}" />
+                                <TextBlock Grid.Column="1" FontFamily="{StaticResource MonoFont}"
                                            Text="{Binding PixelClockKhz, StringFormat='{}{0:N0} kHz'}" />
                                 <TextBlock Grid.Column="2" Style="{StaticResource CaptionText}"
                                            Text="{Binding HorizontalTotal, StringFormat='total {0}'}" />
@@ -220,19 +218,18 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Text="AUDIO DECLARADO (CTA-861)" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,14,0,6"
+                <TextBlock Text="Audio declarado (CTA-861)" Style="{StaticResource SectionText}"
+                           Margin="2,14,0,6"
                            Visibility="{Binding AudioDescriptors.Count, Converter={StaticResource CountToVisibility}}" />
                 <ItemsControl ItemsSource="{Binding AudioDescriptors}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding}" FontFamily="Consolas" Margin="0,2" />
+                            <TextBlock Text="{Binding}" FontFamily="{StaticResource MonoFont}" Margin="0,2" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Text="VALIDACIÓN" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,14,0,6" />
+                <TextBlock Text="Validación" Style="{StaticResource SectionText}" />
                 <ItemsControl ItemsSource="{Binding Findings}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -267,8 +264,7 @@
         <!-- Accion de panico -->
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="SI ALGO SE HA QUEDADO CONGELADO" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                <TextBlock Text="Si algo se ha quedado congelado" Style="{StaticResource SectionText}" />
 
                 <StackPanel Orientation="Horizontal">
                     <Button Content="⚡ Reiniciar el controlador gráfico"
@@ -284,10 +280,9 @@
         </Border>
 
         <!-- Diff -->
-        <Border Style="{StaticResource Card}" Margin="6,0,6,20">
+        <Border Style="{StaticResource Card}" Margin="0,0,0,20">
             <StackPanel>
-                <TextBlock Text="DIFERENCIAS" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                <TextBlock Text="Diferencias" Style="{StaticResource SectionText}" />
                 <TextBlock Text="{Binding DiffSummary}" TextWrapping="Wrap" Margin="0,0,0,10" />
 
                 <ItemsControl ItemsSource="{Binding Differences}">
@@ -317,10 +312,10 @@
                                 </TextBlock>
 
                                 <TextBlock Grid.Column="1" Text="{Binding Field}" />
-                                <TextBlock Grid.Column="2" Text="{Binding Left}" FontFamily="Consolas"
+                                <TextBlock Grid.Column="2" Text="{Binding Left}" FontFamily="{StaticResource MonoFont}"
                                            TextTrimming="CharacterEllipsis" />
                                 <TextBlock Grid.Column="3" Text="  →  " Foreground="{StaticResource TextMutedBrush}" />
-                                <TextBlock Grid.Column="4" Text="{Binding Right}" FontFamily="Consolas"
+                                <TextBlock Grid.Column="4" Text="{Binding Right}" FontFamily="{StaticResource MonoFont}"
                                            TextTrimming="CharacterEllipsis" />
                             </Grid>
                         </DataTemplate>
