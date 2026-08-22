@@ -98,6 +98,9 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | Método | Ruta | Estado |
 |---|---|---|
 | GET | `/profiles` · `/runs` | Fase 2 |
+| GET | `/profiles` | ✅ Los de serie y los guardados en el nodo |
+| GET | `/profiles/export?id=` | ✅ El perfil escrito a fichero, para llevarlo a otra máquina |
+| POST | `/profiles/import` | ✅ Lee, valida y guarda; avisa de actuadores que este nodo no conoce |
 | POST | `/profiles/{id}/apply` · `/runs/{runId}/rollback` | 501 — Fase 2 |
 
 ### Resto

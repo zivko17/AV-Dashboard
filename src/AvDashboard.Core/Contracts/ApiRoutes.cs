@@ -65,6 +65,12 @@ public static class ApiRoutes
 
     public const string Profiles = Base + "/profiles";
     public const string ProfileApply = Base + "/profiles/{id}/apply";
+
+    /// <summary>Un perfil escrito a fichero, para llevarlo a otra maquina.</summary>
+    public const string ProfileExport = Base + "/profiles/export";
+
+    /// <summary>Leer, validar y guardar un perfil que viene de un fichero.</summary>
+    public const string ProfileImport = Base + "/profiles/import";
     public const string RunRollback = Base + "/runs/{runId}/rollback";
     public const string Runs = Base + "/runs";
 

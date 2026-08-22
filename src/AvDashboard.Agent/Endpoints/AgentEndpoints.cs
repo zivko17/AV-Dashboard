@@ -1,6 +1,7 @@
 using AvDashboard.Agent.Modules;
 using AvDashboard.Agent.Storage;
 using AvDashboard.Agent.Video;
+using AvDashboard.Core.Profiles;
 using AvDashboard.Core.Settings;
 using AvDashboard.Core.Video;
 using AvDashboard.Core.Contracts;
@@ -243,6 +244,7 @@ public static class AgentEndpoints
             Results.Ok(state.Displays ?? new DisplayTopology()));
 
         MapEdid(app);
+        MapProfiles(app);
 
         app.MapGet(ApiRoutes.Timeline, async (
             EventRepository events,
@@ -285,6 +287,72 @@ public static class AgentEndpoints
                 state.PingStatistics.Values.ToList(),
                 state.Volumes,
                 state.Power)));
+    }
+
+    /// <summary>
+    /// Perfiles (M10). Aplicarlos sigue siendo Fase 2; leerlos, exportarlos a fichero e
+    /// importarlos no depende de los actuadores y resuelve el caso de llegar a un rig nuevo
+    /// sin tener que reescribir el perfil a mano.
+    /// </summary>
+    private static void MapProfiles(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.Profiles, async (ProfileRepository profiles) =>
+            Results.Ok(new ProfilesResponse
+            {
+                BuiltIn = ProfileLibrary.All,
+                Stored = await profiles.ListAsync().ConfigureAwait(false),
+            }));
+
+        app.MapGet(ApiRoutes.ProfileExport, async (
+            ProfileRepository profiles, NodeIdentity identity, string id) =>
+        {
+            ProfileDefinition? profile = await profiles.FindAsync(id).ConfigureAwait(false);
+
+            if (profile is null)
+            {
+                return Results.NotFound(new ApiError
+                {
+                    Code = "profile_not_found",
+                    Message = "No hay ningún perfil con ese identificador.",
+                });
+            }
+
+            // Se devuelve como texto y no como objeto a proposito: lo que sale por aqui es
+            // exactamente el contenido del fichero, byte a byte, sin que la serializacion
+            // de la API lo reescriba con otras mayusculas o otro sangrado.
+            return Results.Text(
+                ProfileSerializer.Export(profile, identity.Hostname),
+                "application/json");
+        });
+
+        app.MapPost(ApiRoutes.ProfileImport, async (
+            ProfileRepository profiles, HttpRequest request) =>
+        {
+            using StreamReader reader = new(request.Body);
+            string json = await reader.ReadToEndAsync().ConfigureAwait(false);
+
+            ProfileImportResult parsed = ProfileSerializer.Import(json);
+
+            if (!parsed.Success)
+            {
+                return Results.BadRequest(new ProfileImportResponse
+                {
+                    Saved = false,
+                    Error = parsed.Error,
+                });
+            }
+
+            ProfileDefinition profile = parsed.Profile!;
+            await profiles.SaveAsync(profile).ConfigureAwait(false);
+
+            return Results.Ok(new ProfileImportResponse
+            {
+                Saved = true,
+                ProfileId = profile.Id,
+                ProfileName = profile.Name,
+                UnknownActions = parsed.UnknownActions,
+            });
+        });
     }
 
     /// <summary>

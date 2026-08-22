@@ -105,6 +105,26 @@ public static class CommandCatalog
         },
         new()
         {
+            Name = "profiles", ModuleId = "M10", Sector = Sector.SystemEssential,
+            Summary = "Perfiles de escenario que conoce este nodo.",
+            Route = ApiRoutes.Profiles, Method = CommandMethod.Get,
+        },
+        new()
+        {
+            Name = "profile-export", ModuleId = "M10", Sector = Sector.SystemEssential,
+            Summary = "Escribe un perfil a fichero para llevarlo a otra máquina.",
+            Usage = "profile-export <id> [fichero]",
+            Route = ApiRoutes.ProfileExport, Method = CommandMethod.Get,
+        },
+        new()
+        {
+            Name = "profile-import", ModuleId = "M10", Sector = Sector.SystemEssential,
+            Summary = "Lee un perfil de un fichero, lo valida y lo guarda en este nodo.",
+            Usage = "profile-import <fichero>",
+            Route = ApiRoutes.ProfileImport, Method = CommandMethod.Post,
+        },
+        new()
+        {
             Name = "audit", ModuleId = "M1", Sector = Sector.SystemEssential,
             Summary = "Compara los ajustes del sistema con el objetivo de un rig y lista lo que difiere.",
             Usage = "audit [--todo]",

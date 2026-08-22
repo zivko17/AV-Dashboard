@@ -38,6 +38,14 @@ public sealed class AgentConnection : IDisposable
         return await ReadAsync(response).ConfigureAwait(false);
     }
 
+    /// <summary>POST con cuerpo. Lo usa `profile-import`, que manda el fichero entero.</summary>
+    public async Task<string> PostAsync(string route, string json)
+    {
+        using StringContent content = new(json, global::System.Text.Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await _http.PostAsync(route, content).ConfigureAwait(false);
+        return await ReadAsync(response).ConfigureAwait(false);
+    }
+
     private static async Task<string> ReadAsync(HttpResponseMessage response)
     {
         string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);

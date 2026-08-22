@@ -37,6 +37,12 @@ public static class Formatter
                 case "preshow":
                     PrintPreShow(document.RootElement);
                     return;
+                case "profiles":
+                    PrintProfiles(document.RootElement);
+                    return;
+                case "profile-import":
+                    PrintProfileImport(document.RootElement);
+                    return;
                 case "audit":
                     PrintAudit(document.RootElement, arguments);
                     return;
@@ -196,6 +202,69 @@ public static class Formatter
         Console.WriteLine(failures == 0
             ? "VERDE: no hay nada que revisar."
             : $"ROJO: {failures} comprobaciones requieren atención.");
+    }
+
+    private static void PrintProfiles(JsonElement root)
+    {
+        PrintProfileGroup("DE SERIE", Array(root, "builtIn"));
+        PrintProfileGroup("GUARDADOS EN ESTE NODO", Array(root, "stored"));
+
+        Console.WriteLine();
+        Console.WriteLine("`profile-export <id> fichero.json` se lo lleva a otra máquina.");
+    }
+
+    private static void PrintProfileGroup(string title, IEnumerable<JsonElement> profiles)
+    {
+        List<JsonElement> rows = profiles.ToList();
+
+        Console.WriteLine();
+        Console.WriteLine($"  {title}");
+
+        if (rows.Count == 0)
+        {
+            Console.WriteLine("    (ninguno)");
+            return;
+        }
+
+        foreach (JsonElement profile in rows)
+        {
+            int steps = Array(profile, "steps").Count();
+
+            Console.WriteLine($"    {Text(profile, "id"),-24} {Text(profile, "name"),-30} {steps} pasos");
+
+            if (Text(profile, "description") is { Length: > 0 } description)
+            {
+                Console.WriteLine($"      {description}");
+            }
+        }
+    }
+
+    private static void PrintProfileImport(JsonElement root)
+    {
+        if (!Bool(root, "saved"))
+        {
+            Console.Error.WriteLine(Text(root, "error"));
+            return;
+        }
+
+        Console.WriteLine($"Importado «{Text(root, "profileName")}» como {Text(root, "profileId")}.");
+
+        List<JsonElement> unknown = Array(root, "unknownActions").ToList();
+
+        if (unknown.Count == 0)
+        {
+            return;
+        }
+
+        // No es un error: un perfil de un nodo con otro hardware trae pasos que aqui no
+        // aplican. Pero se dice ahora y no a mitad de la ejecucion.
+        Console.WriteLine();
+        Console.WriteLine("Este nodo no conoce estos actuadores, así que esos pasos se saltarán:");
+
+        foreach (JsonElement action in unknown)
+        {
+            Console.WriteLine($"  {action.GetString()}");
+        }
     }
 
     /// <summary>

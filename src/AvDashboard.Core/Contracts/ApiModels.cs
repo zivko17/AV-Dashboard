@@ -109,3 +109,25 @@ public sealed record ApiError
         Message = $"{what} todavía no está implementado en esta versión del agente.",
     };
 }
+
+/// <summary>Los perfiles que conoce el nodo: los compilados y los guardados.</summary>
+public sealed record ProfilesResponse
+{
+    public IReadOnlyList<AvDashboard.Core.Profiles.ProfileDefinition> BuiltIn { get; init; } =
+        Array.Empty<AvDashboard.Core.Profiles.ProfileDefinition>();
+
+    public IReadOnlyList<AvDashboard.Core.Profiles.ProfileDefinition> Stored { get; init; } =
+        Array.Empty<AvDashboard.Core.Profiles.ProfileDefinition>();
+}
+
+/// <summary>Resultado de importar un perfil de un fichero.</summary>
+public sealed record ProfileImportResponse
+{
+    public required bool Saved { get; init; }
+    public string? ProfileId { get; init; }
+    public string? ProfileName { get; init; }
+    public string? Error { get; init; }
+
+    /// <summary>Actuadores que el perfil referencia y este nodo no conoce.</summary>
+    public IReadOnlyList<string> UnknownActions { get; init; } = Array.Empty<string>();
+}

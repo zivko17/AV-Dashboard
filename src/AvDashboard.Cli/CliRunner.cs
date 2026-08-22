@@ -81,6 +81,16 @@ public static class CliRunner
             return await DumpEdidAsync(connection, arguments).ConfigureAwait(false);
         }
 
+        if (command.Name == "profile-export")
+        {
+            return await ExportProfileAsync(connection, arguments).ConfigureAwait(false);
+        }
+
+        if (command.Name == "profile-import")
+        {
+            return await ImportProfileAsync(connection, arguments, json).ConfigureAwait(false);
+        }
+
         string payload = command.Method == CommandMethod.Get
             ? await connection.GetAsync(BuildRoute(command, arguments)).ConfigureAwait(false)
             : await connection.PostAsync(BuildRoute(command, arguments)).ConfigureAwait(false);
@@ -92,6 +102,67 @@ public static class CliRunner
         }
 
         Formatter.Print(command.Name, payload, arguments);
+        return 0;
+    }
+
+    /// <summary>
+    /// `profile-export &lt;id&gt; [fichero]`. Sin fichero, sale por pantalla, que es lo
+    /// comodo para redirigirlo o pegarlo en otro sitio.
+    /// </summary>
+    private static async Task<int> ExportProfileAsync(AgentConnection connection, string[] arguments)
+    {
+        string[] positional = arguments.Where(a => !a.StartsWith('-')).ToArray();
+
+        if (positional.Length == 0)
+        {
+            Console.Error.WriteLine("Falta el identificador del perfil. Sácalo de `avdash profiles`.");
+            return 2;
+        }
+
+        string payload = await connection
+            .GetAsync($"{ApiRoutes.ProfileExport}?id={Uri.EscapeDataString(positional[0])}")
+            .ConfigureAwait(false);
+
+        if (positional.Length < 2)
+        {
+            Console.WriteLine(payload);
+            return 0;
+        }
+
+        await File.WriteAllTextAsync(positional[1], payload).ConfigureAwait(false);
+        Console.WriteLine($"Perfil escrito en {Path.GetFullPath(positional[1])}");
+        return 0;
+    }
+
+    /// <summary>`profile-import &lt;fichero&gt;`.</summary>
+    private static async Task<int> ImportProfileAsync(
+        AgentConnection connection, string[] arguments, bool json)
+    {
+        string? path = arguments.FirstOrDefault(a => !a.StartsWith('-'));
+
+        if (path is null)
+        {
+            Console.Error.WriteLine("Falta el fichero. Uso: profile-import <fichero>");
+            return 2;
+        }
+
+        if (!File.Exists(path))
+        {
+            Console.Error.WriteLine($"No existe {Path.GetFullPath(path)}");
+            return 2;
+        }
+
+        string payload = await connection
+            .PostAsync(ApiRoutes.ProfileImport, await File.ReadAllTextAsync(path).ConfigureAwait(false))
+            .ConfigureAwait(false);
+
+        if (json)
+        {
+            Console.WriteLine(payload);
+            return 0;
+        }
+
+        Formatter.Print("profile-import", payload, arguments);
         return 0;
     }
 
