@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>AvDashboard.Shell</RootNamespace>
+    <AssemblyName>AvDashboardShell</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!--
+      Sin empaquetar y con el Windows App SDK dentro del propio ejecutable.
+
+      Lo primero porque un rig no es un equipo de oficina: la aplicacion se copia y se
+      ejecuta, no se instala desde la Store. Y lo segundo porque la alternativa es exigir el
+      runtime del Windows App SDK instalado en cada maquina a la que llegas, y eso es
+      exactamente el tipo de dependencia que se descubre a las siete y media de la tarde.
+      El .NET 8 que ya necesita el agente sigue siendo el unico requisito.
+    -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnableMsixTooling>false</EnableMsixTooling>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.*" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <!--
+      SettingsCard y SettingsExpander son los controles con los que esta hecha la
+      Configuracion de Windows 11. Llevamos dos rondas imitando esa fila a mano; esto es
+      la fila de verdad.
+    -->
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AvDashboard.Core\AvDashboard.Core.csproj" />
+    <ProjectReference Include="..\AvDashboard.Client\AvDashboard.Client.csproj" />
+  </ItemGroup>
+
+</Project>

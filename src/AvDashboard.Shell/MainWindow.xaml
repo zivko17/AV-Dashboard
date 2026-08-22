@@ -1,0 +1,68 @@
+<Window
+    x:Class="AvDashboard.Shell.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AvDashboard.Shell"
+    xmlns:views="using:AvDashboard.Shell.Views"
+    Title="AV Dashboard">
+
+    <!--
+        El DataContext va en la rejilla y no en la ventana. En WinUI 3 una Window no es un
+        FrameworkElement: no tiene DataContext ni Resources, y es de las primeras cosas con
+        las que se tropieza quien viene de WPF.
+    -->
+    <Grid x:Name="Root">
+        <Grid.Resources>
+            <DataTemplate x:Key="PlantillaSistema">
+                <views:SistemaPage />
+            </DataTemplate>
+
+            <DataTemplate x:Key="PlantillaPendiente">
+                <views:PendientePage />
+            </DataTemplate>
+
+            <local:PageTemplateSelector
+                x:Key="SelectorDePagina"
+                Sistema="{StaticResource PlantillaSistema}"
+                Pendiente="{StaticResource PlantillaPendiente}" />
+        </Grid.Resources>
+
+        <!--
+            NavigationView con PaneDisplayMode="Auto": el propio control se repliega a
+            iconos cuando la ventana se estrecha y a hamburguesa cuando ya no cabe ni eso.
+            En la version de WPF esto eran cuarenta lineas entre una propiedad de
+            dependencia, un manejador de SizeChanged y cinco enlaces a Visibility.
+        -->
+        <NavigationView
+            x:Name="Nav"
+            PaneDisplayMode="Auto"
+            IsSettingsVisible="False"
+            IsBackButtonVisible="Collapsed"
+            SelectionChanged="OnSelectionChanged"
+            Header="{Binding Current.Title}">
+
+            <NavigationView.PaneFooter>
+                <StackPanel Padding="12,8" Spacing="4">
+                    <TextBlock Text="{Binding NodeName}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock Text="{Binding ConnectionStatus}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </NavigationView.PaneFooter>
+
+            <!--
+                Sin ScrollViewer aqui: cada pagina decide donde desplaza. Un Pivot dentro de
+                un ScrollViewer recibe altura infinita al medirse y se queda en cero.
+            -->
+            <ContentControl
+                Content="{Binding Current}"
+                ContentTemplateSelector="{StaticResource SelectorDePagina}"
+                Margin="28,4,28,0"
+                HorizontalAlignment="Left"
+                HorizontalContentAlignment="Stretch"
+                VerticalContentAlignment="Stretch"
+                MaxWidth="1040" />
+        </NavigationView>
+    </Grid>
+</Window>

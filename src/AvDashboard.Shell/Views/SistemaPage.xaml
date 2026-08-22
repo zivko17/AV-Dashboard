@@ -1,0 +1,230 @@
+<UserControl
+    x:Class="AvDashboard.Shell.Views.SistemaPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AvDashboard.Shell"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls">
+
+    <UserControl.Resources>
+        <local:HealthBrushConverter x:Key="HealthBrush" />
+        <local:StringToVisibilityConverter x:Key="StringToVisibility" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <local:CountToVisibilityConverter x:Key="CountToVisibility" />
+        <local:StringNotEmptyConverter x:Key="StringNotEmpty" />
+        <local:InverseBooleanConverter x:Key="BoolNot" />
+
+        <!--
+            La fila. Es un SettingsCard: el mismo control con el que esta hecha la
+            Configuracion de Windows 11, no una imitacion. El alto, el relleno, el radio,
+            los estados de foco y de raton y el comportamiento al estrecharse los pone el
+            control, que es justo lo que llevabamos dos rondas replicando a mano.
+        -->
+        <DataTemplate x:Key="FilaDeAjuste">
+            <tk:SettingsCard
+                Header="{Binding Name}"
+                Description="{Binding Rationale}"
+                IsClickEnabled="False">
+
+                <tk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE915;"
+                              Foreground="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                </tk:SettingsCard.HeaderIcon>
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <!-- Etiquetas: el impacto y la contrapartida, pegadas al valor. -->
+                    <Border Style="{StaticResource ChipBorderStyle}"
+                            Visibility="{Binding ImpactChip, Converter={StaticResource StringToVisibility}}">
+                        <TextBlock Text="{Binding ImpactChip}" Style="{StaticResource ChipTextStyle}" />
+                    </Border>
+
+                    <Border Style="{StaticResource ChipBorderStyle}"
+                            ToolTipService.ToolTip="{Binding Warning}"
+                            Visibility="{Binding RiskChip, Converter={StaticResource StringToVisibility}}">
+                        <TextBlock Text="{Binding RiskChip}" Style="{StaticResource ChipTextStyle}" />
+                    </Border>
+
+                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="140">
+                        <TextBlock Text="{Binding Current}"
+                                   Style="{StaticResource MonoTextBlockStyle}"
+                                   TextAlignment="Right"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTipService.ToolTip="{Binding Source}" />
+                        <TextBlock Text="{Binding TargetLine}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextAlignment="Right"
+                                   TextTrimming="CharacterEllipsis"
+                                   Visibility="{Binding TargetLine, Converter={StaticResource StringToVisibility}}" />
+                    </StackPanel>
+
+                    <!-- El interruptor de Windows, no una pastilla dibujada a mano. -->
+                    <ToggleSwitch
+                        OnContent="" OffContent=""
+                        MinWidth="0"
+                        IsOn="{Binding IsOn, Mode=OneWay}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
+                        Visibility="{Binding CanToggle, Converter={StaticResource BoolToVisibility}}"
+                        Toggled="OnToggled" />
+
+                    <Button Content="Aplicar"
+                            Command="{Binding ApplyRowCommand}"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
+                            ToolTipService.ToolTip="Llevar este ajuste a su valor objetivo"
+                            Visibility="{Binding CanApplyTarget, Converter={StaticResource BoolToVisibility}}" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                                ToolTipService.ToolTip="{Binding NotWritableReason}"
+                                Visibility="{Binding NotWritableShort, Converter={StaticResource StringToVisibility}}">
+                        <FontIcon Glyph="&#xE72E;" FontSize="12"
+                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{Binding NotWritableShort}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+            </tk:SettingsCard>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Pivot>
+        <!-- ========================================================== ESTADO -->
+        <PivotItem Header="Estado">
+            <ScrollViewer>
+                <StackPanel Spacing="8" Padding="0,8,0,24">
+
+                    <InfoBar
+                        IsOpen="{Binding Error, Converter={StaticResource StringNotEmpty}, Mode=OneWay}"
+                        Severity="Error"
+                        IsClosable="False"
+                        Message="{Binding Error}" />
+
+                    <!-- Telemetria: cuatro tarjetas del mismo tamano. -->
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Border Style="{StaticResource MetricaStyle}">
+                            <StackPanel>
+                                <TextBlock Text="CPU" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{Binding CpuText}"
+                                           Style="{StaticResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricaStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Memoria" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{Binding MemoryText}"
+                                           Style="{StaticResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricaStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Activo desde" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{Binding Uptime}"
+                                           Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource MetricaStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Plan de energía" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{Binding PowerPlan}" TextTrimming="CharacterEllipsis"
+                                           Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <tk:SettingsCard
+                        Header="{Binding StateHeadline}"
+                        Description="Resumen de la última auditoría.">
+                        <tk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE915;"
+                                      Foreground="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                        </tk:SettingsCard.HeaderIcon>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Style="{StaticResource ChipBorderStyle}"
+                                    Visibility="{Binding CriticalCount, Converter={StaticResource CountToVisibility}}">
+                                <TextBlock Text="{Binding CriticalText}" Style="{StaticResource ChipTextStyle}" />
+                            </Border>
+                            <Border Style="{StaticResource ChipBorderStyle}"
+                                    Visibility="{Binding WarningCount, Converter={StaticResource CountToVisibility}}">
+                                <TextBlock Text="{Binding WarningText}" Style="{StaticResource ChipTextStyle}" />
+                            </Border>
+                            <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+                        </StackPanel>
+                    </tk:SettingsCard>
+
+                    <TextBlock Text="Lo que hay que mirar"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                               Margin="2,12,0,0"
+                               Visibility="{Binding Findings.Count, Converter={StaticResource CountToVisibility}}" />
+                    <ItemsControl ItemsSource="{Binding Findings}"
+                                  ItemTemplate="{StaticResource FilaDeAjuste}" />
+
+                    <TextBlock Text="Diagnóstico"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                               Margin="2,12,0,0"
+                               Visibility="{Binding Diagnostics.Count, Converter={StaticResource CountToVisibility}}" />
+                    <ItemsControl ItemsSource="{Binding Diagnostics}"
+                                  ItemTemplate="{StaticResource FilaDeAjuste}" />
+
+                    <TextBlock Text="Sin lectura"
+                               Style="{StaticResource BodyStrongTextBlockStyle}"
+                               Margin="2,12,0,0"
+                               Visibility="{Binding Unreadable.Count, Converter={StaticResource CountToVisibility}}" />
+                    <ItemsControl ItemsSource="{Binding Unreadable}"
+                                  ItemTemplate="{StaticResource FilaDeAjuste}" />
+                </StackPanel>
+            </ScrollViewer>
+        </PivotItem>
+
+        <!-- =================================================== CONFIGURACIÓN -->
+        <PivotItem Header="Configuración">
+            <ScrollViewer>
+                <StackPanel Spacing="4" Padding="0,8,0,24">
+
+                    <AutoSuggestBox
+                        PlaceholderText="Buscar un ajuste"
+                        QueryIcon="Find"
+                        Text="{Binding Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Margin="0,0,0,12" />
+
+                    <ItemsControl ItemsSource="{Binding Groups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <!--
+                                    SettingsExpander: la seccion plegable de Configuracion.
+                                    El alto de la cabecera, el galon, la animacion y las
+                                    lineas entre filas los pone el control.
+                                -->
+                                <tk:SettingsExpander
+                                    Header="{Binding Name}"
+                                    Description="{Binding TotalText}"
+                                    IsExpanded="True"
+                                    ItemsSource="{Binding Rows}"
+                                    ItemTemplate="{StaticResource FilaDeAjuste}"
+                                    Margin="0,0,0,4">
+
+                                    <tk:SettingsExpander.HeaderIcon>
+                                        <FontIcon Glyph="{Binding Glyph}" />
+                                    </tk:SettingsExpander.HeaderIcon>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Border Style="{StaticResource ChipBorderStyle}"
+                                                Visibility="{Binding CriticalCount, Converter={StaticResource CountToVisibility}}">
+                                            <TextBlock Text="{Binding CriticalText}" Style="{StaticResource ChipTextStyle}" />
+                                        </Border>
+                                        <Border Style="{StaticResource ChipBorderStyle}"
+                                                Visibility="{Binding WarningCount, Converter={StaticResource CountToVisibility}}">
+                                            <TextBlock Text="{Binding WarningText}" Style="{StaticResource ChipTextStyle}" />
+                                        </Border>
+                                    </StackPanel>
+                                </tk:SettingsExpander>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </PivotItem>
+    </Pivot>
+</UserControl>

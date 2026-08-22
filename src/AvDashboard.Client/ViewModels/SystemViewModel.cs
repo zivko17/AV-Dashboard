@@ -38,10 +38,21 @@ public sealed partial class SystemViewModel : PageViewModel
     // ------------------------------------------------------------------ Telemetría
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CpuText))]
     private double _cpuPercent;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MemoryText))]
     private double _memoryPercent;
+
+    /// <summary>
+    /// El porcentaje ya escrito. Los enlaces de WinUI no tienen StringFormat —es de las
+    /// diferencias con WPF que más sorprenden—, así que el formato vive donde siempre
+    /// debería haber vivido: en el ViewModel, y así las dos interfaces lo comparten.
+    /// </summary>
+    public string CpuText => $"{CpuPercent:0} %";
+
+    public string MemoryText => $"{MemoryPercent:0} %";
 
     [ObservableProperty]
     private string _uptime = "—";
@@ -90,10 +101,16 @@ public sealed partial class SystemViewModel : PageViewModel
     private string _stateHeadline = "Sin auditar.";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CriticalText))]
     private int _criticalCount;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WarningText))]
     private int _warningCount;
+
+    public string CriticalText => $"{CriticalCount} en rojo";
+
+    public string WarningText => $"{WarningCount} en ámbar";
 
     [ObservableProperty]
     private int _okCount;
@@ -172,21 +189,21 @@ public sealed partial class SystemViewModel : PageViewModel
                      .ThenByDescending(e => e.Definition.Impact)
                      .ThenBy(e => e.Definition.Name, StringComparer.CurrentCulture))
         {
-            Findings.Add(new SettingRow(evaluation, showGroup: true));
+            Findings.Add(new SettingRow(evaluation, showGroup: true, ToggleAsync, ApplyTargetAsync));
         }
 
         foreach (SettingEvaluation evaluation in all
                      .Where(e => e.Verdict == SettingVerdict.Unknown)
                      .OrderBy(e => e.Definition.Name, StringComparer.CurrentCulture))
         {
-            Unreadable.Add(new SettingRow(evaluation, showGroup: true));
+            Unreadable.Add(new SettingRow(evaluation, showGroup: true, ToggleAsync, ApplyTargetAsync));
         }
 
         foreach (SettingEvaluation evaluation in all
                      .Where(e => e.Verdict == SettingVerdict.Informational)
                      .OrderBy(e => e.Definition.Name, StringComparer.CurrentCulture))
         {
-            Diagnostics.Add(new SettingRow(evaluation, showGroup: true));
+            Diagnostics.Add(new SettingRow(evaluation, showGroup: true, ToggleAsync, ApplyTargetAsync));
         }
 
         CriticalCount = audit.CriticalCount;
@@ -221,7 +238,7 @@ public sealed partial class SystemViewModel : PageViewModel
         {
             List<SettingRow> rows = group.Settings
                 .Where(s => Matches(s, needle))
-                .Select(s => new SettingRow(s))
+                .Select(s => new SettingRow(s, toggle: ToggleAsync, applyTarget: ApplyTargetAsync))
                 .ToList();
 
             if (rows.Count == 0)
@@ -380,11 +397,34 @@ public sealed class SettingGroupViewModel
 /// <summary>Una fila del catálogo tal y como se pinta.</summary>
 public sealed partial class SettingRow : ObservableObject
 {
-    public SettingRow(SettingEvaluation evaluation, bool showGroup = false)
+    public SettingRow(
+        SettingEvaluation evaluation,
+        bool showGroup = false,
+        Func<SettingRow, Task>? toggle = null,
+        Func<SettingRow, Task>? applyTarget = null)
     {
         Evaluation = evaluation;
         ShowGroup = showGroup;
+
+        ToggleRowCommand = new AsyncRelayCommand(
+            () => toggle?.Invoke(this) ?? Task.CompletedTask);
+
+        ApplyRowCommand = new AsyncRelayCommand(
+            () => applyTarget?.Invoke(this) ?? Task.CompletedTask);
     }
+
+    /// <summary>
+    /// Los comandos viven en la fila y no solo en la página por WinUI.
+    ///
+    /// En WPF, un control dentro de una plantilla llega al ViewModel de la página con
+    /// <c>RelativeSource AncestorType</c>. WinUI no tiene eso: dentro de un DataTemplate no
+    /// hay forma fiable de salir al contexto de fuera. Poner el comando en la propia fila
+    /// resuelve las dos interfaces y, de paso, es lo que debería haber sido desde el
+    /// principio: el control de una fila actúa sobre esa fila.
+    /// </summary>
+    public IAsyncRelayCommand ToggleRowCommand { get; }
+
+    public IAsyncRelayCommand ApplyRowCommand { get; }
 
     public SettingEvaluation Evaluation { get; }
 

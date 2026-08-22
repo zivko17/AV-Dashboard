@@ -1,0 +1,19 @@
+<Application
+    x:Class="AvDashboard.Shell.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!--
+                  Los recursos de WinUI: la paleta, la tipografia, los radios y todos los
+                  estilos de control del sistema. Aqui esta la diferencia con la version de
+                  WPF, donde todo eso estaba escrito a mano en Theme.xaml y habia que
+                  mantenerlo al dia con Windows.
+                -->
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <ResourceDictionary Source="ms-appx:///Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -16,6 +16,11 @@
 .PARAMETER SinCompilar
     Se salta la compilación. Para relanzar rápido sin haber tocado código.
 
+.PARAMETER Nueva
+    Abre la interfaz de WinUI 3 en lugar de la de WPF. Está a medio portar: hoy solo la
+    página Sistema es real y el resto dice que sigue en la otra. La de WPF es la que
+    funciona entera y por eso es la de por defecto.
+
 .EXAMPLE
     .\scripts\Start-Dev.ps1
     .\scripts\Start-Dev.ps1 -SinConsola
@@ -23,7 +28,8 @@
 [CmdletBinding()]
 param(
     [switch]$SinConsola,
-    [switch]$SinCompilar
+    [switch]$SinCompilar,
+    [switch]$Nueva
 )
 
 $ErrorActionPreference = 'Stop'
@@ -95,8 +101,15 @@ Write-Host "Agente en marcha. Log: $log" -ForegroundColor Green
 
 # 4. La consola, en primer plano, para ver sus excepciones si las hay.
 if (-not $SinConsola) {
-    Write-Host 'Arrancando la consola…' -ForegroundColor DarkGray
-    dotnet run --project src/AvDashboard.Console --no-build
+    $proyecto = if ($Nueva) { 'src/AvDashboard.Shell' } else { 'src/AvDashboard.Console' }
+
+    if ($Nueva) {
+        Write-Host 'Arrancando la interfaz de WinUI 3 (a medio portar)…' -ForegroundColor DarkGray
+    } else {
+        Write-Host 'Arrancando la consola…' -ForegroundColor DarkGray
+    }
+
+    dotnet run --project $proyecto --no-build
 
     # Al cerrar la ventana, el agente sigue vivo a proposito: asi se puede seguir
     # trasteando con la API. Pero hay que decirlo, o se queda ahi sin que nadie lo sepa.
