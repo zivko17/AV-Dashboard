@@ -37,6 +37,13 @@ public static class ActionIds
     public const string DisplayLayoutRestore = "video.display-layout";
     public const string WindowLayoutRestore = "video.window-layout";
 
+    /// <summary>
+    /// Reinicia el controlador grafico (M15). Es una accion de panico, nunca un paso de
+    /// perfil: la salida se queda negra un instante, asi que se pulsa cuando la pantalla
+    /// ya esta congelada y no antes.
+    /// </summary>
+    public const string RestartGraphicsDriver = "video.restart-graphics-driver";
+
     // --- M5 Red ---
     public const string NetworkProfile = "network.profile";
     public const string NicPowerManagement = "network.nic-power-management";
@@ -55,7 +62,7 @@ public static class ActionIds
         ProcessPriority,
         FirewallProfile, FirewallAvPreset,
         AudioDefaultDevice, AudioSessionRoute,
-        DisplayLayoutRestore, WindowLayoutRestore,
+        DisplayLayoutRestore, WindowLayoutRestore, RestartGraphicsDriver,
         NetworkProfile, NicPowerManagement, NicNagle, NdiDiscovery,
         ServiceState, ServiceStartMode,
     };
@@ -70,6 +77,7 @@ public static class ActionIds
         AudioSessionRoute,
         DisplayLayoutRestore,
         WindowLayoutRestore,
+        RestartGraphicsDriver,
         NetworkProfile,
         NicPowerManagement,
         NdiDiscovery,

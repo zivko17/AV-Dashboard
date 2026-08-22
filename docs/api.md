@@ -112,6 +112,7 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | POST | `/report/preshow` | ✅ Veredicto verde/rojo con la lista de fallos |
 | POST | `/media/scan` | 501 — Fase 5 |
 | GET | `/licenses` · `/power/ups` · `/companion/variables` | 501 — Fases 5 y 6 |
+| POST | `/panic/restart-graphics-driver` | ✅ Reinicia el controlador gráfico por SetupAPI; deja las salidas en negro un instante |
 | POST | `/panic/{action}` | 501 — Fase 2 |
 
 ## Telemetría en vivo

@@ -37,6 +37,9 @@ public static class Formatter
                 case "preshow":
                     PrintPreShow(document.RootElement);
                     return;
+                case "gpu-reset":
+                    PrintGpuReset(document.RootElement);
+                    return;
                 case "profiles":
                     PrintProfiles(document.RootElement);
                     return;
@@ -202,6 +205,16 @@ public static class Formatter
         Console.WriteLine(failures == 0
             ? "VERDE: no hay nada que revisar."
             : $"ROJO: {failures} comprobaciones requieren atención.");
+    }
+
+    private static void PrintGpuReset(JsonElement root)
+    {
+        Console.WriteLine(Text(root, "message"));
+
+        foreach (JsonElement adapter in Array(root, "adapters"))
+        {
+            Console.WriteLine($"  {adapter.GetString()}");
+        }
     }
 
     private static void PrintProfiles(JsonElement root)

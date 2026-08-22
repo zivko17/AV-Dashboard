@@ -105,6 +105,12 @@ public static class CommandCatalog
         },
         new()
         {
+            Name = "gpu-reset", ModuleId = "M15", Sector = Sector.Video,
+            Summary = "Reinicia el controlador gráfico. Las salidas se quedan negras un instante.",
+            Route = ApiRoutes.Panic, Method = CommandMethod.Post,
+        },
+        new()
+        {
             Name = "profiles", ModuleId = "M10", Sector = Sector.SystemEssential,
             Summary = "Perfiles de escenario que conoce este nodo.",
             Route = ApiRoutes.Profiles, Method = CommandMethod.Get,

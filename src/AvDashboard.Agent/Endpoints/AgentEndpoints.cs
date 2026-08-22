@@ -11,6 +11,7 @@ using AvDashboard.Core.Taxonomy;
 using AvDashboard.Native;
 using AvDashboard.Native.Network;
 using AvDashboard.Native.System;
+using AvDashboard.Native.Video;
 
 namespace AvDashboard.Agent.Endpoints;
 
@@ -245,6 +246,7 @@ public static class AgentEndpoints
 
         MapEdid(app);
         MapProfiles(app);
+        MapPanic(app);
 
         app.MapGet(ApiRoutes.Timeline, async (
             EventRepository events,
@@ -287,6 +289,42 @@ public static class AgentEndpoints
                 state.PingStatistics.Values.ToList(),
                 state.Volumes,
                 state.Power)));
+    }
+
+    /// <summary>
+    /// Acciones de pánico (M15).
+    ///
+    /// La única que existe hoy es el reinicio del controlador gráfico, que no depende de
+    /// los actuadores de la Fase 2 porque no cambia ninguna configuración: reinicia un
+    /// dispositivo y lo deja como estaba. El resto siguen devolviendo 501 con su motivo.
+    ///
+    /// Es POST y no GET aunque no reciba cuerpo, porque no es idempotente ni inocuo: cada
+    /// llamada deja las salidas en negro un par de segundos.
+    /// </summary>
+    private static void MapPanic(WebApplication app)
+    {
+        app.MapPost(ApiRoutes.Panic, async (EventRepository events, string action) =>
+        {
+            if (!string.Equals(action, PanicActions.RestartGraphicsDriver, StringComparison.Ordinal))
+            {
+                return Results.Json(
+                    ApiError.NotImplemented($"La acción de pánico «{action}» (Fase 2)"),
+                    statusCode: StatusCodes.Status501NotImplemented);
+            }
+
+            GraphicsRestartResult result = GraphicsDriverRestarter.Restart();
+
+            // Una acción de pánico siempre deja rastro, salga bien o mal. Es exactamente el
+            // tipo de cosa que quieres ver en el Timeline al reconstruir qué pasó.
+            await events.AppendAsync("M15", Sector.Video,
+                result.Success ? Severity.Warning : Severity.Error,
+                "panic.restart-graphics-driver",
+                result.Message).ConfigureAwait(false);
+
+            return result.Success
+                ? Results.Ok(result)
+                : Results.Json(result, statusCode: StatusCodes.Status500InternalServerError);
+        });
     }
 
     /// <summary>
@@ -514,7 +552,6 @@ public static class AgentEndpoints
             (ApiRoutes.Service, "Controlar servicios (Fase 2)"),
             (ApiRoutes.ProfileApply, "Aplicar un perfil de escenario (Fase 2)"),
             (ApiRoutes.RunRollback, "El rollback de una ejecución (Fase 2)"),
-            (ApiRoutes.Panic, "Las acciones de pánico (Fase 2)"),
             (ApiRoutes.VideoDisplaysRestore, "Restaurar el layout de pantallas (Fase 4)"),
             (ApiRoutes.VideoWindowsRestore, "Restaurar posiciones de ventanas (Fase 4)"),
             (ApiRoutes.MediaScan, "El validador de contenido (Fase 5)"),

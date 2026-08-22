@@ -221,6 +221,12 @@ public static class CliRunner
                    $"&to={Uri.EscapeDataString(to.ToString("O"))}";
         }
 
+        if (command.Name == "gpu-reset")
+        {
+            return command.Route.Replace("{action}", PanicActions.RestartGraphicsDriver,
+                StringComparison.Ordinal);
+        }
+
         if (command.Name == "edid-diff")
         {
             string[] ids = arguments.Where(a => !a.StartsWith('-')).Take(2).ToArray();

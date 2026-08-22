@@ -95,3 +95,14 @@ public static class ApiRoutes
     /// </summary>
     public const string DryRunQuery = "dryRun";
 }
+
+/// <summary>
+/// Nombres de las acciones de panico, tal y como viajan en la URL.
+///
+/// Se declaran aparte de <see cref="Profiles.ActionIds"/> a proposito: un actuador es algo
+/// que un perfil puede aplicar, y estas no lo son nunca.
+/// </summary>
+public static class PanicActions
+{
+    public const string RestartGraphicsDriver = "restart-graphics-driver";
+}
