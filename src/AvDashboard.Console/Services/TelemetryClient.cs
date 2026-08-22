@@ -1,5 +1,4 @@
 using AvDashboard.Core.Contracts;
-using System.Net.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 

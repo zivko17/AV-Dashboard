@@ -6,6 +6,8 @@
     <RootNamespace>AvDashboard.Console</RootNamespace>
     <AssemblyName>AvDashboard</AssemblyName>
     <UseWPF>true</UseWPF>
+    <!-- Ver GlobalUsings.cs: el proyecto temporal de WPF no hereda los usings implícitos. -->
+    <ImplicitUsings>disable</ImplicitUsings>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
