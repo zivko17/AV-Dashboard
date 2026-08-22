@@ -113,6 +113,7 @@ consola como una sección que dice qué hará. Ver [`docs/roadmap.md`](docs/road
 
 ## Documentación
 
+- **[Contexto del proyecto](CLAUDE.md)** — la vista de conjunto en dos minutos, y lo que lee un asistente al abrir el repositorio
 - **[Primer arranque](docs/primer-arranque.md)** — empieza por aquí
 - [Arquitectura](docs/architecture.md) — decisiones, topología, módulos, seguridad
 - [Roadmap por fases](docs/roadmap.md)
