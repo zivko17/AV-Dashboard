@@ -63,18 +63,38 @@ public sealed class AgentConnection : IDisposable
             return fromEnvironment.Trim();
         }
 
-        string path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "AvDashboard", "agent.token");
+        // Las mismas dos rutas que mira la consola: la del modo servicio y la del portatil.
+        string[] paths =
+        {
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "AvDashboard", "agent.token"),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AvDashboard", "agent.token"),
+        };
 
-        try
+        foreach (string path in paths)
         {
-            return File.ReadAllText(path).Trim();
+            try
+            {
+                if (File.Exists(path))
+                {
+                    string token = File.ReadAllText(path).Trim();
+                    if (token.Length > 0)
+                    {
+                        return token;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Sin permiso para esta: se prueba la siguiente.
+            }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            throw new UnauthorizedAccessException($"No se puede leer {path}.", ex);
-        }
+
+        throw new UnauthorizedAccessException(
+            "No se ha encontrado el token del agente en " + string.Join(" ni en ", paths) + ".");
     }
 
     private static string Truncate(string value, int max) =>

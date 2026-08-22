@@ -45,7 +45,9 @@ Directory.CreateDirectory(dataDirectory);
 
 NodeIdentity identity = new(options, dataDirectory);
 
-TokenStore tokens = new(dataDirectory);
+// En modo portatil, el token se copia ademas a %LocalAppData% para que la consola
+// pueda encontrarlo sin privilegios y sin adivinar donde esta el ejecutable.
+TokenStore tokens = new(dataDirectory, mirrorForUser: options.PortableMode);
 if (OperatingSystem.IsWindows())
 {
     // Rotacion en cada arranque: si alguien copio el token, deja de valer al reiniciar.
@@ -112,7 +114,7 @@ logger.LogInformation(
 
 if (OperatingSystem.IsWindows())
 {
-    logger.LogInformation("Token del agente en {TokenPath}", tokens.Path_);
+    logger.LogInformation("Token del agente en {TokenPaths}", string.Join(" y ", tokens.WrittenTo));
 }
 
 app.Run();

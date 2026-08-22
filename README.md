@@ -97,6 +97,7 @@ consola como una sección que dice qué hará. Ver [`docs/roadmap.md`](docs/road
 
 ## Documentación
 
+- **[Primer arranque](docs/primer-arranque.md)** — empieza por aquí
 - [Arquitectura](docs/architecture.md) — decisiones, topología, módulos, seguridad
 - [Roadmap por fases](docs/roadmap.md)
 - [API del agente](docs/api.md)

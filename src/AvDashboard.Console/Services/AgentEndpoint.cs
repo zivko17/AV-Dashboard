@@ -19,23 +19,58 @@ public sealed record AgentEndpoint
     };
 
     /// <summary>
-    /// El token del agente local esta en %ProgramData%\AvDashboard\agent.token con ACL
-    /// de Administradores. Si la consola no corre elevada no lo puede leer, y eso hay que
-    /// decirlo con claridad en vez de fallar con un 401 sin explicacion.
+    /// Rutas donde puede estar el token del agente local, en orden de preferencia.
+    ///
+    /// La variable de entorno gana sobre todo, y es la unica via cuando quieres no dejar
+    /// nada en la maquina. Despues va la del modo servicio, con ACL de Administradores;
+    /// si la consola no corre elevada no la puede leer, y eso hay que decirlo con
+    /// claridad en vez de fallar con un 401 sin explicacion. La ultima es la del modo
+    /// portatil, que no necesita privilegios.
     /// </summary>
+    public static IReadOnlyList<string> TokenSearchPaths { get; } = new[]
+    {
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "AvDashboard", "agent.token"),
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AvDashboard", "agent.token"),
+    };
+
     public static string? TryReadLocalToken()
     {
-        string path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "AvDashboard", "agent.token");
+        string? fromEnvironment = Environment.GetEnvironmentVariable("AVDASHBOARD_TOKEN");
+        if (!string.IsNullOrWhiteSpace(fromEnvironment))
+        {
+            return fromEnvironment.Trim();
+        }
 
-        try
+        foreach (string path in TokenSearchPaths)
         {
-            return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+            try
+            {
+                if (File.Exists(path))
+                {
+                    string token = File.ReadAllText(path).Trim();
+                    if (token.Length > 0)
+                    {
+                        return token;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Sin permiso para esta: se prueba la siguiente.
+            }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
+
+        return null;
     }
+
+    /// <summary>Explicacion para la UI cuando no hay token en ninguna parte.</summary>
+    public static string DescribeMissingToken() =>
+        "No se ha encontrado el token del agente. Se ha buscado en AVDASHBOARD_TOKEN y en:" +
+        Environment.NewLine + string.Join(Environment.NewLine, TokenSearchPaths) +
+        Environment.NewLine +
+        "Si el agente corre como servicio, abre la consola como administrador.";
 }

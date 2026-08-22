@@ -47,6 +47,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         Current = Pages[0];
         NodeName = nodes.Selected.Name;
+
+        if (nodes.Selected.Token is null)
+        {
+            ConnectionStatus = AgentEndpoint.DescribeMissingToken();
+        }
     }
 
     public ObservableCollection<PageViewModel> Pages { get; }
