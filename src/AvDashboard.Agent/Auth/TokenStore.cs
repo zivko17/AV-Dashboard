@@ -22,7 +22,7 @@ namespace AvDashboard.Agent.Auth;
 public sealed class TokenStore
 {
     private readonly string _path;
-    private readonly bool _mirrorForUser;
+    private readonly bool _portable;
 
     /// <summary>Ruta compartida entre agente y consola cuando no hay servicio de por medio.</summary>
     public static string UserScopedPath { get; } = Path.Combine(
@@ -36,10 +36,15 @@ public sealed class TokenStore
         "AvDashboard",
         "agent.token");
 
-    public TokenStore(string dataDirectory, bool mirrorForUser = false)
+    /// <param name="portable">
+    /// En modo portatil el agente corre como un usuario normal y la consola tambien, asi
+    /// que el token se deja con la ACL heredada del perfil del usuario y se copia a
+    /// %LocalAppData%. En modo servicio se endurece a SYSTEM y Administradores.
+    /// </param>
+    public TokenStore(string dataDirectory, bool portable = false)
     {
         _path = Path.Combine(dataDirectory, "agent.token");
-        _mirrorForUser = mirrorForUser;
+        _portable = portable;
     }
 
     public string Token { get; private set; } = string.Empty;
@@ -56,15 +61,17 @@ public sealed class TokenStore
 
         List<string> written = new();
 
-        if (TryWrite(_path))
+        // El endurecimiento de ACL es exclusivo del modo servicio. En portatil, quien
+        // escribe y quien lee son el mismo usuario sin privilegios: dejar el fichero solo
+        // para SYSTEM y Administradores lo hace ilegible para la propia consola, que es
+        // justo lo contrario de para lo que esta.
+        if (TryWrite(_path, harden: !_portable))
         {
             written.Add(_path);
         }
 
-        // El espejo de usuario solo tiene sentido en modo portatil. En modo servicio el
-        // token debe quedarse donde solo lo leen Administradores y SYSTEM.
-        if (_mirrorForUser && !string.Equals(_path, UserScopedPath, StringComparison.OrdinalIgnoreCase)
-                           && TryWrite(UserScopedPath))
+        if (_portable && !string.Equals(_path, UserScopedPath, StringComparison.OrdinalIgnoreCase)
+                      && TryWrite(UserScopedPath, harden: false))
         {
             written.Add(UserScopedPath);
         }
@@ -77,13 +84,35 @@ public sealed class TokenStore
     public IReadOnlyList<string> WrittenTo { get; private set; } = Array.Empty<string>();
 
     [SupportedOSPlatform("windows")]
-    private bool TryWrite(string path)
+    private bool TryWrite(string path, bool harden)
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+            // Un token de una version anterior puede tener una ACL que nos impida
+            // sobrescribirlo, incluso siendo nuestro. Borrar y recrear es mas fiable que
+            // pelearse con el descriptor de seguridad, y el permiso para borrar viene de
+            // la carpeta, que si es nuestra.
+            if (File.Exists(path))
+            {
+                try
+                {
+                    File.Delete(path);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Si no se puede borrar, todavia puede que se pueda sobrescribir.
+                }
+            }
+
             File.WriteAllText(path, Token);
-            RestrictAcl(path);
+
+            if (harden)
+            {
+                RestrictAcl(path);
+            }
+
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

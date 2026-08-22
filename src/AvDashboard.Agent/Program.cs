@@ -47,7 +47,7 @@ NodeIdentity identity = new(options, dataDirectory);
 
 // En modo portatil, el token se copia ademas a %LocalAppData% para que la consola
 // pueda encontrarlo sin privilegios y sin adivinar donde esta el ejecutable.
-TokenStore tokens = new(dataDirectory, mirrorForUser: options.PortableMode);
+TokenStore tokens = new(dataDirectory, portable: options.PortableMode);
 if (OperatingSystem.IsWindows())
 {
     // Rotacion en cada arranque: si alguien copio el token, deja de valer al reiniciar.
