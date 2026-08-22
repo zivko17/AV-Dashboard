@@ -52,6 +52,100 @@ public static class EdidEntryId
     }
 }
 
+/// <summary>
+/// Clave del conector fisico por el que sale una senal.
+///
+/// La referencia de EDID se guarda contra el conector y no contra el monitor, y esa es
+/// justo la diferencia que hace util la funcion: si guardaras la referencia contra el
+/// monitor, cambiar el splitter por otro no dispararia nada porque el monitor nuevo se
+/// comparia consigo mismo. Guardandola contra el puerto, la pregunta que se contesta es
+/// «por esta salida sigue estando lo mismo que el dia que funcionaba», que es la que
+/// importa.
+///
+/// Windows codifica el puerto en el identificador de instancia como un token UID:
+/// <c>5&amp;1a2b3c&amp;0&amp;UID4353</c>. Cuando no aparece se cae al identificador entero,
+/// que al menos es estable mientras no se toque el cableado.
+/// </summary>
+public static class EdidConnectorKey
+{
+    public static string FromInstanceId(string? instanceId)
+    {
+        if (string.IsNullOrWhiteSpace(instanceId))
+        {
+            return string.Empty;
+        }
+
+        foreach (string token in instanceId.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (token.StartsWith("UID", StringComparison.OrdinalIgnoreCase))
+            {
+                return token.ToUpperInvariant();
+            }
+        }
+
+        return instanceId.ToUpperInvariant();
+    }
+
+    /// <summary>La misma clave a partir de la ruta de dispositivo de QueryDisplayConfig.</summary>
+    public static string FromDevicePath(string? monitorDevicePath)
+    {
+        if (string.IsNullOrWhiteSpace(monitorDevicePath))
+        {
+            return string.Empty;
+        }
+
+        string[] parts = monitorDevicePath.Split('#');
+        return parts.Length < 3 ? string.Empty : FromInstanceId(parts[2]);
+    }
+}
+
+/// <summary>
+/// Un EDID guardado como referencia, con el nombre que le pones tu: «VX600 rack B»,
+/// «Proyector sala 2», «Splitter PureTools».
+/// </summary>
+public sealed record EdidReference
+{
+    /// <summary>Conector contra el que se guarda. Ver <see cref="EdidConnectorKey"/>.</summary>
+    public required string ConnectorKey { get; init; }
+
+    public required string Name { get; init; }
+    public required string Fingerprint { get; init; }
+    public required int ByteCount { get; init; }
+    public DateTimeOffset SavedAt { get; init; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Nombre GDI de la salida el dia que se guardo, solo como pista.</summary>
+    public string? DeviceName { get; init; }
+}
+
+public sealed record EdidReferenceListResponse
+{
+    public IReadOnlyList<EdidReference> References { get; init; } = Array.Empty<EdidReference>();
+
+    /// <summary>Salidas activas cuyo EDID no coincide con la referencia guardada.</summary>
+    public IReadOnlyList<EdidDrift> Drift { get; init; } = Array.Empty<EdidDrift>();
+}
+
+/// <summary>Una salida cuyo EDID ha cambiado respecto a la referencia.</summary>
+public sealed record EdidDrift
+{
+    public required string ConnectorKey { get; init; }
+    public required string ReferenceName { get; init; }
+    public required string ExpectedFingerprint { get; init; }
+    public required string ActualFingerprint { get; init; }
+    public string? DeviceName { get; init; }
+    public string? MonitorName { get; init; }
+}
+
+/// <summary>Peticion de guardar una referencia.</summary>
+public sealed record SaveEdidReferenceRequest
+{
+    /// <summary>Identificador de la entrada de la biblioteca, de `edid-list`.</summary>
+    public required string Id { get; init; }
+
+    /// <summary>El nombre con el que lo vas a reconocer dentro de seis meses.</summary>
+    public required string Name { get; init; }
+}
+
 /// <summary>Una entrada de la biblioteca de EDID.</summary>
 public sealed record EdidEntry
 {

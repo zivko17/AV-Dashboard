@@ -52,6 +52,9 @@ public static class Formatter
                 case "edid-diff":
                     PrintEdidDiff(document.RootElement);
                     return;
+                case "edid-ref":
+                    PrintEdidReferences(document.RootElement);
+                    return;
                 default:
                     Console.WriteLine(Pretty(document));
                     return;
@@ -438,6 +441,49 @@ public static class Formatter
 
         Console.WriteLine();
         Console.WriteLine("  ! marca lo que cambia lo que se negocia en el cable.");
+    }
+
+    private static void PrintEdidReferences(JsonElement root)
+    {
+        List<JsonElement> references = Array(root, "references").ToList();
+
+        if (references.Count == 0)
+        {
+            Console.WriteLine("No hay ninguna referencia guardada.");
+            Console.WriteLine("Guarda una desde la pestaña Vídeo de la consola para que el agente");
+            Console.WriteLine("avise cuando el EDID de esa salida deje de coincidir.");
+            return;
+        }
+
+        Console.WriteLine("  REFERENCIAS GUARDADAS");
+        foreach (JsonElement reference in references)
+        {
+            Console.WriteLine($"    {Text(reference, "name"),-34} {Text(reference, "connectorKey"),-12} " +
+                              $"{Text(reference, "fingerprint"),-18} {Text(reference, "deviceName")}");
+        }
+
+        List<JsonElement> drift = Array(root, "drift").ToList();
+
+        Console.WriteLine();
+
+        if (drift.Count == 0)
+        {
+            Console.WriteLine("Todas las salidas con referencia coinciden con ella.");
+            return;
+        }
+
+        Console.WriteLine("  HAN CAMBIADO");
+        foreach (JsonElement changed in drift)
+        {
+            Console.WriteLine($"  !  {Text(changed, "referenceName")} ({Text(changed, "deviceName")})");
+            Console.WriteLine($"        se esperaba {Text(changed, "expectedFingerprint")}, " +
+                              $"se lee {Text(changed, "actualFingerprint")}");
+            Console.WriteLine($"        ahora presenta: {Text(changed, "monitorName")}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("Un EDID que cambia en una salida suele significar que alguien ha cambiado");
+        Console.WriteLine("un splitter o un procesador. La imagen se sigue viendo; el modo negociado no.");
     }
 
     private static string Label(JsonElement entry)

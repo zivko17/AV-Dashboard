@@ -321,6 +321,68 @@ public static class AgentEndpoints
             });
         });
 
+        app.MapGet(ApiRoutes.VideoEdidReference, async (
+            EdidReferenceRepository references, EdidDriftDetector detector, NodeState state) =>
+            Results.Ok(new EdidReferenceListResponse
+            {
+                References = await references.ListAsync().ConfigureAwait(false),
+                Drift = await detector.DetectAsync(state.Displays ?? new DisplayTopology())
+                    .ConfigureAwait(false),
+            }));
+
+        app.MapPost(ApiRoutes.VideoEdidReference, async (
+            EdidLibrary library, EdidReferenceRepository references,
+            NodeState state, SaveEdidReferenceRequest request) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "name_required",
+                    Message = "La referencia necesita un nombre con el que la reconozcas.",
+                });
+            }
+
+            AvDashboard.Native.Video.RawEdid? raw = library.Get(request.Id);
+
+            if (raw is null)
+            {
+                return Results.NotFound(new ApiError
+                {
+                    Code = "edid_not_found",
+                    Message = "No hay ningún EDID con ese identificador.",
+                });
+            }
+
+            string key = EdidConnectorKey.FromInstanceId(raw.InstanceId);
+
+            if (key.Length == 0)
+            {
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "connector_unknown",
+                    Message = "No se ha podido determinar el conector de esa entrada.",
+                });
+            }
+
+            // El nombre GDI se guarda solo como pista de donde estaba el dia que se guardo.
+            string? deviceName = state.Displays?.Outputs
+                .FirstOrDefault(o => EdidConnectorKey.FromDevicePath(o.MonitorDevicePath) == key)
+                ?.DeviceName;
+
+            await references.SaveAsync(key, request.Name.Trim(), raw.Fingerprint, raw.Bytes, deviceName)
+                .ConfigureAwait(false);
+
+            return Results.Ok(new EdidReference
+            {
+                ConnectorKey = key,
+                Name = request.Name.Trim(),
+                Fingerprint = raw.Fingerprint,
+                ByteCount = raw.Bytes.Length,
+                DeviceName = deviceName,
+            });
+        });
+
         app.MapGet(ApiRoutes.VideoEdidDiff, (EdidLibrary library, string left, string right) =>
         {
             Edid? a = library.GetParsed(left);

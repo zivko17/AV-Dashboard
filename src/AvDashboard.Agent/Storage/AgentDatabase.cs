@@ -255,6 +255,18 @@ public sealed class AgentDatabase : IDisposable
             sector       TEXT NOT NULL
         );
 
+        -- Biblioteca de EDID de referencia (M18). La clave es el conector fisico y no el
+        -- monitor: la pregunta que se contesta es «por esta salida sigue estando lo mismo
+        -- que el dia que funcionaba», y guardarla contra el monitor no la contestaria.
+        CREATE TABLE IF NOT EXISTS edid_references (
+            connector_key TEXT PRIMARY KEY,
+            name          TEXT NOT NULL,
+            fingerprint   TEXT NOT NULL,
+            bytes         BLOB NOT NULL,
+            device_name   TEXT,
+            saved_at      TEXT NOT NULL
+        );
+
         -- Baseline de servicios contra el que se hace el diff.
         CREATE TABLE IF NOT EXISTS service_baseline (
             taken_at     TEXT NOT NULL,

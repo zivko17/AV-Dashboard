@@ -68,6 +68,7 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | GET | `/video/edid` | ✅ Biblioteca de EDID: los conectados y los que Windows recuerda, decodificados y validados |
 | GET | `/video/edid/raw?id=` | ✅ Bytes crudos en base64, con nombre de fichero sugerido |
 | GET | `/video/edid/diff?left=&right=` | ✅ Comparación campo a campo, marcando lo que cambia la negociación |
+| GET · POST | `/video/edid/reference` | ✅ Biblioteca de referencia con nombre y salidas cuyo EDID ya no coincide |
 | GET | `/video/decklink` · `/video/sync` · `/video/led-processors` | 501 — Fases 4 y 7 |
 | POST | `/video/displays/restore` · `/video/windows/restore` | 501 — Fase 4 |
 

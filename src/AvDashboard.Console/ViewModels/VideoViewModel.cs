@@ -27,6 +27,7 @@ public sealed partial class VideoViewModel : PageViewModel
     public ObservableCollection<DisplayOutputViewModel> Outputs { get; } = new();
     public ObservableCollection<EdidEntryViewModel> Entries { get; } = new();
     public ObservableCollection<EdidDifference> Differences { get; } = new();
+    public ObservableCollection<EdidDrift> Drift { get; } = new();
 
     [ObservableProperty]
     private EdidEntryViewModel? _selected;
@@ -39,6 +40,13 @@ public sealed partial class VideoViewModel : PageViewModel
 
     [ObservableProperty]
     private string? _dumpResult;
+
+    /// <summary>Nombre con el que se guarda la referencia: «VX600 rack B», «Proyector sala 2».</summary>
+    [ObservableProperty]
+    private string? _referenceName;
+
+    [ObservableProperty]
+    private string _referenceSummary = "Sin referencias guardadas.";
 
     protected override async Task LoadAsync()
     {
@@ -105,7 +113,80 @@ public sealed partial class VideoViewModel : PageViewModel
             }
         }
 
+        await LoadReferencesAsync().ConfigureAwait(true);
+
+        // Una salida cuyo EDID ya no coincide con su referencia es al menos un ambar: la
+        // imagen se ve, pero lo que hay enchufado no es lo que habia.
+        if (Drift.Count > 0 && worst < HealthState.Warning)
+        {
+            worst = HealthState.Warning;
+        }
+
         Health = worst;
+    }
+
+    private async Task LoadReferencesAsync()
+    {
+        ApiResult<EdidReferenceListResponse> result =
+            await Nodes.Api().GetEdidReferencesAsync().ConfigureAwait(true);
+
+        Drift.Clear();
+
+        if (!result.Success)
+        {
+            ReferenceSummary = result.Error ?? "No se han podido leer las referencias.";
+            return;
+        }
+
+        EdidReferenceListResponse response = result.Value!;
+
+        foreach (EdidDrift drift in response.Drift)
+        {
+            Drift.Add(drift);
+        }
+
+        ReferenceSummary = response.References.Count == 0
+            ? "Sin referencias guardadas. Selecciona un EDID y guárdalo con un nombre para que el agente avise si cambia."
+            : response.Drift.Count == 0
+                ? $"{response.References.Count} referencias guardadas, todas coinciden."
+                : $"{response.Drift.Count} de {response.References.Count} referencias ya no coinciden.";
+    }
+
+    /// <summary>
+    /// Guarda el EDID seleccionado como referencia de su conector. A partir de ahí el agente
+    /// avisa solo cuando esa salida presente otro: es la detección temprana de que alguien ha
+    /// cambiado un splitter o un procesador.
+    /// </summary>
+    [RelayCommand]
+    private async Task SaveReferenceAsync()
+    {
+        if (Selected is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ReferenceName))
+        {
+            ReferenceSummary = "Ponle un nombre con el que la reconozcas dentro de seis meses.";
+            return;
+        }
+
+        ApiResult<EdidReference> result = await Nodes.Api()
+            .SaveEdidReferenceAsync(new SaveEdidReferenceRequest
+            {
+                Id = Selected.Id,
+                Name = ReferenceName.Trim(),
+            })
+            .ConfigureAwait(true);
+
+        if (!result.Success)
+        {
+            ReferenceSummary = result.Error ?? "No se ha podido guardar la referencia.";
+            return;
+        }
+
+        ReferenceName = null;
+        await LoadReferencesAsync().ConfigureAwait(true);
     }
 
     /// <summary>Salud de la topología por sí sola: sin salidas activas es un problema.</summary>

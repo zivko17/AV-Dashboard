@@ -74,6 +74,14 @@ public sealed class ApiClient : IDisposable
     public Task<ApiResult<EdidRawResponse>> GetEdidRawAsync(string id, CancellationToken ct = default) =>
         GetAsync<EdidRawResponse>($"{ApiRoutes.VideoEdidRaw}?id={Uri.EscapeDataString(id)}", ct);
 
+    public Task<ApiResult<EdidReferenceListResponse>> GetEdidReferencesAsync(
+        CancellationToken ct = default) =>
+        GetAsync<EdidReferenceListResponse>(ApiRoutes.VideoEdidReference, ct);
+
+    public Task<ApiResult<EdidReference>> SaveEdidReferenceAsync(
+        SaveEdidReferenceRequest request, CancellationToken ct = default) =>
+        PostAsync<EdidReference>(ApiRoutes.VideoEdidReference, request, ct);
+
     public Task<ApiResult<EdidDiffResponse>> GetEdidDiffAsync(
         string left, string right, CancellationToken ct = default) =>
         GetAsync<EdidDiffResponse>(

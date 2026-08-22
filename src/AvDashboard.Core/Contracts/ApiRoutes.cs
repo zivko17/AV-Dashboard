@@ -42,6 +42,9 @@ public static class ApiRoutes
 
     /// <summary>Comparacion entre dos EDID (`edid-diff`).</summary>
     public const string VideoEdidDiff = Base + "/video/edid/diff";
+
+    /// <summary>Biblioteca de EDID de referencia y deriva contra ella (M18).</summary>
+    public const string VideoEdidReference = Base + "/video/edid/reference";
     public const string VideoGpu = Base + "/video/gpu";
 
     public const string NetworkInterfaces = Base + "/network/interfaces";

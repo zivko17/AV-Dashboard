@@ -138,6 +138,12 @@ public static class CommandCatalog
         },
         new()
         {
+            Name = "edid-ref", ModuleId = "M18", Sector = Sector.Video,
+            Summary = "Referencias guardadas y salidas cuyo EDID ya no coincide con la suya.",
+            Route = ApiRoutes.VideoEdidReference, Method = CommandMethod.Get,
+        },
+        new()
+        {
             Name = "edid-dump", ModuleId = "M18", Sector = Sector.Video,
             Summary = "Vuelca un EDID a .bin, para CRU, AW EDID Editor o cargarlo en una matriz.",
             Usage = "edid-dump <id> [fichero]",
