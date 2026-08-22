@@ -11,13 +11,16 @@ namespace AvDashboard.Agent;
 /// </summary>
 public sealed class NodeIdentity
 {
-    private readonly AgentOptions _options;
-
     public NodeIdentity(AgentOptions options, string dataDirectory)
     {
-        _options = options;
         Id = LoadOrCreateId(dataDirectory);
-        Hostname = options.NodeName ?? Environment.MachineName;
+
+        // IsNullOrWhiteSpace y no `??`: un "NodeName": null en appsettings.json se enlaza
+        // como cadena vacia, no como null, asi que el null-coalescing no dispara y el
+        // nodo se queda sin nombre.
+        Hostname = string.IsNullOrWhiteSpace(options.NodeName)
+            ? Environment.MachineName
+            : options.NodeName.Trim();
     }
 
     public string Id { get; }
