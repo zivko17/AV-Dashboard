@@ -23,7 +23,16 @@
     -->
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <EnableMsixTooling>false</EnableMsixTooling>
+
+    <!--
+      En true aunque la aplicacion no se empaquete, que es contraintuitivo y por eso se
+      explica aqui. Esta propiedad no decide si se genera un MSIX: decide si el Windows App
+      SDK importa sus propias tareas de compilacion de recursos. En false, MrtCore las busca
+      donde las pone Visual Studio —Microsoft\VisualStudio17.0\AppxPackage— y `dotnet
+      build` no las tiene ahi, asi que revienta con un MSB4062 que no menciona ni WinUI ni
+      empaquetado. La plantilla oficial la deja en true tambien para las que no se empaquetan.
+    -->
+    <EnableMsixTooling>true</EnableMsixTooling>
   </PropertyGroup>
 
   <ItemGroup>
