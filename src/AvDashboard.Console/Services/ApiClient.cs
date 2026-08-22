@@ -117,6 +117,18 @@ public sealed class ApiClient : IDisposable
     public Task<ApiResult<SettingsAudit>> GetSystemAuditAsync(CancellationToken ct = default) =>
         GetAsync<SettingsAudit>(ApiRoutes.SystemAudit, ct);
 
+    /// <summary>
+    /// Cambia un ajuste del catalogo. Con dryRun se calcula el diff sin tocar nada, que es
+    /// lo que usara el editor de perfiles antes de aplicar.
+    /// </summary>
+    public Task<ApiResult<SettingWriteResponse>> ApplySettingAsync(
+        string settingId, string value, bool dryRun = false, CancellationToken ct = default) =>
+        PostAsync<SettingWriteResponse>(
+            ApiRoutes.SystemSetting.Replace("{setting}", Uri.EscapeDataString(settingId),
+                StringComparison.Ordinal) +
+            $"?value={Uri.EscapeDataString(value)}" + (dryRun ? "&dryRun=true" : string.Empty),
+            null, ct);
+
     public Task<ApiResult<DisplayTopology>> GetDisplaysAsync(CancellationToken ct = default) =>
         GetAsync<DisplayTopology>(ApiRoutes.VideoDisplays, ct);
 
@@ -250,6 +262,17 @@ public sealed class ApiClient : IDisposable
         _http.Dispose();
         _disposed = true;
     }
+}
+
+/// <summary>Lo que devuelve escribir un ajuste.</summary>
+public sealed record SettingWriteResponse
+{
+    public string Id { get; init; } = string.Empty;
+    public bool Success { get; init; }
+    public string Message { get; init; } = string.Empty;
+    public string? PreviousValue { get; init; }
+    public string? AppliedValue { get; init; }
+    public bool DryRun { get; init; }
 }
 
 /// <summary>Lo que devuelve el reinicio del controlador grafico.</summary>

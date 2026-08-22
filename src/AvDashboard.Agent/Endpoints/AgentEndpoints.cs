@@ -1,6 +1,7 @@
 using AvDashboard.Agent.Modules;
 using AvDashboard.Agent.Storage;
 using AvDashboard.Agent.Video;
+using System.Text.Json;
 using AvDashboard.Core.Profiles;
 using AvDashboard.Core.Settings;
 using AvDashboard.Core.Video;
@@ -69,7 +70,34 @@ public static class AgentEndpoints
         // el registro de eventos, que son lentos, y la respuesta no cambia de un segundo a
         // otro. Pagar eso una vez por segundo se comeria el presupuesto de CPU del agente.
         app.MapGet(ApiRoutes.SystemAudit, () =>
-            Results.Ok(SettingsCatalog.Evaluate(SettingsProbe.Read())));
+            Results.Ok(SettingsCatalog.Evaluate(SettingsProbe.Read(), SettingsWriter.SupportedIds)));
+
+        // Escritura de un ajuste del catalogo. El actuador tiene lista blanca compilada:
+        // un identificador que no este en ella se rechaza aunque la peticion venga bien
+        // formada. Ver SettingsWriter.
+        app.MapPost(ApiRoutes.SystemSetting, async (
+            EventRepository events, string setting, string value, bool? dryRun) =>
+        {
+            SettingWriteResult result = SettingsWriter.Apply(setting, value, dryRun == true);
+
+            if (!result.Success)
+            {
+                return Results.BadRequest(result);
+            }
+
+            if (!result.DryRun)
+            {
+                // Toda escritura deja rastro con el valor anterior. Es el registro de
+                // auditoria del diseno, y ademas es lo unico que permite deshacer.
+                await events.AppendAsync("M1", Sector.SystemEssential, Severity.Warning,
+                    "setting.changed",
+                    $"{SettingsCatalog.Find(setting)?.Name ?? setting}: " +
+                    $"{result.PreviousValue ?? "sin valor"} → {result.AppliedValue}",
+                    payloadJson: JsonSerializer.Serialize(result)).ConfigureAwait(false);
+            }
+
+            return Results.Ok(result);
+        });
 
         app.MapGet(ApiRoutes.System, (NodeState state) =>
         {
@@ -546,7 +574,6 @@ public static class AgentEndpoints
     {
         (string Route, string What)[] pending =
         {
-            (ApiRoutes.SystemSetting, "La escritura de ajustes de sistema (Fase 2)"),
             (ApiRoutes.AudioDefault, "Cambiar el dispositivo de audio por defecto (Fase 2)"),
             (ApiRoutes.NetworkProfile, "Aplicar un perfil de IP (Fase 2)"),
             (ApiRoutes.Service, "Controlar servicios (Fase 2)"),

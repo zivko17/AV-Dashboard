@@ -93,6 +93,7 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         ApiResult<SystemResponse> system = await api.GetSystemAsync().ConfigureAwait(true);
         ApiResult<AudioResponse> audio = await api.GetAudioAsync().ConfigureAwait(true);
+        ApiResult<DisplayTopology> displays = await api.GetDisplaysAsync().ConfigureAwait(true);
         ApiResult<NetworkResponse> network = await api.GetNetworkAsync().ConfigureAwait(true);
         ApiResult<ServicesResponse> services = await api.GetServicesAsync().ConfigureAwait(true);
         ApiResult<IReadOnlyList<StorageVolume>> storage = await api.GetStorageAsync().ConfigureAwait(true);
@@ -104,6 +105,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         Cards.Clear();
         Cards.Add(BuildSystemCard(system.Value));
         Cards.Add(BuildAudioCard(audio.Value));
+        Cards.Add(BuildVideoCard(displays.Value));
         Cards.Add(BuildNetworkCard(network.Value, pings.Value));
         Cards.Add(BuildServicesCard(services.Value));
         Cards.Add(BuildStorageCard(storage.Value));
@@ -240,6 +242,71 @@ public sealed partial class DashboardViewModel : PageViewModel
                         ? $"baseline {taken.LocalDateTime:dd/MM HH:mm}"
                         : "sin baseline tomado",
                 },
+        };
+    }
+
+    /// <summary>
+    /// Vídeo en el dashboard.
+    ///
+    /// Lo primero es cuántas salidas hay activas, porque perder una en una pared LED
+    /// significa haber perdido la pared. Debajo, el refresco de la principal escrito
+    /// entero: es el dato que delata un procesador a 50 y un render a 59,94, y redondeado
+    /// a «60 Hz» no delata nada.
+    /// </summary>
+    private StatusCardViewModel BuildVideoCard(DisplayTopology? topology)
+    {
+        if (topology is null || topology.Outputs.Count == 0)
+        {
+            return new StatusCardViewModel
+            {
+                Title = "VÍDEO",
+                Health = HealthState.Unknown,
+                Primary = "sin datos",
+                Section = "Vídeo",
+                Navigate = _navigate,
+            };
+        }
+
+        DisplayOutput primary = topology.Outputs.FirstOrDefault(o => o.IsPrimary)
+                                ?? topology.Outputs[0];
+
+        List<string> lines = new()
+        {
+            primary.MonitorName ?? primary.DeviceName,
+            $"{primary.Width}×{primary.Height} · {primary.RefreshHz:0.###} Hz",
+        };
+
+        string connectors = string.Join(", ", topology.Outputs
+            .Where(o => o.IsActive && o.PhysicalConnector is not null)
+            .Select(o => o.PhysicalConnector!)
+            .Distinct(StringComparer.OrdinalIgnoreCase));
+
+        if (connectors.Length > 0)
+        {
+            lines.Add(connectors);
+        }
+
+        int withoutEdid = topology.Outputs.Count(o => o.IsActive && !o.EdidAvailable);
+
+        if (withoutEdid > 0)
+        {
+            lines.Add($"⚠ {withoutEdid} sin EDID legible");
+        }
+
+        return new StatusCardViewModel
+        {
+            Title = "VÍDEO",
+            // Cero salidas activas es rojo; que falte un EDID es ambar, no rojo: la imagen
+            // sigue saliendo, pero no se puede comparar contra la referencia.
+            Health = topology.ActiveCount == 0 ? HealthState.Critical
+                : withoutEdid > 0 ? HealthState.Warning
+                : HealthState.Ok,
+            Primary = topology.ActiveCount == 1
+                ? "1 salida activa"
+                : $"{topology.ActiveCount} salidas activas",
+            Lines = lines,
+            Section = "Vídeo",
+            Navigate = _navigate,
         };
     }
 

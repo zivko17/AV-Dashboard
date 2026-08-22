@@ -188,6 +188,35 @@ public static class PowerConfiguration
     }
 
     /// <summary>
+    /// Escribe un ajuste del plan activo para el perfil de corriente alterna.
+    ///
+    /// Despues de escribir hay que reactivar el esquema: Windows no aplica el cambio al
+    /// plan en curso hasta que se le vuelve a decir cual es el activo. Sin esa segunda
+    /// llamada, el valor queda guardado y no surte efecto, que es la peor de las dos
+    /// opciones porque la interfaz diria que esta hecho.
+    /// </summary>
+    public static bool WriteActiveAcValue(Guid subGroup, Guid setting, uint value)
+    {
+        Guid? scheme = GetActiveSchemeGuid();
+        if (scheme is not Guid active)
+        {
+            return false;
+        }
+
+        Guid schemeGuid = active;
+        Guid subGroupGuid = subGroup;
+        Guid settingGuid = setting;
+
+        if (PowerWriteACValueIndex(IntPtr.Zero, ref schemeGuid, ref subGroupGuid,
+                ref settingGuid, value) != 0)
+        {
+            return false;
+        }
+
+        return SetActiveScheme(active);
+    }
+
+    /// <summary>
     /// GUID de subgrupo y de ajuste de los que mira el catalogo. Son fijos y estan
     /// documentados; van aqui juntos para no repartirlos por el codigo.
     /// </summary>
@@ -234,6 +263,11 @@ public static class PowerConfiguration
     private static extern uint PowerEnumerate(
         IntPtr rootPowerKey, IntPtr schemeGuid, IntPtr subGroupOfPowerSettingsGuid,
         uint accessFlags, uint index, byte[] buffer, ref uint bufferSize);
+
+    [DllImport("powrprof.dll")]
+    private static extern uint PowerWriteACValueIndex(
+        IntPtr rootPowerKey, ref Guid schemeGuid, ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid, uint acValueIndex);
 
     [DllImport("powrprof.dll")]
     private static extern uint PowerReadACValueIndex(

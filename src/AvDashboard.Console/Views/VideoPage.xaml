@@ -8,6 +8,7 @@
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
         <controls:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <controls:CountToVisibilityConverter x:Key="CountToVisibility" />
+        <controls:InverseBooleanConverter x:Key="BoolNot" />
     </UserControl.Resources>
 
     <StackPanel>
@@ -260,6 +261,25 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Accion de panico -->
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="SI ALGO SE HA QUEDADO CONGELADO" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="⚡ Reiniciar el controlador gráfico"
+                            Command="{Binding RestartGraphicsDriverCommand}"
+                            IsEnabled="{Binding IsPanicBusy, Converter={StaticResource BoolNot}}" />
+                    <TextBlock Text="{Binding PanicResult}" Style="{StaticResource CaptionText}"
+                               VerticalAlignment="Center" Margin="14,0,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,10,0,0"
+                           Text="Las salidas se quedan en negro uno o dos segundos y Windows puede recolocar las ventanas. Se pulsa cuando algo ya está roto, no como medida preventiva." />
             </StackPanel>
         </Border>
 

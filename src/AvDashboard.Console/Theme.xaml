@@ -7,13 +7,22 @@
       pide una aplicacion de escritorio normal.
     -->
 
-    <Color x:Key="BackgroundColor">#FF111417</Color>
-    <Color x:Key="SurfaceColor">#FF181C21</Color>
-    <Color x:Key="SurfaceRaisedColor">#FF20262D</Color>
-    <Color x:Key="BorderColor">#FF2C343D</Color>
-    <Color x:Key="TextColor">#FFE8EDF2</Color>
-    <Color x:Key="TextMutedColor">#FF95A1AD</Color>
-    <Color x:Key="AccentColor">#FF3F9CFF</Color>
+    <!--
+      Gris antracita, centrado en el RAL 7016 de las superficies. Es un gris neutro con una
+      pizca de verde, no el azul oscuro de antes: sobre un fondo azulado, el ambar del
+      semaforo tira a marron y el verde pierde separacion del fondo.
+    -->
+    <Color x:Key="BackgroundColor">#FF1F2325</Color>
+    <Color x:Key="SurfaceColor">#FF272C2E</Color>
+    <Color x:Key="SurfaceRaisedColor">#FF31383B</Color>
+    <Color x:Key="BorderColor">#FF3B4245</Color>
+
+    <!-- Linea de separacion entre filas: mas tenue que el borde de una tarjeta. -->
+    <Color x:Key="RuleColor">#FF33393C</Color>
+
+    <Color x:Key="TextColor">#FFE7E9EA</Color>
+    <Color x:Key="TextMutedColor">#FF98A0A3</Color>
+    <Color x:Key="AccentColor">#FF4FA8E0</Color>
 
     <!-- Semaforo. Tres estados y ninguno mas. -->
     <Color x:Key="OkColor">#FF3FBF6F</Color>
@@ -25,6 +34,7 @@
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
     <SolidColorBrush x:Key="SurfaceRaisedBrush" Color="{StaticResource SurfaceRaisedColor}" />
     <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="RuleBrush" Color="{StaticResource RuleColor}" />
     <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}" />
     <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMutedColor}" />
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
@@ -140,6 +150,61 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!--
+        Interruptor. El CheckBox de serie es una casilla de Windows 95 sobre fondo oscuro y
+        no dice de un vistazo si algo esta puesto o no; esto es la pastilla que espera
+        cualquiera que haya tocado los ajustes de Windows 11.
+
+        Encendido usa el ambar del semaforo a proposito y no el acento: en esta aplicacion
+        «activado» no significa «bien». Un salvapantallas activado esta mal, y el color del
+        interruptor no debe sugerir lo contrario. El juicio lo da el punto de la izquierda.
+    -->
+    <Style x:Key="Switch" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Track" Width="40" Height="22" CornerRadius="11"
+                            Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Ellipse x:Name="Knob" Width="14" Height="14"
+                                 HorizontalAlignment="Left" Margin="3,0,0,0"
+                                 Fill="{StaticResource TextMutedBrush}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background"
+                                    Value="{StaticResource WarningBrush}" />
+                            <Setter TargetName="Track" Property="BorderBrush"
+                                    Value="{StaticResource WarningBrush}" />
+                            <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
+                            <Setter TargetName="Knob" Property="Margin" Value="0,0,3,0" />
+                            <Setter TargetName="Knob" Property="Fill" Value="#FF1F2325" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Track" Property="Opacity" Value="0.35" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush"
+                                    Value="{StaticResource AccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+        Fila de una tabla de ajustes: linea de separacion abajo y nada mas. Las lineas son
+        lo que hace que cuarenta filas se lean como una tabla y no como un parrafo.
+    -->
+    <Style x:Key="TableRow" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{StaticResource RuleBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="0,10" />
     </Style>
 
     <!--

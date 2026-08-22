@@ -606,7 +606,8 @@ public static class SettingsCatalog
     /// desconocidas, que no es lo mismo que estar mal: la UI las esconde por defecto en vez
     /// de pintarlas en rojo y hacerte perder el tiempo.
     /// </summary>
-    public static SettingsAudit Evaluate(IEnumerable<SettingReading> readings)
+    public static SettingsAudit Evaluate(
+        IEnumerable<SettingReading> readings, IReadOnlySet<string>? writableIds = null)
     {
         ArgumentNullException.ThrowIfNull(readings);
 
@@ -625,7 +626,11 @@ public static class SettingsCatalog
             foreach (SettingDefinition definition in Definitions.Where(d => d.Group == group))
             {
                 byId.TryGetValue(definition.Id, out SettingReading? reading);
-                evaluations.Add(EvaluateOne(definition, reading));
+
+                evaluations.Add(EvaluateOne(definition, reading) with
+                {
+                    Writable = writableIds?.Contains(definition.Id) == true,
+                });
             }
 
             if (evaluations.Count > 0)

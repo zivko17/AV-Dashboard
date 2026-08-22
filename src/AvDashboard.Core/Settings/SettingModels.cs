@@ -205,6 +205,31 @@ public sealed record SettingEvaluation
         _ => HealthState.Unknown,
     };
 
+    /// <summary>
+    /// true si este nodo sabe escribir el ajuste.
+    ///
+    /// Lo decide la capa nativa y no el catálogo: así una fila nunca ofrece un interruptor
+    /// que luego no hace nada, ni al revés.
+    /// </summary>
+    public bool Writable { get; init; }
+
+    /// <summary>
+    /// true cuando el ajuste es un sí o no y la vista puede pintar un interruptor. Los que
+    /// tienen valor numérico o un plan con nombre necesitan otro control.
+    /// </summary>
+    public bool IsToggle =>
+        Definition.AcceptableValues.Count == 1 &&
+        (Definition.AcceptableValues[0] == SettingReading.BooleanOn ||
+         Definition.AcceptableValues[0] == SettingReading.BooleanOff);
+
+    /// <summary>Estado del interruptor. null cuando no se ha podido leer.</summary>
+    public bool? ToggleState => Current switch
+    {
+        SettingReading.BooleanOn => true,
+        SettingReading.BooleanOff => false,
+        _ => null,
+    };
+
     /// <summary>true si esta fila sobrevive al filtro «solo lo que difiere del objetivo».</summary>
     public bool IsDeviation => Verdict is SettingVerdict.Differs or SettingVerdict.DiffersCritical;
 

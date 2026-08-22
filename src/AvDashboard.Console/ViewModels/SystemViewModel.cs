@@ -4,6 +4,7 @@ using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace AvDashboard.Console.ViewModels;
 
@@ -131,6 +132,60 @@ public sealed partial class SystemViewModel : PageViewModel
         return !OnlyHighImpact || evaluation.Definition.Impact == SettingImpact.High;
     }
 
+    /// <summary>
+    /// Aplica el valor contrario al que tiene ahora. Es lo que hace el interruptor.
+    ///
+    /// Después no se toca la fila a mano: se vuelve a pedir la auditoría entera. Si el
+    /// cambio no ha surtido efecto —falta de permisos, una directiva que lo pisa— la fila
+    /// vuelve sola a su sitio en lugar de quedarse mintiendo.
+    /// </summary>
+    [RelayCommand]
+    private async Task ToggleAsync(SettingRow? row)
+    {
+        if (row is null || !row.CanToggle)
+        {
+            return;
+        }
+
+        string target = row.IsOn == true ? SettingReading.BooleanOff : SettingReading.BooleanOn;
+
+        await ApplyAsync(row, target).ConfigureAwait(true);
+    }
+
+    /// <summary>Lleva la fila a su valor objetivo. Para las que no son un sí o un no.</summary>
+    [RelayCommand]
+    private async Task ApplyTargetAsync(SettingRow? row)
+    {
+        if (row?.Evaluation.Definition.AcceptableValues is not { Count: > 0 } acceptable)
+        {
+            return;
+        }
+
+        await ApplyAsync(row, acceptable[0]).ConfigureAwait(true);
+    }
+
+    private async Task ApplyAsync(SettingRow row, string value)
+    {
+        row.IsBusy = true;
+
+        try
+        {
+            ApiResult<SettingWriteResponse> result = await Nodes.Api()
+                .ApplySettingAsync(row.Evaluation.Definition.Id, value)
+                .ConfigureAwait(true);
+
+            Summary = result.Success
+                ? $"{row.Name}: {result.Value!.PreviousValue ?? "sin valor"} → {result.Value.AppliedValue}"
+                : result.Error ?? "No se ha podido aplicar el cambio.";
+        }
+        finally
+        {
+            row.IsBusy = false;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
     private static string FormatUptime(TimeSpan uptime) =>
         $"{(int)uptime.TotalDays} d {uptime.Hours} h {uptime.Minutes} min";
 }
@@ -176,7 +231,7 @@ public sealed class SettingGroupViewModel
 }
 
 /// <summary>Una fila del catálogo tal y como se pinta.</summary>
-public sealed class SettingRow
+public sealed partial class SettingRow : ObservableObject
 {
     public SettingRow(SettingEvaluation evaluation)
     {
@@ -184,6 +239,38 @@ public sealed class SettingRow
     }
 
     public SettingEvaluation Evaluation { get; }
+
+    /// <summary>Mientras se escribe, el control se bloquea para no encadenar clics.</summary>
+    [ObservableProperty]
+    private bool _isBusy;
+
+    /// <summary>true si la fila se pinta con interruptor.</summary>
+    public bool CanToggle => Evaluation.Writable && Evaluation.IsToggle;
+
+    /// <summary>true si la fila se pinta con un botón «llevar al objetivo».</summary>
+    public bool CanApplyTarget =>
+        Evaluation.Writable && !Evaluation.IsToggle && Evaluation.Definition.HasTarget;
+
+    public bool? IsOn => Evaluation.ToggleState;
+
+    /// <summary>
+    /// Por qué esta fila no tiene control. Se dice en lugar de dejar un hueco: «no se puede
+    /// tocar» y «no me he molestado» se ven igual si nadie lo explica.
+    /// </summary>
+    public string? NotWritableReason
+    {
+        get
+        {
+            if (Evaluation.Writable || !Evaluation.Definition.HasTarget)
+            {
+                return null;
+            }
+
+            return Evaluation.Definition.Risk == SettingRisk.Security
+                ? "A mano: cambiarlo reduce la seguridad de la máquina."
+                : "Solo lectura en esta versión.";
+        }
+    }
 
     public string Name => Evaluation.Definition.Name;
     public string Current => Evaluation.CurrentText;

@@ -5,6 +5,10 @@ using AvDashboard.Core.Models;
 using AvDashboard.Core.Video;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace AvDashboard.Console.ViewModels;
 
@@ -47,6 +51,12 @@ public sealed partial class VideoViewModel : PageViewModel
 
     [ObservableProperty]
     private string _referenceSummary = "Sin referencias guardadas.";
+
+    [ObservableProperty]
+    private string? _panicResult;
+
+    [ObservableProperty]
+    private bool _isPanicBusy;
 
     protected override async Task LoadAsync()
     {
@@ -281,6 +291,48 @@ public sealed partial class VideoViewModel : PageViewModel
               (significant == 0
                   ? "ninguna afecta a lo que se negocia en el cable."
                   : $"{significant} de ellas cambian lo que se negocia en el cable.");
+    }
+
+    /// <summary>
+    /// Reinicia el controlador gráfico (M15).
+    ///
+    /// Vive en esta pestaña y no en la barra porque es aquí donde miras cuando la pantalla
+    /// se ha quedado congelada. Deja las salidas en negro un par de segundos, así que no se
+    /// dispara sin confirmar, y el diálogo lo dice con esas palabras.
+    /// </summary>
+    [RelayCommand]
+    private async Task RestartGraphicsDriverAsync()
+    {
+        MessageBoxResult answer = MessageBox.Show(
+            "Las salidas de vídeo se quedarán en negro uno o dos segundos y Windows puede " +
+            "recolocar las ventanas.\n\n¿Reiniciar el controlador gráfico?",
+            "Reiniciar el controlador gráfico",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        IsPanicBusy = true;
+
+        try
+        {
+            ApiResult<GraphicsRestartResponse> result =
+                await Nodes.Api().RestartGraphicsDriverAsync().ConfigureAwait(true);
+
+            PanicResult = result.Success
+                ? result.Value!.Message
+                : result.Error ?? "El reinicio del controlador gráfico ha fallado.";
+        }
+        finally
+        {
+            IsPanicBusy = false;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     [RelayCommand]
