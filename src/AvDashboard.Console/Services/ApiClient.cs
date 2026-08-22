@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
@@ -17,7 +18,12 @@ namespace AvDashboard.Console.Services;
 /// </summary>
 public sealed class ApiClient : IDisposable
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        // El agente serializa los enums como cadena. Este convertidor lee las dos formas,
+        // asi que una consola nueva sigue hablando con un agente viejo.
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     private readonly HttpClient _http;
     private bool _disposed;

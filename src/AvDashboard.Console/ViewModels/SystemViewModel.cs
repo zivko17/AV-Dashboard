@@ -85,7 +85,7 @@ public sealed partial class SystemViewModel : PageViewModel
         Add("Defender — Tamper Protection",
             Describe(system.Settings.Defender.TamperProtectionEnabled),
             "lectura solamente", null,
-            system.Settings.Defender.RequiresManualIntervention
+            system.Settings.Defender.RequiresManualIntervention == true
                 ? "Con Tamper Protection activo no se puede tocar Defender por software. Es una intervención manual, una vez."
                 : null);
 

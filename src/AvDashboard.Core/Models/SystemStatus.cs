@@ -102,10 +102,14 @@ public sealed record DefenderStatus
     public bool? TamperProtectionEnabled { get; init; }
 
     /// <summary>
-    /// Cuando es true el toggle desde la app es imposible y la UI debe decirlo
-    /// claramente en vez de ofrecer un interruptor que no hace nada.
+    /// true cuando el toggle desde la app es imposible y la UI debe decirlo claramente en
+    /// vez de ofrecer un interruptor que no hace nada.
+    ///
+    /// Null cuando no se ha podido leer el estado de Tamper Protection, que es lo normal
+    /// sin elevacion. Un false ahi seria afirmar «no hace falta tocar nada a mano» sin
+    /// tener con que respaldarlo, y esto es un readout de seguridad.
     /// </summary>
-    public bool RequiresManualIntervention => TamperProtectionEnabled == true;
+    public bool? RequiresManualIntervention => TamperProtectionEnabled;
 }
 
 /// <summary>Prioridad y afinidad persistentes por proceso (M1).</summary>

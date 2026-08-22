@@ -75,6 +75,12 @@ builder.Services.ConfigureHttpJsonOptions(json =>
     json.SerializerOptions.PropertyNamingPolicy = global::System.Text.Json.JsonNamingPolicy.CamelCase;
     json.SerializerOptions.DefaultIgnoreCondition =
         global::System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+
+    // Enums como cadena y no como numero. Un "state": 3 no lo lee nadie, ni tu con
+    // PowerShell ni un boton de Companion, y ademas rompia el CLI, que compara el estado
+    // de un servicio con la cadena "Running".
+    json.SerializerOptions.Converters.Add(
+        new global::System.Text.Json.Serialization.JsonStringEnumConverter());
 });
 
 // Colectores de la Fase 1. Todos son de solo lectura: es la parte que no puede

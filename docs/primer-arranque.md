@@ -135,6 +135,32 @@ Con esto puedo arreglar casi cualquier cosa sin verte la pantalla:
 4. **Una captura del dashboard** si lo que falla es visual. Para los iconos y los anchos de
    columna no hay otra.
 
+## Resultado del primer arranque real (22/08/2026, PC_ANDRES)
+
+Verificado en una máquina con Focusrite, NVIDIA, AMD, VB-Cable y NDI Tools:
+
+| Qué | Resultado |
+|---|---|
+| Enumeración de audio | 38 endpoints, render y captura, incluidos los no presentes |
+| `PROPVARIANT` del formato declarado | Correcto: 48 kHz/16, /24 y /32 según el endpoint |
+| Formato de mezcla vía `IAudioClient` | Correcto: 48 kHz/32/2 en los activos |
+| Detección de mismatch de sample rate | **Encontró uno real**: los NDI Webcam Audio declaran 44,1 kHz con el motor a 48 |
+| Registro ASIO | 5 drivers con ruta de DLL |
+| Interfaces de red | MAC, velocidad de enlace, DHCP, gateways, DNS, throughput |
+| Servicios | 308 clasificados por sector |
+| Telemetría de CPU por core | 24 cores, valores plausibles |
+| Colectores | Cero avisos: ninguno falla en silencio |
+
+### Huecos conocidos que salieron de ahí
+
+- **`measuredRefreshHz` viene `null`.** `DwmGetCompositionTimingInfo` no devuelve nada útil
+  desde el agente. No se investiga ahora: la medida por salida necesita NVAPI de todas
+  formas y es Fase 4.
+- **`monitorName` dice «Generic PnP Monitor».** Es lo que da `EnumDisplayDevices`; el
+  nombre real está en el EDID, que es M18.
+- **Sin elevación, Defender no es legible.** Correcto y esperado; ahora se reporta como
+  desconocido en lugar de como «no hace falta intervención».
+
 ## Lo que todavía no va a funcionar, y es esperado
 
 - Todo lo que escriba en el sistema: responde `501` con la fase en la que llega.
