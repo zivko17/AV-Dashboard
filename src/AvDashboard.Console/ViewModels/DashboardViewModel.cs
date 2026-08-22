@@ -171,8 +171,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         NetworkResponse? network,
         IReadOnlyList<PingStatistics>? pings)
     {
-        NetworkInterfaceInfo? primary = network?.Interfaces
-            .FirstOrDefault(i => i.IsUp && i.Ipv4Addresses.Count > 0);
+        NetworkInterfaceInfo? primary = PickPrimaryInterface(network?.Interfaces);
 
         double? worstRtt = pings?.Where(p => p.AverageMs is not null).Max(p => p.AverageMs);
 
@@ -194,6 +193,30 @@ public sealed partial class DashboardViewModel : PageViewModel
                         : "power mgmt correcto",
                 },
         };
+    }
+
+    /// <summary>
+    /// La interfaz que la tarjeta debe enseñar.
+    ///
+    /// Coger la primera activa con IPv4 saca el túnel de Tailscale, que es justo la
+    /// información equivocada: en un rig quieres ver la interfaz por la que va Dante, no
+    /// la VPN. Tener puerta de enlace es lo que distingue a una NIC real de un túnel o de
+    /// un adaptador host-only de VirtualBox.
+    /// </summary>
+    private static NetworkInterfaceInfo? PickPrimaryInterface(
+        IReadOnlyList<NetworkInterfaceInfo>? interfaces)
+    {
+        if (interfaces is null)
+        {
+            return null;
+        }
+
+        List<NetworkInterfaceInfo> candidates = interfaces
+            .Where(i => i.IsUp && i.Ipv4Addresses.Count > 0)
+            .ToList();
+
+        return candidates.FirstOrDefault(i => i.Gateways.Count > 0)
+               ?? candidates.FirstOrDefault();
     }
 
     private StatusCardViewModel BuildServicesCard(ServicesResponse? services)

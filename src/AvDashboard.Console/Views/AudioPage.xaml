@@ -51,7 +51,7 @@
                                 </Grid.ColumnDefinitions>
                                 <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
                                          Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
-                                <TextBlock Grid.Column="1" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"
+                                <TextBlock Grid.Column="1" Margin="10,0,14,0" TextTrimming="CharacterEllipsis"
                                            Text="{Binding Name}" ToolTip="{Binding Name}" />
                                 <TextBlock Grid.Column="2" Text="{Binding Direction}"
                                            Style="{StaticResource CaptionText}" />

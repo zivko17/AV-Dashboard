@@ -61,7 +61,7 @@
                                                 <ColumnDefinition Width="90" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding DisplayName}"
+                                            <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Margin="0,0,14,0"
                                                        TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
                                             <TextBlock Grid.Column="1" Text="{Binding State}" FontFamily="Consolas" />
                                             <TextBlock Grid.Column="2" Text="{Binding StartMode}"
