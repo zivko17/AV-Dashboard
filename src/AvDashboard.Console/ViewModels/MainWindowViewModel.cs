@@ -157,17 +157,4 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [RelayCommand]
     private Task RefreshCurrentAsync() => Current.RefreshAsync();
-
-    [RelayCommand]
-    private void TogglePalette()
-    {
-        IsPaletteOpen = !IsPaletteOpen;
-        if (IsPaletteOpen)
-        {
-            Palette.Reset();
-        }
-    }
-
-    [RelayCommand]
-    private Task RefreshCurrentAsync() => Current.RefreshAsync();
 }

@@ -109,7 +109,7 @@
                     </Border>
                 </StackPanel>
 
-<!--
+                <!--
                     El reinicio del controlador grafico se ha ido a la pestana Video, que es
                     donde se busca cuando la pantalla se queda congelada. Aqui volvera un
                     menu de panico cuando haya varias acciones que ofrecer.
