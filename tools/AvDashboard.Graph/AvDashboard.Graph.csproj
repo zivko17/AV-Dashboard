@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!--
+      net8.0 a secas y no net8.0-windows: este generador corre en el gancho de commit
+      del portatil y tambien en el trabajo de Linux del CI, que es quien comprueba que
+      el grafo del repositorio esta al dia.
+    -->
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>AvDashboard.Graph</RootNamespace>
+    <AssemblyName>avgraph</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AvDashboard.Core\AvDashboard.Core.csproj" />
+  </ItemGroup>
+
+</Project>

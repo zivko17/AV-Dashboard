@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Regenera docs/grafo.md y lo anade al commit.
+#
+# Se instala con scripts/Install-Hooks.ps1, que apunta core.hooksPath aqui. Los ganchos no
+# viajan con el repositorio por diseno de git: un gancho que se instala solo al clonar
+# seria ejecucion de codigo ajeno sin pedir permiso.
+#
+# Si dotnet no esta o el generador falla, el commit sigue adelante. Un gancho que bloquea
+# un commit por no poder dibujar un diagrama es un gancho que la gente desactiva a la
+# semana; para eso ya esta el CI, que si lo comprueba en serio.
+
+if ! command -v dotnet >/dev/null 2>&1; then
+    echo "pre-commit: dotnet no esta en el PATH, no se regenera el grafo." >&2
+    exit 0
+fi
+
+raiz=$(git rev-parse --show-toplevel)
+
+if ! dotnet run --project "$raiz/tools/AvDashboard.Graph" --verbosity quiet -- "$raiz" >/dev/null 2>&1; then
+    echo "pre-commit: el generador del grafo ha fallado, el commit sigue." >&2
+    exit 0
+fi
+
+if ! git diff --quiet -- "$raiz/docs/grafo.md" 2>/dev/null; then
+    git add "$raiz/docs/grafo.md"
+    echo "pre-commit: docs/grafo.md regenerado y anadido."
+fi
+
+exit 0

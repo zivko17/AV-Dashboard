@@ -61,3 +61,9 @@ jobs:
 
       - name: Probar Core
         run: dotnet test tests/AvDashboard.Core.Tests/AvDashboard.Core.Tests.csproj --configuration Release
+
+      # El mapa del proyecto se genera desde el codigo. Si alguien commitea sin
+      # regenerarlo, el diagrama empieza a mentir, y un diagrama que miente es peor que no
+      # tenerlo. Esto lo impide.
+      - name: Comprobar que docs/grafo.md esta al dia
+        run: dotnet run --project tools/AvDashboard.Graph --configuration Release -- . --check
