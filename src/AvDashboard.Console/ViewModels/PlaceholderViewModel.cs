@@ -1,4 +1,4 @@
-using AvDashboard.Console.Services;
+using AvDashboard.Client;
 using AvDashboard.Core.Models;
 
 namespace AvDashboard.Console.ViewModels;

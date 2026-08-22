@@ -1,4 +1,4 @@
-using AvDashboard.Console.Services;
+using AvDashboard.Client;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;

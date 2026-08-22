@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace AvDashboard.Console.Services;
+namespace AvDashboard.Client;
 
 /// <summary>
 /// Los nodos que conoce la consola y cual esta seleccionado.

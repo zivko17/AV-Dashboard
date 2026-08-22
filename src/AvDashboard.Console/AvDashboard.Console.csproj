@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AvDashboard.Core\AvDashboard.Core.csproj" />
+    <ProjectReference Include="..\AvDashboard.Client\AvDashboard.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,7 +28,6 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
     <!-- El acento del usuario sale de AccentPalette. Ver Services/DesktopChrome.cs. -->
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

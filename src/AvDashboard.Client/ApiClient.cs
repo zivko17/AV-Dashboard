@@ -8,7 +8,7 @@ using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Settings;
 
-namespace AvDashboard.Console.Services;
+namespace AvDashboard.Client;
 
 /// <summary>
 /// Cliente de la API del agente.

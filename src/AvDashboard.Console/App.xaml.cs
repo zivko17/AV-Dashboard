@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using AvDashboard.Client;
 using AvDashboard.Console.Services;
 using AvDashboard.Console.ViewModels;
 

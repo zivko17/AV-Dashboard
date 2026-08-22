@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>AvDashboard.Client</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    net8.0 a secas y no net8.0-windows: aqui no hay nada de Windows. Es lo que permite que
+    lo compilen y prueben las dos interfaces —la de WPF y la de WinUI 3— y ademas que el CI
+    de Linux lo cubra, que es donde se prueba de verdad.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\AvDashboard.Core\AvDashboard.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

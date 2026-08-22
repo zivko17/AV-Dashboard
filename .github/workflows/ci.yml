@@ -59,6 +59,11 @@ jobs:
       - name: Compilar Core
         run: dotnet build src/AvDashboard.Core/AvDashboard.Core.csproj --configuration Release
 
+      # La capa de cliente tampoco depende de Windows: la comparten la interfaz de WPF y la
+      # de WinUI 3, y compilarla aqui es lo que garantiza que siga sin atarse a ninguna.
+      - name: Compilar el cliente
+        run: dotnet build src/AvDashboard.Client/AvDashboard.Client.csproj --configuration Release
+
       - name: Probar Core
         run: dotnet test tests/AvDashboard.Core.Tests/AvDashboard.Core.Tests.csproj --configuration Release
 

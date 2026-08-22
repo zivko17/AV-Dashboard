@@ -1,4 +1,4 @@
-namespace AvDashboard.Console.Services;
+namespace AvDashboard.Client;
 
 /// <summary>Un agente al que la consola se puede conectar.</summary>
 public sealed record AgentEndpoint

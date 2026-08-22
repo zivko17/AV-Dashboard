@@ -2,7 +2,7 @@ using AvDashboard.Core.Contracts;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace AvDashboard.Console.Services;
+namespace AvDashboard.Client;
 
 /// <summary>
 /// Cliente del hub de telemetria.

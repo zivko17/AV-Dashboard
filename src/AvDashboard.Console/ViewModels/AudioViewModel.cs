@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Console.Services;
+using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;

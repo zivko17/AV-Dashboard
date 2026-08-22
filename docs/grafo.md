@@ -11,6 +11,7 @@
 graph TD
     AvDashboard_Agent["AvDashboard.Agent<br/><small>net8.0-windows</small>"]
     AvDashboard_Cli(["AvDashboard.Cli<br/><small>net8.0</small>"])
+    AvDashboard_Client(["AvDashboard.Client<br/><small>net8.0</small>"])
     AvDashboard_Console["AvDashboard.Console<br/><small>net8.0-windows</small>"]
     AvDashboard_Core(["AvDashboard.Core<br/><small>net8.0</small>"])
     AvDashboard_Native["AvDashboard.Native<br/><small>net8.0-windows</small>"]
@@ -20,7 +21,9 @@ graph TD
     AvDashboard_Agent --> AvDashboard_Core
     AvDashboard_Agent --> AvDashboard_Native
     AvDashboard_Cli --> AvDashboard_Core
+    AvDashboard_Client --> AvDashboard_Core
     AvDashboard_Console --> AvDashboard_Core
+    AvDashboard_Console --> AvDashboard_Client
     AvDashboard_Native --> AvDashboard_Core
     AvDashboard_Core_Tests --> AvDashboard_Core
     AvDashboard_Graph --> AvDashboard_Core
