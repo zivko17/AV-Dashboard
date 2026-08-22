@@ -43,12 +43,18 @@ public sealed class EdidLibrary
 
         // Las salidas activas se resuelven aparte para poder marcar cuáles están
         // conectadas y por qué salida GDI salen.
-        Dictionary<string, string> connectedByFingerprint = new(StringComparer.Ordinal);
+        //
+        // La clave es la instancia y no la huella. Windows guarda una entrada por cada
+        // puerto en el que ha visto el monitor, así que un mismo panel aparece varias veces
+        // con bytes idénticos: emparejando por huella, todas esas entradas se marcarían como
+        // conectadas a la misma salida, y la lista diría que tienes cuatro monitores
+        // enchufados donde hay dos.
+        Dictionary<string, string> connectedByInstance = new(StringComparer.OrdinalIgnoreCase);
         try
         {
             foreach ((string deviceName, RawEdid edid) in DisplayTopologyProvider.GetActiveEdids())
             {
-                connectedByFingerprint[edid.Fingerprint] = deviceName;
+                connectedByInstance[InstanceKey(edid.HardwareId, edid.InstanceId)] = deviceName;
             }
         }
         catch (Exception ex) when (ex is InvalidOperationException or PlatformNotSupportedException)
@@ -69,8 +75,8 @@ public sealed class EdidLibrary
                 HardwareId = raw.HardwareId,
                 InstanceId = raw.InstanceId,
                 Fingerprint = raw.Fingerprint,
-                Connected = connectedByFingerprint.ContainsKey(raw.Fingerprint),
-                DeviceName = connectedByFingerprint.GetValueOrDefault(raw.Fingerprint),
+                Connected = connectedByInstance.ContainsKey(InstanceKey(raw.HardwareId, raw.InstanceId)),
+                DeviceName = connectedByInstance.GetValueOrDefault(InstanceKey(raw.HardwareId, raw.InstanceId)),
                 ByteCount = raw.Bytes.Length,
                 Parsed = parsed,
                 Findings = findings,
@@ -87,6 +93,9 @@ public sealed class EdidLibrary
                 .ToList(),
         };
     }
+
+    private static string InstanceKey(string hardwareId, string instanceId) =>
+        $"{hardwareId}\\{instanceId}";
 
     public RawEdid? Get(string id) =>
         OperatingSystem.IsWindows() && EdidEntryId.TryDecode(id, out string hardware, out string instance)

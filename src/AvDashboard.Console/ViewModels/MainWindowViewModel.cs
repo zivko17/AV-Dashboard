@@ -4,6 +4,10 @@ using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace AvDashboard.Console.ViewModels;
 
@@ -33,9 +37,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             new ServicesViewModel(nodes),
             new PlaceholderViewModel(nodes, "Producción", "\uE7F4", "Fase 5",
                 "Una tarjeta por aplicación con estado, frames y watchdog: vMix, OBS, Resolume, Watchout y Companion."),
-            new PlaceholderViewModel(nodes, "Perfiles", "\uE8FD", "Fase 2",
-                "Editor de perfiles de escenario, historial de ejecuciones y rollback por ejecución. " +
-                "El motor transaccional ya está en AvDashboard.Core; faltan los actuadores."),
+            new ProfilesViewModel(nodes),
             new PlaceholderViewModel(nodes, "Nodos", "\uE977", "Fase 3",
                 "Vista consolidada de la flota y lanzador de RDP, VNC y web para máquinas sin agente."),
             new TimelineViewModel(nodes),
@@ -76,6 +78,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isPaletteOpen;
+
+    /// <summary>Lo que ha contestado la última acción de pánico, para pintarlo en la barra.</summary>
+    [ObservableProperty]
+    private string? _panicResult;
+
+    [ObservableProperty]
+    private bool _isPanicBusy;
 
     public async Task InitializeAsync()
     {
@@ -159,4 +168,44 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [RelayCommand]
     private Task RefreshCurrentAsync() => Current.RefreshAsync();
+
+    /// <summary>
+    /// Reinicia el controlador gráfico (M15).
+    ///
+    /// Deja las salidas en negro un par de segundos, así que no se dispara sin confirmar.
+    /// Es una acción para cuando la pantalla ya está congelada, no una medida preventiva, y
+    /// el diálogo lo dice con esas palabras.
+    /// </summary>
+    [RelayCommand]
+    private async Task RestartGraphicsDriverAsync()
+    {
+        MessageBoxResult answer = MessageBox.Show(
+            "Las salidas de vídeo se quedarán en negro uno o dos segundos y Windows puede " +
+            "recolocar las ventanas.\n\n¿Reiniciar el controlador gráfico?",
+            "Reiniciar el controlador gráfico",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        IsPanicBusy = true;
+
+        try
+        {
+            ApiResult<GraphicsRestartResponse> result =
+                await _nodes.Api().RestartGraphicsDriverAsync().ConfigureAwait(true);
+
+            PanicResult = result.Success
+                ? result.Value!.Message
+                : result.Error ?? "El reinicio del controlador gráfico ha fallado.";
+        }
+        finally
+        {
+            IsPanicBusy = false;
+        }
+    }
 }

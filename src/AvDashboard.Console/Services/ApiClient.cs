@@ -62,6 +62,58 @@ public sealed class ApiClient : IDisposable
     public Task<ApiResult<ServicesResponse>> GetServicesAsync(CancellationToken ct = default) =>
         GetAsync<ServicesResponse>(ApiRoutes.Services, ct);
 
+    public Task<ApiResult<ProfilesResponse>> GetProfilesAsync(CancellationToken ct = default) =>
+        GetAsync<ProfilesResponse>(ApiRoutes.Profiles, ct);
+
+    /// <summary>
+    /// La exportacion llega como texto y no como objeto: lo que devuelve la ruta es
+    /// exactamente el contenido del fichero, y volver a serializarlo lo cambiaria.
+    /// </summary>
+    public async Task<ApiResult<string>> ExportProfileAsync(string id, CancellationToken ct = default)
+    {
+        try
+        {
+            using HttpResponseMessage response = await _http
+                .GetAsync($"{ApiRoutes.ProfileExport}?id={Uri.EscapeDataString(id)}", ct)
+                .ConfigureAwait(false);
+
+            string body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+
+            return response.IsSuccessStatusCode
+                ? ApiResult<string>.Ok(body)
+                : ApiResult<string>.Failed($"El agente respondió {(int)response.StatusCode}.");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return ApiResult<string>.Offline(Describe(ex));
+        }
+    }
+
+    public async Task<ApiResult<ProfileImportResponse>> ImportProfileAsync(
+        string json, CancellationToken ct = default)
+    {
+        try
+        {
+            using StringContent content = new(json, global::System.Text.Encoding.UTF8, "application/json");
+            using HttpResponseMessage response = await _http
+                .PostAsync(ApiRoutes.ProfileImport, content, ct).ConfigureAwait(false);
+
+            return await ReadAsync<ProfileImportResponse>(response, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return ApiResult<ProfileImportResponse>.Offline(Describe(ex));
+        }
+    }
+
+    /// <summary>Reinicia el controlador grafico (M15). Deja las salidas en negro un instante.</summary>
+    public Task<ApiResult<GraphicsRestartResponse>> RestartGraphicsDriverAsync(
+        CancellationToken ct = default) =>
+        PostAsync<GraphicsRestartResponse>(
+            ApiRoutes.Panic.Replace("{action}", PanicActions.RestartGraphicsDriver,
+                StringComparison.Ordinal),
+            null, ct);
+
     public Task<ApiResult<SettingsAudit>> GetSystemAuditAsync(CancellationToken ct = default) =>
         GetAsync<SettingsAudit>(ApiRoutes.SystemAudit, ct);
 
@@ -198,6 +250,14 @@ public sealed class ApiClient : IDisposable
         _http.Dispose();
         _disposed = true;
     }
+}
+
+/// <summary>Lo que devuelve el reinicio del controlador grafico.</summary>
+public sealed record GraphicsRestartResponse
+{
+    public bool Success { get; init; }
+    public string Message { get; init; } = string.Empty;
+    public IReadOnlyList<string> Adapters { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>Respuesta de tomar un baseline de servicios.</summary>
