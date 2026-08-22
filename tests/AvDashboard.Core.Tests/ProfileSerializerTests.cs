@@ -130,6 +130,18 @@ public class ProfileSerializerTests
     }
 
     [Fact]
+    public void Un_perfil_mal_formado_se_rechaza_sin_lanzar()
+    {
+        // El perfil esta, pero sin los campos obligatorios. Aqui el mensaje sale del
+        // deserializador; lo que importa es que no propague una excepcion.
+        ProfileImportResult result = ProfileSerializer.Import(
+            """{ "formatVersion": 1, "profile": { } }""");
+
+        Assert.False(result.Success);
+        Assert.Contains("no es un perfil válido", result.Error);
+    }
+
+    [Fact]
     public void Un_perfil_sin_nombre_se_rechaza()
     {
         // Sin nombre no hay forma de elegirlo en una lista, y el nombre es la unica parte

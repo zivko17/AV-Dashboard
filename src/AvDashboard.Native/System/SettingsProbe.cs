@@ -117,6 +117,52 @@ public static class SettingsProbe
         readings.Add(ReadWakeArmedTasks());
     }
 
+    private static string? DescribePlan(Guid? scheme)
+    {
+        if (scheme is not Guid plan)
+        {
+            return null;
+        }
+
+        if (plan == PowerConfiguration.UltimatePerformanceScheme)
+        {
+            return "ultimate";
+        }
+
+        if (plan == PowerConfiguration.HighPerformanceScheme)
+        {
+            return "high";
+        }
+
+        return plan == PowerConfiguration.BalancedScheme ? "balanced" : "other";
+    }
+
+    private static string DescribeTimeout(uint seconds) =>
+        seconds == 0 ? "nunca" : $"{TimeSpan.FromSeconds(seconds).TotalMinutes:0.#} min";
+
+    /// <summary>
+    /// Lee un ajuste del plan de energia activo y lo anade ya formateado.
+    ///
+    /// Que el plan no exponga un ajuste es normal —depende del hardware y de la edicion de
+    /// Windows—, asi que sale como ausente y el catalogo lo trata como desconocido en vez
+    /// de como incorrecto.
+    /// </summary>
+    private static void AddAc(
+        List<SettingReading> readings, string id, Guid subGroup, Guid setting,
+        Func<uint, (string Value, string? Display)> format)
+    {
+        uint? raw = PowerConfiguration.ReadActiveAcValue(subGroup, setting);
+
+        if (raw is not uint value)
+        {
+            readings.Add(SettingReading.Missing(id, "el plan activo no expone este ajuste"));
+            return;
+        }
+
+        (string canonical, string? display) = format(value);
+        readings.Add(SettingReading.Of(id, canonical, display));
+    }
+
     /// <summary>
     /// Tareas programadas con «despertar el equipo» armado.
     ///

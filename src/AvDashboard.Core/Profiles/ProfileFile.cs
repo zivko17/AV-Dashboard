@@ -20,7 +20,13 @@ public sealed record ProfileFile
     /// <summary>Versión del formato del fichero, no de la aplicación.</summary>
     public int FormatVersion { get; init; } = CurrentFormatVersion;
 
-    public required ProfileDefinition Profile { get; init; }
+    /// <summary>
+    /// Anulable y no <c>required</c> a proposito. Con required, un JSON valido pero que no
+    /// es un perfil revienta dentro del deserializador y el usuario recibe el texto interno
+    /// de .NET en vez de «el fichero no contiene ningun perfil». El hueco se comprueba aqui
+    /// abajo, que es donde se puede decir algo util.
+    /// </summary>
+    public ProfileDefinition? Profile { get; init; }
 
     /// <summary>Nodo del que salió, solo como referencia de dónde funcionaba.</summary>
     public string? ExportedFrom { get; init; }
