@@ -32,6 +32,26 @@ $raiz = Split-Path -Parent $PSScriptRoot
 $log  = Join-Path $env:TEMP 'avdash-agente.log'
 Set-Location $raiz
 
+# 0. Que exista el SDK. El error de `dotnet` no encontrado sale como un ParserError de
+#    PowerShell y no dice lo que pasa.
+if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    Write-Host 'No se encuentra `dotnet`.' -ForegroundColor Red
+    Write-Host 'Hace falta el SDK de .NET 8: https://dotnet.microsoft.com/download/dotnet/8.0' -ForegroundColor DarkGray
+    return
+}
+
+# Sin privilegios, media docena de ajustes del catalogo no se pueden ni leer ni escribir, y
+# la pestana Sistema los lista en «sin lectura». No es un fallo, pero conviene saberlo antes
+# de mirar la pantalla y no despues.
+$principal = New-Object Security.Principal.WindowsPrincipal(
+    [Security.Principal.WindowsIdentity]::GetCurrent())
+
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host 'Aviso: esta terminal no es de administrador.' -ForegroundColor Yellow
+    Write-Host 'Arranca igual, pero habra ajustes que el agente no pueda leer ni cambiar.' -ForegroundColor DarkGray
+    Write-Host ''
+}
+
 # 1. Parar el agente: es lo que bloquea las DLL.
 $vivos = Get-Process -Name AvDashboard.Agent -ErrorAction SilentlyContinue
 if ($vivos) {
@@ -77,4 +97,10 @@ Write-Host "Agente en marcha. Log: $log" -ForegroundColor Green
 if (-not $SinConsola) {
     Write-Host 'Arrancando la consola…' -ForegroundColor DarkGray
     dotnet run --project src/AvDashboard.Console --no-build
+
+    # Al cerrar la ventana, el agente sigue vivo a proposito: asi se puede seguir
+    # trasteando con la API. Pero hay que decirlo, o se queda ahi sin que nadie lo sepa.
+    Write-Host ''
+    Write-Host 'La consola se ha cerrado. El agente sigue corriendo en segundo plano.' -ForegroundColor DarkGray
+    Write-Host 'Para pararlo:  .\scripts\Stop-Dev.ps1' -ForegroundColor DarkGray
 }

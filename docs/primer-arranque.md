@@ -138,7 +138,24 @@ dotnet run --project src/AvDashboard.Cli -- timeline 15
 
 `preshow` es el que da veredicto verde o rojo con la lista de lo que falla.
 
-## 7. Qué mandarme si algo va mal
+## 7. El informe de diagnóstico
+
+Antes que ninguna captura, esto:
+
+```powershell
+.\scripts\Get-Diagnostico.ps1
+```
+
+Con el agente en marcha, pregunta por la auditoría, las pantallas y el audio, y escribe un
+informe de texto en el escritorio, además de copiarlo al portapapeles. No cambia nada: solo
+lee.
+
+Merece la pena ejecutarlo **dos veces, normal y como administrador**. La diferencia entre
+las dos en el bloque «sin lectura» es exactamente el dato que dice si la sonda necesita
+correr en modo servicio o le basta con la sesión del usuario, y no hay forma de saberlo sin
+probarlo en una máquina de verdad.
+
+## 8. Qué mandarme si algo va mal
 
 Con esto puedo arreglar casi cualquier cosa sin verte la pantalla:
 
@@ -149,6 +166,8 @@ Con esto puedo arreglar casi cualquier cosa sin verte la pantalla:
    excepción no controlada y enseñar el mensaje.
 4. **Una captura del dashboard** si lo que falla es visual. Para los iconos y los anchos de
    columna no hay otra.
+5. **El informe de `Get-Diagnostico.ps1`**, que ahorra los tres primeros puntos en la
+   mayoría de los casos.
 
 ## Resultado del primer arranque real (22/08/2026, PC_ANDRES)
 

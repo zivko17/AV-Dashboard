@@ -57,13 +57,28 @@ Requiere el **SDK de .NET 8** y Windows 11 x64 (funciona en Windows 10 1809+).
 ```powershell
 git clone <url> av-dashboard
 cd av-dashboard
+
+# Compila, arranca el agente en segundo plano y abre la consola
+.\scripts\Start-Dev.ps1
+```
+
+El script para el agente antes de compilar —en marcha bloquea sus propias DLL y `dotnet
+build` falla con MSB3027—, espera a que responda `/health` y solo entonces abre la ventana.
+`-SinConsola` deja solo el agente; `-SinCompilar` relanza sin volver a compilar; y
+`Stop-Dev.ps1` para las dos cosas.
+
+A mano, si se prefiere:
+
+```powershell
 dotnet build
+dotnet run --project src/AvDashboard.Agent -- --portable   # un terminal
+dotnet run --project src/AvDashboard.Console               # otro
+```
 
-# El agente, en primer plano y sin instalar nada
-dotnet run --project src/AvDashboard.Agent -- --portable
+Para ver qué está leyendo el agente en esta máquina, con el informe listo para pegar:
 
-# La consola, en otro terminal
-dotnet run --project src/AvDashboard.Console
+```powershell
+.\scripts\Get-Diagnostico.ps1
 ```
 
 Para instalarlo como servicio (arranca antes del login), ver
