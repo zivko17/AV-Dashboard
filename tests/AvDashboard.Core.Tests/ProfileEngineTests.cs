@@ -28,9 +28,9 @@ public class ProfileEngineTests
     [Fact]
     public async Task Toma_snapshot_antes_de_tocar_nada()
     {
-        FakeSnapshotStore snapshots = new();
         FakeRegistry registry = new();
         registry.Add("system.powerplan", "Equilibrado", "Ultimate Performance");
+        FakeSnapshotStore snapshots = new(() => registry.ApplyCount);
 
         ProfileEngine engine = new(registry, snapshots);
 
@@ -38,7 +38,25 @@ public class ProfileEngineTests
 
         Assert.Equal("snapshot-1", run.SnapshotId);
         Assert.Equal(ProfileRunStatus.Completed, run.Status);
-        Assert.True(snapshots.CapturedBeforeAnyApply);
+        Assert.Equal(0, snapshots.AppliesBeforeCapture);
+        Assert.Equal(1, registry.ApplyCount);
+    }
+
+    [Fact]
+    public async Task Si_el_rollback_tambien_falla_se_dice_exactamente_que_ha_quedado_a_medias()
+    {
+        // Es el peor escenario posible y el unico en el que la maquina queda en un estado
+        // que no es ni el de antes ni el de despues. Tiene que gritarlo, no devolver false.
+        FakeRegistry registry = new();
+        registry.Add("network.profile", "DHCP", "Dante 172.31", failsOnApply: true);
+        FakeSnapshotStore snapshots = new(restoreSucceeds: false);
+
+        ProfileEngine engine = new(registry, snapshots);
+
+        ProfileRun run = await engine.ApplyAsync(Profile(Step("network.profile")), "nodo-1");
+
+        Assert.Equal(ProfileRunStatus.RollbackFailed, run.Status);
+        Assert.Contains("M1", run.RollbackMessage);
     }
 
     [Fact]
@@ -213,25 +231,40 @@ public class ProfileEngineTests
                 ? ActuationResult.Failed(ActionId, "El actuador ha fallado")
                 : ActuationResult.Ok(ActionId));
         }
+
+        public Task<string> CaptureCurrentAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult($"{{\"value\":\"{_current}\"}}");
     }
 
     private sealed class FakeSnapshotStore : ISnapshotStore
     {
-        private bool _applied;
+        private readonly Func<int>? _applyCount;
+        private readonly bool _restoreSucceeds;
+
+        public FakeSnapshotStore(Func<int>? applyCount = null, bool restoreSucceeds = true)
+        {
+            _applyCount = applyCount;
+            _restoreSucceeds = restoreSucceeds;
+        }
 
         public string? RestoredId { get; private set; }
-        public bool CapturedBeforeAnyApply { get; private set; }
+
+        /// <summary>Cuantos actuadores se habian aplicado ya cuando se tomo el snapshot.</summary>
+        public int AppliesBeforeCapture { get; private set; } = -1;
 
         public Task<string> CaptureAsync(string nodeId, string trigger, CancellationToken cancellationToken = default)
         {
-            CapturedBeforeAnyApply = !_applied;
+            AppliesBeforeCapture = _applyCount?.Invoke() ?? 0;
             return Task.FromResult("snapshot-1");
         }
 
-        public Task<bool> RestoreAsync(string snapshotId, CancellationToken cancellationToken = default)
+        public Task<RestoreResult> RestoreAsync(string snapshotId, CancellationToken cancellationToken = default)
         {
             RestoredId = snapshotId;
-            return Task.FromResult(true);
+
+            return Task.FromResult(_restoreSucceeds
+                ? RestoreResult.Ok
+                : new RestoreResult { Success = false, Message = "El módulo M1 no ha podido restaurar." });
         }
     }
 

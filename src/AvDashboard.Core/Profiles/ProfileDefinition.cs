@@ -82,6 +82,12 @@ public sealed record ProfileRun
     /// <summary>true si la ejecucion se lanzo con show activo y confirmacion explicita.</summary>
     public bool ForcedDuringShow { get; init; }
 
+    /// <summary>
+    /// Que ha quedado a medias si el rollback fallo. Null cuando no hubo rollback o cuando
+    /// salio bien. Es el campo que hay que leer antes de tocar nada mas en esa maquina.
+    /// </summary>
+    public string? RollbackMessage { get; init; }
+
     [JsonIgnore]
     public bool CanRollback =>
         SnapshotId is not null &&

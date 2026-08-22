@@ -22,16 +22,32 @@ peligroso: nada de lo que hay aquí puede tumbar un evento porque nada escribe.
 **Hecho.** Lo que queda pendiente dentro de la fase está marcado en el
 [README](../README.md) y responde `501` con su motivo.
 
-## Fase 2 — Escritura y perfiles
+## Fase 2 — Escritura y perfiles 🚧
 
 Agente promovido a servicio. Snapshot engine, rollback, M2 (firewall), M10 (perfiles),
 M15 (pánico). `dryRun` obligatorio en toda escritura.
 
-El motor de perfiles ya existe y está probado (`Core/Profiles/ProfileEngine.cs`); lo que
-falta son los actuadores concretos, cada uno con su `ISnapshotable`.
+**Ya hecho, en Core y probado sin necesidad de Windows:**
+
+| Pieza | Qué es |
+|---|---|
+| `Profiles/ActionIds.cs` | Los identificadores estables de cada actuador, y cuáles son disruptivos |
+| `Profiles/ActionParameters.cs` | Los parámetros tipados de cada acción: el contrato contra el que se escribirán los actuadores |
+| `Profiles/ActuatorRegistry.cs` | La lista blanca del §7 hecha código, más el adaptador entre un actuador tipado y el motor |
+| `Profiles/SnapshotEngine.cs` | Captura y restaura todos los módulos; sigue adelante aunque uno falle |
+| `Profiles/InverseProfileBuilder.cs` | Genera el «Oficina» desde el estado real del nodo, deshaciendo en orden inverso |
+| `Profiles/ProfileLibrary.cs` | «Evento — Rig Portátil», «Oficina» y un perfil de diagnóstico que no toca nada |
+| `ProfileEngine` | Ya devolvía el diff y el rollback; ahora informa de qué ha quedado a medias si el rollback falla |
+
+**Lo que falta:** los actuadores concretos en `AvDashboard.Native`, uno por `ActionId`,
+cada uno con su `ISnapshotable`. Cada uno es código nuevo y una revisión — esa es la
+mitad del sentido de la lista blanca.
 
 Criterio de salida: aplicar el perfil «Evento» en un rig y volver a «Oficina» con un clic,
 con el diff visible antes de aplicar.
+
+El perfil «Diagnóstico» existe para poder probar el motor entero —snapshot, diff,
+rollback— en una máquina real antes de que exista un solo actuador que toque algo.
 
 ## Fase 3 — Multi-nodo
 

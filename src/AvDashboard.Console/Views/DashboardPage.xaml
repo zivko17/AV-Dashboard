@@ -84,7 +84,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                <TextBlock Margin="0,8,0,0"
                            Text="Sin dispositivos críticos configurados: añádelos en appsettings.json del agente, sección Agent:CriticalDevices.">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">

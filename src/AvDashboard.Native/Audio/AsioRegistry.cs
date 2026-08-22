@@ -72,7 +72,9 @@ public static class AsioRegistry
             using RegistryKey? inproc = baseKey.OpenSubKey($@"CLSID\{clsid}\InprocServer32");
             return inproc?.GetValue(null) as string;
         }
-        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException)
+        // `System` a secas resuelve aqui a AvDashboard.Native.System: hay que cualificar.
+        catch (Exception ex) when (ex is global::System.Security.SecurityException
+                                      or UnauthorizedAccessException)
         {
             return null;
         }

@@ -22,13 +22,30 @@ public interface IProfileStepExecutor
     bool IsDisruptive { get; }
     Task<ActionDiff> PreviewAsync(string parametersJson, CancellationToken cancellationToken = default);
     Task<ActuationResult> ApplyAsync(string parametersJson, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Parametros que devolverian este ajuste a como esta ahora mismo.
+    ///
+    /// Es lo que hace posible generar el perfil inverso —el «Oficina» que te devuelve la
+    /// maquina despues del evento— sin que Core tenga que entender el contenido de los
+    /// parametros de cada actuador.
+    /// </summary>
+    Task<string> CaptureCurrentAsync(CancellationToken cancellationToken = default);
 }
 
-/// <summary>Guarda y recupera snapshots. Lo implementa la capa de almacenamiento del agente.</summary>
+/// <summary>
+/// Captura y restaura el estado del nodo. La implementacion de referencia es
+/// <see cref="SnapshotEngine"/>.
+/// </summary>
 public interface ISnapshotStore
 {
     Task<string> CaptureAsync(string nodeId, string trigger, CancellationToken cancellationToken = default);
-    Task<bool> RestoreAsync(string snapshotId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Devuelve el detalle por modulo, no un booleano: cuando un rollback falla, lo unico
+    /// que importa es saber exactamente que ha quedado a medias.
+    /// </summary>
+    Task<RestoreResult> RestoreAsync(string snapshotId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -223,12 +240,15 @@ public sealed class ProfileEngine
         }
 
         ProfileRunStatus status = DetermineStatus(results, hardFailure);
+        string? rollbackMessage = null;
 
         if (hardFailure && options.RollbackOnFailure && snapshotId is not null)
         {
-            bool restored = await _snapshots.RestoreAsync(snapshotId, cancellationToken)
+            RestoreResult restore = await _snapshots.RestoreAsync(snapshotId, cancellationToken)
                 .ConfigureAwait(false);
-            status = restored ? ProfileRunStatus.RolledBack : ProfileRunStatus.RollbackFailed;
+
+            status = restore.Success ? ProfileRunStatus.RolledBack : ProfileRunStatus.RollbackFailed;
+            rollbackMessage = restore.Message;
         }
 
         return new ProfileRun
@@ -242,6 +262,7 @@ public sealed class ProfileEngine
             SnapshotId = snapshotId,
             Steps = results,
             ForcedDuringShow = activity.IsShowActive,
+            RollbackMessage = rollbackMessage,
         };
     }
 
