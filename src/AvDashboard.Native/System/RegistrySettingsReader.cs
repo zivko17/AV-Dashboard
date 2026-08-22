@@ -157,6 +157,13 @@ public static class RegistrySettingsReader
     public static string? ReadString(RegistryHive hive, string keyPath, string valueName) =>
         ReadValue(hive, keyPath, valueName) as string;
 
+    /// <summary>
+    /// true si el valor existe, sin importar su contenido. PendingFileRenameOperations es
+    /// justo eso: lo que importa es que este, no lo que ponga.
+    /// </summary>
+    public static bool ReadValueExists(RegistryHive hive, string keyPath, string valueName) =>
+        ReadValue(hive, keyPath, valueName) is not null;
+
     public static bool KeyExists(RegistryHive hive, string keyPath)
     {
         try

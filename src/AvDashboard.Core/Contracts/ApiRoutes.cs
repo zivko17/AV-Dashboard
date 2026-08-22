@@ -14,6 +14,9 @@ public static class ApiRoutes
     public const string Modules = Base + "/modules";
 
     public const string System = Base + "/system";
+
+    /// <summary>Auditoria del nodo contra el catalogo de ajustes con objetivo AV (M1).</summary>
+    public const string SystemAudit = Base + "/system/audit";
     public const string SystemSetting = Base + "/system/{setting}";
     public const string Processes = Base + "/system/processes";
 

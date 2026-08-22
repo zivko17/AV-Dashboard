@@ -37,6 +37,9 @@ public static class Formatter
                 case "preshow":
                     PrintPreShow(document.RootElement);
                     return;
+                case "audit":
+                    PrintAudit(document.RootElement, arguments);
+                    return;
                 case "edid-list":
                     PrintEdidList(document.RootElement);
                     return;
@@ -191,6 +194,86 @@ public static class Formatter
             ? "VERDE: no hay nada que revisar."
             : $"ROJO: {failures} comprobaciones requieren atención.");
     }
+
+    /// <summary>
+    /// `audit`. Por defecto solo lo que difiere del objetivo, que es lo que quieres ver
+    /// quince minutos antes de que empiece: cinco filas y no cuarenta y cinco. Con --todo
+    /// sale el catálogo entero.
+    /// </summary>
+    private static void PrintAudit(JsonElement root, string[]? arguments)
+    {
+        bool all = arguments?.Any(a =>
+            a.Equals("--todo", StringComparison.OrdinalIgnoreCase) ||
+            a.Equals("--all", StringComparison.OrdinalIgnoreCase)) == true;
+
+        int shown = 0;
+        int hidden = 0;
+
+        foreach (JsonElement group in Array(root, "groups"))
+        {
+            List<JsonElement> rows = Array(group, "settings")
+                .Where(s => all || Text(s, "verdict").StartsWith("Differs", StringComparison.Ordinal))
+                .ToList();
+
+            hidden += Array(group, "settings").Count() - rows.Count;
+
+            if (rows.Count == 0)
+            {
+                continue;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine($"  {GroupName(group).ToUpperInvariant()}");
+
+            foreach (JsonElement row in rows)
+            {
+                shown++;
+
+                JsonElement definition = row.GetProperty("definition");
+                string marker = Text(row, "verdict") switch
+                {
+                    "DiffersCritical" => "[!]",
+                    "Differs" => "[~]",
+                    "Match" => "[ok]",
+                    _ => "[ ]",
+                };
+
+                Console.WriteLine($"  {marker,-5} {Text(definition, "name"),-42} " +
+                                  $"{Text(row, "currentText"),-24} → {Text(definition, "targetDescription")}");
+
+                // El motivo solo en lo que esta mal: en el listado completo seria ruido.
+                if (Text(row, "verdict").StartsWith("Differs", StringComparison.Ordinal))
+                {
+                    Console.WriteLine($"        {Text(definition, "rationale")}");
+                }
+            }
+        }
+
+        Console.WriteLine();
+
+        long critical = Number(root, "criticalCount");
+        long warning = Number(root, "warningCount");
+
+        Console.WriteLine(critical == 0 && warning == 0
+            ? "Ningún ajuste difiere del objetivo."
+            : $"{critical} afectan a producción, {warning} conviene revisarlos.");
+
+        if (!all && hidden > 0)
+        {
+            Console.WriteLine($"{hidden} filas coinciden con el objetivo o no se han podido leer. `audit --todo` las muestra.");
+        }
+    }
+
+    private static string GroupName(JsonElement group) => Text(group, "group") switch
+    {
+        "Power" => "Energía",
+        "Kernel" => "Kernel y rendimiento",
+        "Updates" => "Interrupciones y actualizaciones",
+        "Security" => "Seguridad",
+        "Startup" => "Arranque y sesión",
+        "Diagnostics" => "Diagnóstico",
+        string other => other,
+    };
 
     // --- M18 ---
 

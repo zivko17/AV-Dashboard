@@ -105,6 +105,13 @@ public static class CommandCatalog
         },
         new()
         {
+            Name = "audit", ModuleId = "M1", Sector = Sector.SystemEssential,
+            Summary = "Compara los ajustes del sistema con el objetivo de un rig y lista lo que difiere.",
+            Usage = "audit [--todo]",
+            Route = ApiRoutes.SystemAudit, Method = CommandMethod.Get,
+        },
+        new()
+        {
             Name = "edid-list", ModuleId = "M18", Sector = Sector.Video,
             Summary = "Los EDID que conoce la máquina, conectados y recordados.",
             Route = ApiRoutes.VideoEdid, Method = CommandMethod.Get,

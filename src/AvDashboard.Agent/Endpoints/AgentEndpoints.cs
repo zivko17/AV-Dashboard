@@ -1,6 +1,7 @@
 using AvDashboard.Agent.Modules;
 using AvDashboard.Agent.Storage;
 using AvDashboard.Agent.Video;
+using AvDashboard.Core.Settings;
 using AvDashboard.Core.Video;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Diagnostics;
@@ -62,6 +63,12 @@ public static class AgentEndpoints
 
     private static void MapSystem(WebApplication app)
     {
+        // La auditoria se calcula en la llamada y no en el ciclo de telemetria: toca WMI y
+        // el registro de eventos, que son lentos, y la respuesta no cambia de un segundo a
+        // otro. Pagar eso una vez por segundo se comeria el presupuesto de CPU del agente.
+        app.MapGet(ApiRoutes.SystemAudit, () =>
+            Results.Ok(SettingsCatalog.Evaluate(SettingsProbe.Read())));
+
         app.MapGet(ApiRoutes.System, (NodeState state) =>
         {
             SystemStatus? status = state.System;

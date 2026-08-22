@@ -163,6 +163,60 @@ public static class PowerConfiguration
         }
     }
 
+    /// <summary>
+    /// Valor de un ajuste del plan activo, con la maquina enchufada a la red.
+    ///
+    /// Se lee del plan activo y no de uno concreto porque la pregunta que interesa es
+    /// «como esta esta maquina ahora», no «como estaria si aplicaras Ultimate».
+    /// </summary>
+    public static uint? ReadActiveAcValue(Guid subGroup, Guid setting)
+    {
+        Guid? scheme = GetActiveSchemeGuid();
+        if (scheme is not Guid active)
+        {
+            return null;
+        }
+
+        Guid schemeGuid = active;
+        Guid subGroupGuid = subGroup;
+        Guid settingGuid = setting;
+
+        return PowerReadACValueIndex(IntPtr.Zero, ref schemeGuid, ref subGroupGuid,
+                   ref settingGuid, out uint value) == 0
+            ? value
+            : null;
+    }
+
+    /// <summary>
+    /// GUID de subgrupo y de ajuste de los que mira el catalogo. Son fijos y estan
+    /// documentados; van aqui juntos para no repartirlos por el codigo.
+    /// </summary>
+    public static class Settings
+    {
+        public static readonly Guid ProcessorSubGroup = new("54533251-82be-4824-96c1-47b60b740d00");
+        public static readonly Guid ProcessorMin = new("893dee8e-2bef-41e0-89c6-b55d0929964c");
+        public static readonly Guid ProcessorMax = new("bc5038f7-23e0-4960-96da-33abaf5935ec");
+
+        /// <summary>Minimo de nucleos sin aparcar, en porcentaje. 100 = no se aparca ninguno.</summary>
+        public static readonly Guid CoreParkingMinCores = new("0cc5b647-c1df-4637-891a-dec35c318583");
+
+        public static readonly Guid UsbSubGroup = new("2a737441-1930-4402-8d77-b2bebba308a3");
+        public static readonly Guid UsbSelectiveSuspend = new("48e6b7a6-50f5-4782-a5d4-53bb8f07e226");
+
+        public static readonly Guid PcieSubGroup = new("501a4d13-42af-4429-9fd1-a8218c268e20");
+        public static readonly Guid PcieAspm = new("ee12f906-d277-404b-b6da-e5fa1a576df5");
+
+        public static readonly Guid DiskSubGroup = new("0012ee47-9041-4b5d-9b77-535fba8b1442");
+        public static readonly Guid DiskTimeout = new("6738e2c4-e8a5-4a42-b16a-e040e769756e");
+
+        public static readonly Guid SleepSubGroup = new("238c9fa8-0aad-41ed-83f4-97be242c8f20");
+        public static readonly Guid StandbyTimeout = new("29f6c1db-86da-48c5-9fdb-f2b67b1f44da");
+        public static readonly Guid WakeTimers = new("bd3b718a-0680-4d9d-8ab2-e1d2b4ac806d");
+
+        public static readonly Guid VideoSubGroup = new("7516b95f-f776-4464-8c53-06167f40cc99");
+        public static readonly Guid DisplayTimeout = new("3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e");
+    }
+
     private const uint AccessSchemeIndex = 16;
 
     [DllImport("powrprof.dll")]
@@ -180,6 +234,11 @@ public static class PowerConfiguration
     private static extern uint PowerEnumerate(
         IntPtr rootPowerKey, IntPtr schemeGuid, IntPtr subGroupOfPowerSettingsGuid,
         uint accessFlags, uint index, byte[] buffer, ref uint bufferSize);
+
+    [DllImport("powrprof.dll")]
+    private static extern uint PowerReadACValueIndex(
+        IntPtr rootPowerKey, ref Guid schemeGuid, ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid, out uint acValueIndex);
 
     [DllImport("kernel32.dll")]
     private static extern IntPtr LocalFree(IntPtr handle);
