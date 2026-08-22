@@ -1,10 +1,9 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Audio (M3). Se suscribe a los medidores solo mientras la vista esta abierta, y se
@@ -14,7 +13,7 @@ public sealed partial class AudioViewModel : PageViewModel
 {
     private IDisposable? _meterSubscription;
 
-    public AudioViewModel(NodeManager nodes) : base(nodes)
+    public AudioViewModel(NodeManager nodes, IUiShell shell) : base(nodes, shell)
     {
     }
 
@@ -113,7 +112,7 @@ public sealed partial class AudioViewModel : PageViewModel
     private void OnMeters(AudioMeterFrame frame)
     {
         // El hub entrega en un hilo del pool; la coleccion esta enlazada a la UI.
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        Shell.Post(() =>
         {
             // Solo se buscan en los activos: un endpoint desenchufado no entrega nivel, y
             // recorrer la lista larga por cada trama de medidores es trabajo tirado.

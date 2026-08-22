@@ -1,12 +1,11 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Taxonomy;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Servicios (M6), agrupados por sector AV y no por el orden alfabetico de services.msc.
@@ -15,7 +14,7 @@ namespace AvDashboard.Console.ViewModels;
 /// </summary>
 public sealed partial class ServicesViewModel : PageViewModel
 {
-    public ServicesViewModel(NodeManager nodes) : base(nodes)
+    public ServicesViewModel(NodeManager nodes, IUiShell shell) : base(nodes, shell)
     {
     }
 

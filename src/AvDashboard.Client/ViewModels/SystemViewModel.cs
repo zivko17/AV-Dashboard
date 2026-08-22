@@ -1,12 +1,11 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Sistema (M1), partido en dos por una razón: son dos preguntas distintas y mezclarlas era
@@ -29,7 +28,7 @@ public sealed partial class SystemViewModel : PageViewModel
 {
     private SettingsAudit? _audit;
 
-    public SystemViewModel(NodeManager nodes) : base(nodes)
+    public SystemViewModel(NodeManager nodes, IUiShell shell) : base(nodes, shell)
     {
     }
 

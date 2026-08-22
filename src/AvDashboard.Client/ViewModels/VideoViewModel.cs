@@ -1,16 +1,11 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Video;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxImage = System.Windows.MessageBoxImage;
-using MessageBoxResult = System.Windows.MessageBoxResult;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Vídeo (M4) y EDID Toolkit (M18).
@@ -21,7 +16,7 @@ namespace AvDashboard.Console.ViewModels;
 /// </summary>
 public sealed partial class VideoViewModel : PageViewModel
 {
-    public VideoViewModel(NodeManager nodes) : base(nodes)
+    public VideoViewModel(NodeManager nodes, IUiShell shell) : base(nodes, shell)
     {
     }
 
@@ -225,14 +220,11 @@ public sealed partial class VideoViewModel : PageViewModel
 
         EdidRawResponse raw = result.Value!;
 
-        Microsoft.Win32.SaveFileDialog dialog = new()
-        {
-            FileName = raw.SuggestedFileName,
-            DefaultExt = ".bin",
-            Filter = "EDID binario (*.bin)|*.bin|Todos los archivos (*.*)|*.*",
-        };
+        string? destino = await Shell
+            .PickSaveFileAsync(raw.SuggestedFileName, ".bin", "EDID binario")
+            .ConfigureAwait(true);
 
-        if (dialog.ShowDialog() != true)
+        if (destino is null)
         {
             return;
         }
@@ -240,8 +232,8 @@ public sealed partial class VideoViewModel : PageViewModel
         try
         {
             byte[] bytes = Convert.FromBase64String(raw.Base64);
-            await File.WriteAllBytesAsync(dialog.FileName, bytes).ConfigureAwait(true);
-            DumpResult = $"{bytes.Length} bytes escritos en {dialog.FileName}";
+            await File.WriteAllBytesAsync(destino, bytes).ConfigureAwait(true);
+            DumpResult = $"{bytes.Length} bytes escritos en {destino}";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
         {
@@ -303,15 +295,13 @@ public sealed partial class VideoViewModel : PageViewModel
     [RelayCommand]
     private async Task RestartGraphicsDriverAsync()
     {
-        MessageBoxResult answer = MessageBox.Show(
-            "Las salidas de vídeo se quedarán en negro uno o dos segundos y Windows puede " +
-            "recolocar las ventanas.\n\n¿Reiniciar el controlador gráfico?",
+        bool confirmado = await Shell.ConfirmAsync(
             "Reiniciar el controlador gráfico",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
+            "Las salidas de vídeo se quedarán en negro uno o dos segundos y Windows puede " +
+            "recolocar las ventanas.",
+            "Reiniciar").ConfigureAwait(true);
 
-        if (answer != MessageBoxResult.Yes)
+        if (!confirmado)
         {
             return;
         }

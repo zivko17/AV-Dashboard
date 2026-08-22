@@ -2,7 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Input;
 using AvDashboard.Console.Services;
-using AvDashboard.Console.ViewModels;
+using AvDashboard.Client.ViewModels;
 
 namespace AvDashboard.Console;
 

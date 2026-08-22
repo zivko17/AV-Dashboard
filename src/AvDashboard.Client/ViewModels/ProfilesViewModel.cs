@@ -1,12 +1,11 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Profiles;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Perfiles de escenario (M10).
@@ -18,7 +17,7 @@ namespace AvDashboard.Console.ViewModels;
 /// </summary>
 public sealed partial class ProfilesViewModel : PageViewModel
 {
-    public ProfilesViewModel(NodeManager nodes) : base(nodes)
+    public ProfilesViewModel(NodeManager nodes, IUiShell shell) : base(nodes, shell)
     {
     }
 
@@ -88,22 +87,20 @@ public sealed partial class ProfilesViewModel : PageViewModel
             return;
         }
 
-        Microsoft.Win32.SaveFileDialog dialog = new()
-        {
-            FileName = $"{Sanitize(Selected.Name)}.avprofile.json",
-            DefaultExt = ".json",
-            Filter = "Perfil de AV Dashboard (*.json)|*.json|Todos los archivos (*.*)|*.*",
-        };
+        string? destino = await Shell
+            .PickSaveFileAsync($"{Sanitize(Selected.Name)}.avprofile.json", ".json",
+                "Perfil de AV Dashboard")
+            .ConfigureAwait(true);
 
-        if (dialog.ShowDialog() != true)
+        if (destino is null)
         {
             return;
         }
 
         try
         {
-            await File.WriteAllTextAsync(dialog.FileName, result.Value!).ConfigureAwait(true);
-            Status = $"Perfil escrito en {dialog.FileName}";
+            await File.WriteAllTextAsync(destino, result.Value!).ConfigureAwait(true);
+            Status = $"Perfil escrito en {destino}";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -114,13 +111,11 @@ public sealed partial class ProfilesViewModel : PageViewModel
     [RelayCommand]
     private async Task ImportAsync()
     {
-        Microsoft.Win32.OpenFileDialog dialog = new()
-        {
-            Filter = "Perfil de AV Dashboard (*.json)|*.json|Todos los archivos (*.*)|*.*",
-            CheckFileExists = true,
-        };
+        string? origen = await Shell
+            .PickOpenFileAsync(".json", "Perfil de AV Dashboard")
+            .ConfigureAwait(true);
 
-        if (dialog.ShowDialog() != true)
+        if (origen is null)
         {
             return;
         }
@@ -129,7 +124,7 @@ public sealed partial class ProfilesViewModel : PageViewModel
 
         try
         {
-            json = await File.ReadAllTextAsync(dialog.FileName).ConfigureAwait(true);
+            json = await File.ReadAllTextAsync(origen).ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

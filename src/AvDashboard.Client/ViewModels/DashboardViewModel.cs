@@ -1,12 +1,11 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// El dashboard responde a «¿va todo bien?» en menos de dos segundos. Todo lo demas es
@@ -23,8 +22,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     /// </summary>
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(5);
 
-    public DashboardViewModel(NodeManager nodes, Action<string> navigate)
-        : base(nodes)
+    public DashboardViewModel(NodeManager nodes, IUiShell shell, Action<string> navigate)
+        : base(nodes, shell)
     {
         _navigate = navigate;
     }

@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Threading;
 using AvDashboard.Client;
 using AvDashboard.Console.Services;
-using AvDashboard.Console.ViewModels;
+using AvDashboard.Client.ViewModels;
 
 namespace AvDashboard.Console;
 
@@ -28,7 +28,7 @@ public partial class App : Application
         DesktopChrome.ApplySystemAccent(Resources);
 
         _nodes = new NodeManager();
-        MainWindowViewModel viewModel = new(_nodes);
+        MainWindowViewModel viewModel = new(_nodes, new WpfShell());
 
         MainWindow window = new() { DataContext = viewModel };
         MainWindow = window;

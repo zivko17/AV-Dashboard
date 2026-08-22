@@ -1,10 +1,9 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Show Timeline (M11): todos los modulos en una sola linea temporal.
@@ -13,7 +12,7 @@ namespace AvDashboard.Console.ViewModels;
 /// </summary>
 public sealed partial class TimelineViewModel : PageViewModel
 {
-    public TimelineViewModel(NodeManager nodes) : base(nodes)
+    public TimelineViewModel(NodeManager nodes, IUiShell shell) : base(nodes, shell)
     {
     }
 

@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using AvDashboard.Core.Contracts;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Paleta de comandos (F-15). Ctrl+K, escribes `scan`, `latency`, `setip 1`, Enter.

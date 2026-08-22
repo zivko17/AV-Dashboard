@@ -1,11 +1,10 @@
 using System.Collections.ObjectModel;
-using AvDashboard.Client;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// La ventana: rail lateral, barra superior y area de contenido.
@@ -19,25 +18,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly NodeManager _nodes;
     private readonly PeriodicTimer _heartbeat = new(TimeSpan.FromSeconds(5));
 
-    public MainWindowViewModel(NodeManager nodes)
+    public MainWindowViewModel(NodeManager nodes, IUiShell shell)
     {
         _nodes = nodes;
 
         Pages = new ObservableCollection<PageViewModel>
         {
-            new DashboardViewModel(nodes, NavigateTo),
-            new SystemViewModel(nodes),
-            new AudioViewModel(nodes),
-            new VideoViewModel(nodes),
-            new NetworkViewModel(nodes),
-            new ServicesViewModel(nodes),
-            new PlaceholderViewModel(nodes, "Producción", "\uE7F4", "Fase 5",
+            new DashboardViewModel(nodes, shell, NavigateTo),
+            new SystemViewModel(nodes, shell),
+            new AudioViewModel(nodes, shell),
+            new VideoViewModel(nodes, shell),
+            new NetworkViewModel(nodes, shell),
+            new ServicesViewModel(nodes, shell),
+            new PlaceholderViewModel(nodes, shell, "Producción", "\uE7F4", "Fase 5",
                 "Una tarjeta por aplicación con estado, frames y watchdog: vMix, OBS, Resolume, Watchout y Companion."),
-            new ProfilesViewModel(nodes),
-            new PlaceholderViewModel(nodes, "Nodos", "\uE977", "Fase 3",
+            new ProfilesViewModel(nodes, shell),
+            new PlaceholderViewModel(nodes, shell, "Nodos", "\uE977", "Fase 3",
                 "Vista consolidada de la flota y lanzador de RDP, VNC y web para máquinas sin agente."),
-            new TimelineViewModel(nodes),
-            new PlaceholderViewModel(nodes, "Informes", "\uE9F9", "Fase 6",
+            new TimelineViewModel(nodes, shell),
+            new PlaceholderViewModel(nodes, shell, "Informes", "\uE9F9", "Fase 6",
                 "Informe pre-show y manifiesto de nodo exportables. La checklist pre-show ya funciona desde el dashboard."),
         };
 

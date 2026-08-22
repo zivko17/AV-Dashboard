@@ -1,7 +1,6 @@
-using AvDashboard.Client;
 using AvDashboard.Core.Models;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Seccion declarada en el diseno que todavia no existe.
@@ -11,8 +10,8 @@ namespace AvDashboard.Console.ViewModels;
 /// </summary>
 public sealed class PlaceholderViewModel : PageViewModel
 {
-    public PlaceholderViewModel(NodeManager nodes, string title, string glyph, string phase, string what)
-        : base(nodes)
+    public PlaceholderViewModel(NodeManager nodes, IUiShell shell, string title, string glyph, string phase, string what)
+        : base(nodes, shell)
     {
         Title = title;
         Glyph = glyph;

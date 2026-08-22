@@ -1,9 +1,8 @@
-using AvDashboard.Client;
 using AvDashboard.Core.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace AvDashboard.Console.ViewModels;
+namespace AvDashboard.Client.ViewModels;
 
 /// <summary>
 /// Base de las paginas del rail.
@@ -14,12 +13,16 @@ namespace AvDashboard.Console.ViewModels;
 /// </summary>
 public abstract partial class PageViewModel : ObservableObject
 {
-    protected PageViewModel(NodeManager nodes)
+    protected PageViewModel(NodeManager nodes, IUiShell shell)
     {
         Nodes = nodes;
+        Shell = shell;
     }
 
     protected NodeManager Nodes { get; }
+
+    /// <summary>Lo poco que hace falta de la interfaz: hilo, diálogos y confirmaciones.</summary>
+    protected IUiShell Shell { get; }
 
     public abstract string Title { get; }
 
