@@ -37,6 +37,33 @@ trastear con la API desde PowerShell.
 
 Lo que sigue es el detalle paso a paso, útil la primera vez y cuando algo falla.
 
+## 1-ter. Desde Visual Studio Code
+
+```powershell
+code C:\Users\andre\AV-Dashboard
+```
+
+Al abrir la carpeta, VS Code ofrece instalar las dos extensiones que hacen falta y que
+están declaradas en `.vscode/extensions.json`: **C# Dev Kit**, sin la cual no hay
+IntelliSense ni depurador, y **PowerShell** para los guiones.
+
+En el panel de ejecución (`Ctrl+Shift+D`) hay cuatro configuraciones y una combinada:
+
+| | Qué hace |
+|---|---|
+| **Agente + consola** | Lo normal. Arranca los dos con puntos de ruptura en ambos |
+| Agente | Solo el agente, en el terminal integrado, para ver su registro |
+| Consola (WPF) | Solo la interfaz, contra un agente que ya esté en marcha |
+| Interfaz WinUI 3 | La nueva, a medio portar |
+| CLI | `avdash audit --todo`, para trastear con los argumentos |
+
+`F5` con «Agente + consola» para el agente si estaba corriendo antes de compilar. No es
+un detalle: el agente en marcha mantiene tomadas sus propias DLL y `dotnet build` falla
+con MSB3027, que es la fricción que se paga en cada iteración si no está resuelta.
+
+VS Code no tiene diseñador de XAML. Para WPF no importa mucho —aquí el XAML se escribe a
+mano— pero conviene saberlo.
+
 ## 2. Arrancar el agente
 
 En un terminal, **sin elevar**:

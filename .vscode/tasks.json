@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "compilar",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}/AvDashboard.sln", "-v", "minimal"],
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      // El agente en marcha bloquea sus propias DLL y la compilación falla con MSB3027.
+      // Depurar desde VS Code no se libra de eso, así que se para antes.
+      "label": "parar el agente",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile", "-Command",
+        "Get-Process AvDashboard.Agent -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "parar y compilar",
+      "dependsOrder": "sequence",
+      "dependsOn": ["parar el agente", "compilar"],
+      "problemMatcher": []
+    },
+    {
+      "label": "probar",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["test", "${workspaceFolder}/tests/AvDashboard.Core.Tests/AvDashboard.Core.Tests.csproj"],
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "regenerar el mapa del proyecto",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["run", "--project", "${workspaceFolder}/tools/AvDashboard.Graph", "--", "${workspaceFolder}"],
+      "problemMatcher": []
+    }
+  ]
+}

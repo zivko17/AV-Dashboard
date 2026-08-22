@@ -1,0 +1,12 @@
+{
+  "dotnet.defaultSolution": "AvDashboard.sln",
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true
+  },
+  // El repositorio está en castellano, tildes incluidas.
+  "files.encoding": "utf8",
+  "[csharp]": {
+    "editor.formatOnSave": true
+  }
+}

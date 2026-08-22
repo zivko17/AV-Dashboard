@@ -21,7 +21,13 @@ coverage*.xml
 .vs/
 .idea/
 .vscode/*
+# Estos cuatro si van al repositorio: no son preferencias de nadie, son como se compila,
+# se arranca y se depura este proyecto. Que cada uno los escriba por su cuenta es como se
+# acaba con cuatro formas distintas de arrancar lo mismo.
 !.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
 *.DotSettings.user
 
 # Salidas de build del instalador

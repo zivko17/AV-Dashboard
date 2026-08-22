@@ -1,0 +1,9 @@
+{
+  // Lo que VS Code va a ofrecerte instalar al abrir la carpeta.
+  "recommendations": [
+    // Sin esto no hay IntelliSense de C#, ni soporte de solución, ni depurador.
+    "ms-dotnettools.csdevkit",
+    // Los scripts de arranque y diagnóstico son PowerShell.
+    "ms-vscode.powershell"
+  ]
+}

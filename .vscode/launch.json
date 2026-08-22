@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // El agente. --portable evita instalarlo como servicio y deja el token en
+      // %LocalAppData%, que no necesita privilegios.
+      "name": "Agente",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "parar y compilar",
+      "program": "${workspaceFolder}/src/AvDashboard.Agent/bin/Debug/net8.0-windows/AvDashboard.Agent.exe",
+      "args": ["--portable"],
+      "cwd": "${workspaceFolder}/src/AvDashboard.Agent",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Consola (WPF)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "compilar",
+      "program": "${workspaceFolder}/src/AvDashboard.Console/bin/Debug/net8.0-windows/AvDashboard.exe",
+      "cwd": "${workspaceFolder}/src/AvDashboard.Console",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      // A medio portar: hoy solo la página Sistema es real. Y necesita las herramientas
+      // de compilación de Visual Studio; ver docs/primer-arranque.md.
+      "name": "Interfaz WinUI 3",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "compilar",
+      "program": "${workspaceFolder}/src/AvDashboard.Shell/bin/Debug/net8.0-windows10.0.19041.0/win-x64/AvDashboardShell.exe",
+      "cwd": "${workspaceFolder}/src/AvDashboard.Shell",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "CLI",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "compilar",
+      "program": "${workspaceFolder}/src/AvDashboard.Cli/bin/Debug/net8.0/avdash.exe",
+      "args": ["audit", "--todo"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ],
+  "compounds": [
+    {
+      // Lo normal: el agente y la consola a la vez, los dos con puntos de ruptura.
+      "name": "Agente + consola",
+      "configurations": ["Agente", "Consola (WPF)"],
+      "stopAll": true
+    }
+  ]
+}
