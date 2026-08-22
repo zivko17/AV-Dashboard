@@ -8,7 +8,11 @@
       que se puede compilar y testear en CI sin un runner de Windows, y donde vive
       toda la logica que merece la pena tener cubierta por pruebas.
     -->
-    <IsTrimmable>true</IsTrimmable>
+    <!--
+      Sin IsTrimmable: Core serializa los parametros de los perfiles por reflexion y
+      nadie esta recortando nada, asi que declararlo solo produce avisos IL2026 sobre
+      un escenario que no existe.
+    -->
   </PropertyGroup>
 
 </Project>

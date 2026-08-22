@@ -169,6 +169,58 @@ public class ProfileEngineTests
         Assert.Equal(new[] { "no.existe" }, preview.UnresolvedActions);
     }
 
+    [Fact]
+    public async Task El_preview_marca_que_pasos_pueden_cortar_una_salida()
+    {
+        // No basta con decir «se van a cambiar tres cosas»: hay que decir cuales se notan.
+        FakeRegistry registry = new();
+        registry.Add("system.powerplan", "Equilibrado", "Ultimate Performance");
+        registry.Add("network.profile", "DHCP", "Dante 172.31", disruptive: true);
+
+        ProfileEngine engine = new(registry, new FakeSnapshotStore());
+
+        ProfilePreview preview = await engine.PreviewAsync(
+            Profile(Step("system.powerplan", 0), Step("network.profile", 1)));
+
+        Assert.Equal(new[] { "network.profile" }, preview.DisruptiveActions);
+    }
+
+    [Fact]
+    public async Task Un_paso_disruptivo_que_no_cambia_nada_no_se_marca()
+    {
+        // Aplicar el perfil de red que ya esta puesto no corta nada.
+        FakeRegistry registry = new();
+        registry.Add("network.profile", "Dante 172.31", "Dante 172.31", disruptive: true);
+
+        ProfileEngine engine = new(registry, new FakeSnapshotStore());
+
+        ProfilePreview preview = await engine.PreviewAsync(Profile(Step("network.profile")));
+
+        Assert.Empty(preview.DisruptiveActions);
+        Assert.Equal(0, preview.ChangeCount);
+    }
+
+    [Fact]
+    public async Task La_confirmacion_extra_solo_hace_falta_si_hay_show_y_algo_que_se_note()
+    {
+        FakeRegistry sinRuido = new();
+        sinRuido.Add("system.powerplan", "Equilibrado", "Ultimate Performance");
+
+        ProfileEngine conShow = new(sinRuido, new FakeSnapshotStore(), new FakeShowGuard("vMix grabando"));
+        ProfilePreview inocuo = await conShow.PreviewAsync(Profile(Step("system.powerplan")));
+
+        Assert.True(inocuo.ShowActivity.IsShowActive);
+        Assert.False(inocuo.NeedsExtraConfirmation);
+
+        FakeRegistry conRuido = new();
+        conRuido.Add("network.profile", "DHCP", "Dante 172.31", disruptive: true);
+
+        ProfileEngine peligroso = new(conRuido, new FakeSnapshotStore(), new FakeShowGuard("vMix grabando"));
+        ProfilePreview corta = await peligroso.PreviewAsync(Profile(Step("network.profile")));
+
+        Assert.True(corta.NeedsExtraConfirmation);
+    }
+
     // --- Dobles de prueba ---
 
     private sealed class FakeRegistry : IActuatorRegistry
@@ -179,8 +231,14 @@ public class ProfileEngineTests
 
         public IEnumerable<string> KnownActionIds => _executors.Keys;
 
-        public void Add(string actionId, string current, string desired, bool failsOnApply = false) =>
-            _executors[actionId] = new FakeExecutor(actionId, current, desired, failsOnApply, () => ApplyCount++);
+        public void Add(
+            string actionId,
+            string current,
+            string desired,
+            bool failsOnApply = false,
+            bool disruptive = false) =>
+            _executors[actionId] = new FakeExecutor(
+                actionId, current, desired, failsOnApply, disruptive, () => ApplyCount++);
 
         public bool TryResolve(string actionId, out IProfileStepExecutor executor)
         {
@@ -202,17 +260,24 @@ public class ProfileEngineTests
         private readonly bool _fails;
         private readonly Action _onApply;
 
-        public FakeExecutor(string actionId, string current, string desired, bool fails, Action onApply)
+        public FakeExecutor(
+            string actionId,
+            string current,
+            string desired,
+            bool fails,
+            bool disruptive,
+            Action onApply)
         {
             ActionId = actionId;
             _current = current;
             _desired = desired;
             _fails = fails;
+            IsDisruptive = disruptive;
             _onApply = onApply;
         }
 
         public string ActionId { get; }
-        public bool IsDisruptive => false;
+        public bool IsDisruptive { get; }
 
         public Task<ActionDiff> PreviewAsync(string parametersJson, CancellationToken cancellationToken = default) =>
             Task.FromResult(new ActionDiff

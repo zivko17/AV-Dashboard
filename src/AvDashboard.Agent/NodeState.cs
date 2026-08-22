@@ -69,7 +69,7 @@ public sealed class NodeState
                 Interfaces.Any(i => i.IsUp && i.PowerManagementEnabled == true)
                     ? HealthState.Warning
                     : HealthState.Ok,
-                _pingStats.Values.Select(PingStatisticsCalculator.Evaluate).Worst(),
+                _pingStats.Values.Select(p => PingStatisticsCalculator.Evaluate(p)).Worst(),
             }.Worst();
 
         health[Sector.Production] = Services.Count == 0

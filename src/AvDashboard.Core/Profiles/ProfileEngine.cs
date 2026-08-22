@@ -84,6 +84,7 @@ public sealed class ProfileEngine
     {
         List<ActionDiff> diffs = new();
         List<string> unresolved = new();
+        List<string> disruptive = new();
 
         foreach (ProfileStep step in profile.Steps.OrderBy(s => s.Order))
         {
@@ -95,8 +96,17 @@ public sealed class ProfileEngine
 
             try
             {
-                diffs.Add(await executor.PreviewAsync(step.ParametersJson, cancellationToken)
-                    .ConfigureAwait(false));
+                ActionDiff diff = await executor.PreviewAsync(step.ParametersJson, cancellationToken)
+                    .ConfigureAwait(false);
+
+                diffs.Add(diff);
+
+                // Un paso disruptivo que no cambia nada no interrumpe nada: solo se marca
+                // lo que de verdad va a tocarse.
+                if (executor.IsDisruptive && !diff.IsNoOp)
+                {
+                    disruptive.Add(step.ActionId);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -117,6 +127,7 @@ public sealed class ProfileEngine
             ProfileId = profile.Id,
             Diffs = diffs,
             UnresolvedActions = unresolved,
+            DisruptiveActions = disruptive,
             ShowActivity = activity,
         };
     }
@@ -300,9 +311,24 @@ public sealed record ProfilePreview
     /// <summary>Pasos cuyo actuador no existe en este nodo. Se saltaran al aplicar.</summary>
     public IReadOnlyList<string> UnresolvedActions { get; init; } = Array.Empty<string>();
 
+    /// <summary>
+    /// Pasos que van a cambiar algo y que pueden interrumpir una salida en directo:
+    /// cortar la red, mover el dispositivo de audio por defecto, parar un servicio.
+    ///
+    /// La consola los marca en el diff antes de pedir confirmacion. No basta con decir
+    /// «se van a cambiar catorce cosas»: hay que decir cuales de ellas se notan.
+    /// </summary>
+    public IReadOnlyList<string> DisruptiveActions { get; init; } = Array.Empty<string>();
+
     public ShowActivity ShowActivity { get; init; } = ShowActivity.Idle;
 
     public int ChangeCount => Diffs.Count(d => !d.IsNoOp);
+
+    /// <summary>
+    /// true cuando hay show en marcha y ademas el perfil va a tocar algo que se nota.
+    /// Es la combinacion que justifica el segundo clic de confirmacion.
+    /// </summary>
+    public bool NeedsExtraConfirmation => ShowActivity.IsShowActive && DisruptiveActions.Count > 0;
 }
 
 /// <summary>Se lanza cuando se intenta aplicar un perfil con show activo sin confirmar.</summary>
