@@ -8,10 +8,50 @@ namespace AvDashboard.Console;
 
 public partial class MainWindow : Window
 {
+    /// <summary>
+    /// Ancho por debajo del cual el panel de navegacion se repliega a iconos. Es el mismo
+    /// umbral que usa el NavigationView de Windows 11 para pasar a modo compacto: cuando la
+    /// ventana ya no da para tener el panel y una tabla al lado, el panel es lo que sobra.
+    /// </summary>
+    private const double CompactThreshold = 1120;
+
+    private const double PaneExpanded = 248;
+    private const double PaneCompact = 56;
+
     public MainWindow()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        SizeChanged += (_, _) => UpdatePane();
+    }
+
+    /// <summary>
+    /// true cuando el panel esta replegado a iconos. Es propiedad de dependencia y no del
+    /// ViewModel a proposito: es estado de la ventana, no del nodo, y las plantillas del
+    /// rail se enlazan a ella por RelativeSource.
+    /// </summary>
+    public static readonly DependencyProperty IsPaneCompactProperty =
+        DependencyProperty.Register(
+            nameof(IsPaneCompact), typeof(bool), typeof(MainWindow),
+            new PropertyMetadata(false));
+
+    public bool IsPaneCompact
+    {
+        get => (bool)GetValue(IsPaneCompactProperty);
+        set => SetValue(IsPaneCompactProperty, value);
+    }
+
+    private void UpdatePane()
+    {
+        bool compacto = ActualWidth > 0 && ActualWidth < CompactThreshold;
+
+        if (compacto == IsPaneCompact)
+        {
+            return;
+        }
+
+        IsPaneCompact = compacto;
+        PaneColumn.Width = new GridLength(compacto ? PaneCompact : PaneExpanded);
     }
 
     /// <summary>
@@ -22,6 +62,7 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         DesktopChrome.Apply(this);
+        UpdatePane();
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

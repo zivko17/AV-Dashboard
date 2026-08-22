@@ -232,17 +232,42 @@ public sealed class ApiClient : IDisposable
                 "no puede leer %ProgramData%\\AvDashboard\\agent.token.");
         }
 
-        ApiError? error = null;
+        // El cuerpo se lee primero como texto y solo despues se intenta interpretar. Leerlo
+        // directamente como ApiError deja sin nada que ensenar cuando el agente devuelve
+        // otra forma: el deserializador lanza por los campos obligatorios que faltan y lo
+        // unico que queda es el codigo de estado, que no dice que hacer.
+        string body = string.Empty;
+
         try
         {
-            error = await response.Content.ReadFromJsonAsync<ApiError>(Json, ct).ConfigureAwait(false);
+            body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
+        {
+        }
+
+        try
+        {
+            if (JsonSerializer.Deserialize<ApiError>(body, Json) is { Message.Length: > 0 } error)
+            {
+                return ApiResult<T>.Failed(error.Message);
+            }
         }
         catch (JsonException)
         {
             // El agente ha devuelto algo que no es nuestro formato de error.
         }
 
-        return ApiResult<T>.Failed(error?.Message ?? $"El agente respondió {(int)response.StatusCode}.");
+        string resumen = body.Trim();
+
+        if (resumen.Length > 300)
+        {
+            resumen = resumen[..300] + "…";
+        }
+
+        return ApiResult<T>.Failed(resumen.Length > 0
+            ? $"El agente respondió {(int)response.StatusCode}: {resumen}"
+            : $"El agente respondió {(int)response.StatusCode}.");
     }
 
     private static string Describe(Exception ex) => ex switch

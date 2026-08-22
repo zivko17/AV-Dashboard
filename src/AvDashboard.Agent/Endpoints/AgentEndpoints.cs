@@ -82,7 +82,17 @@ public static class AgentEndpoints
 
             if (!result.Success)
             {
-                return Results.BadRequest(result);
+                // El cuerpo de un error tiene que ser ApiError y no el resultado del
+                // actuador. Devolviendo el resultado, el cliente intenta leerlo como
+                // ApiError, no encuentra los campos obligatorios, el deserializador lanza
+                // y el motivo real —«acceso denegado», casi siempre— se pierde: el usuario
+                // solo ve «el agente respondio 400», que no le dice que hacer.
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "setting_write_failed",
+                    Message = result.Message,
+                    Detail = setting,
+                });
             }
 
             if (!result.DryRun)
