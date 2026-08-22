@@ -21,6 +21,12 @@ public enum SettingGroup
     /// <summary>Arranque y sesión.</summary>
     Startup,
 
+    /// <summary>
+    /// Lo de la NIC que no es una dirección IP: descargas de proceso, moderación de
+    /// interrupciones, ahorro de energía. Es donde se rompe la temporización de Dante.
+    /// </summary>
+    Network,
+
     /// <summary>Solo lectura, sin objetivo: contexto para entender por qué algo va mal.</summary>
     Diagnostics,
 }

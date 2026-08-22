@@ -160,6 +160,18 @@ public static class SettingsCatalog
             Rationale = "Una tarea programada puede despertar la máquina a mitad de montaje.",
         },
 
+        new()
+        {
+            Id = SettingIds.WakeArmedTasks,
+            Group = SettingGroup.Power,
+            Name = "Tareas programadas que pueden despertar el equipo",
+            Source = "TaskScheduler COM, Settings.WakeToRun",
+            AcceptableValues = new[] { "0" },
+            TargetDescription = "Ninguna",
+            Impact = SettingImpact.High,
+            Rationale = "El interruptor general de temporizadores no dice cuáles son. Estas son las que sacan la máquina de suspensión a las cuatro de la mañana, o la despiertan en mitad del montaje.",
+        },
+
         // --------------------------------------------------------- Kernel y rendimiento
         new()
         {
@@ -277,6 +289,17 @@ public static class SettingsCatalog
         },
         new()
         {
+            Id = SettingIds.BackgroundApps,
+            Group = SettingGroup.Kernel,
+            Name = "Aplicaciones en segundo plano",
+            Source = @"HKCU\...\BackgroundAccessApplications\GlobalUserDisabled",
+            AcceptableValues = new[] { SettingReading.BooleanOff },
+            TargetDescription = "Desactivadas",
+            Impact = SettingImpact.Medium,
+            Rationale = "Aplicaciones de la Store despertándose solas a sincronizar mientras el rig renderiza.",
+        },
+        new()
+        {
             Id = SettingIds.MemoryIntegrity,
             Group = SettingGroup.Kernel,
             Name = "Integridad de memoria (HVCI / VBS)",
@@ -391,6 +414,28 @@ public static class SettingsCatalog
         },
         new()
         {
+            Id = SettingIds.CoInstallers,
+            Group = SettingGroup.Updates,
+            Name = "Co-installers de dispositivo",
+            Source = @"HKLM\...\Device Installer\DisableCoInstallers",
+            AcceptableValues = new[] { SettingReading.BooleanOff },
+            TargetDescription = "Desactivados",
+            Impact = SettingImpact.High,
+            Rationale = "Enchufas una capturadora a mitad de montaje y Windows ejecuta el instalador del fabricante: mete software, reinicia servicios y a veces te cambia el dispositivo de audio por defecto.",
+        },
+        new()
+        {
+            Id = SettingIds.SearchIndexing,
+            Group = SettingGroup.Updates,
+            Name = "Indexación en unidades de datos",
+            Source = "Win32_Volume.IndexingEnabled",
+            AcceptableValues = new[] { "0" },
+            TargetDescription = "Ninguna unidad de datos indexada",
+            Impact = SettingImpact.Medium,
+            Rationale = "El indexador leyendo una carpeta de material mientras grabas en ese mismo disco.",
+        },
+        new()
+        {
             Id = SettingIds.StorageSense,
             Group = SettingGroup.Updates,
             Name = "Sensor de almacenamiento",
@@ -470,6 +515,31 @@ public static class SettingsCatalog
             Rationale = "Igual que el anterior: la pantalla de bloqueo acaba proyectada.",
         },
 
+        new()
+        {
+            Id = SettingIds.RestartApps,
+            Group = SettingGroup.Startup,
+            Name = "Relanzar aplicaciones al iniciar sesión",
+            Source = @"HKCU\...\Winlogon\RestartApps",
+            AcceptableValues = new[] { SettingReading.BooleanOff },
+            TargetDescription = "Desactivado",
+            Impact = SettingImpact.Medium,
+            Rationale = "Tras un reinicio por corte de luz, Windows reabre Resolume o vMix solo, en un estado que tú no has elegido.",
+        },
+
+        // --------------------------------------------------------------- Adaptador de red
+        new()
+        {
+            Id = SettingIds.NicOffloads,
+            Group = SettingGroup.Network,
+            Name = "Descargas y ahorro de energía en la NIC",
+            Source = "MSFT_NetAdapterAdvancedPropertySettingData (root\\StandardCimv2)",
+            AcceptableValues = new[] { "0" },
+            TargetDescription = "Ningún adaptador con offloads activos",
+            Impact = SettingImpact.High,
+            Rationale = "Large Send Offload, moderación de interrupciones y Energy Efficient Ethernet rompen la temporización de Dante y de NDI, y no aparecen en ninguna pantalla de red normal.",
+        },
+
         // ----------------------------------------------------------------- Diagnóstico
         new()
         {
@@ -524,6 +594,7 @@ public static class SettingsCatalog
         SettingGroup.Updates,
         SettingGroup.Security,
         SettingGroup.Startup,
+        SettingGroup.Network,
         SettingGroup.Diagnostics,
     };
 
@@ -611,6 +682,7 @@ public static class SettingsCatalog
     public static string DescribeGroup(SettingGroup group) => group switch
     {
         SettingGroup.Power => "Energía",
+        SettingGroup.Network => "Adaptador de red",
         SettingGroup.Kernel => "Kernel y rendimiento",
         SettingGroup.Updates => "Interrupciones y actualizaciones",
         SettingGroup.Security => "Seguridad",

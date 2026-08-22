@@ -22,6 +22,9 @@ public static class SettingIds
     public const string Hibernation = "power.hibernation";
     public const string WakeTimers = "power.wake-timers";
 
+    /// <summary>Tareas programadas con «despertar el equipo» armado.</summary>
+    public const string WakeArmedTasks = "power.wake-armed-tasks";
+
     // --- Kernel y rendimiento ---
     public const string MmcssResponsiveness = "kernel.mmcss-responsiveness";
     public const string NetworkThrottling = "kernel.network-throttling";
@@ -33,6 +36,7 @@ public static class SettingIds
     public const string Hags = "kernel.hags";
     public const string GameMode = "kernel.game-mode";
     public const string GameDvr = "kernel.game-dvr";
+    public const string BackgroundApps = "kernel.background-apps";
     public const string MemoryIntegrity = "kernel.memory-integrity";
     public const string CpuMitigations = "kernel.cpu-mitigations";
 
@@ -46,6 +50,8 @@ public static class SettingIds
     public const string Notifications = "updates.notifications";
     public const string StoreAutoUpdate = "updates.store-auto-update";
     public const string StorageSense = "updates.storage-sense";
+    public const string CoInstallers = "updates.co-installers";
+    public const string SearchIndexing = "updates.search-indexing";
 
     // --- Seguridad ---
     public const string TamperProtection = "security.tamper-protection";
@@ -56,10 +62,16 @@ public static class SettingIds
     public const string FastStartup = "startup.fast-startup";
     public const string ScreenSaver = "startup.screen-saver";
     public const string InactivityLock = "startup.inactivity-lock";
+    public const string RestartApps = "startup.restart-apps";
 
     // --- Diagnóstico ---
     public const string UnexpectedShutdowns = "diagnostics.unexpected-shutdowns";
     public const string DevicesWithError = "diagnostics.devices-with-error";
     public const string TimerResolution = "diagnostics.timer-resolution";
     public const string VirtualizationFirmware = "diagnostics.virtualization-firmware";
+
+    // --- Red ---
+
+    /// <summary>Descargas de proceso y ahorro de energia en la NIC.</summary>
+    public const string NicOffloads = "network.offloads";
 }

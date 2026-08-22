@@ -39,6 +39,7 @@ public static class SettingsProbe
         ReadUpdates(readings);
         ReadSecurity(readings);
         ReadStartup(readings);
+        ReadNetwork(readings);
         ReadDiagnostics(readings);
 
         return readings;
@@ -112,45 +113,95 @@ public static class SettingsProbe
         readings.Add(SettingReading.Of(
             SettingIds.Hibernation,
             RegistrySettingsReader.ReadBool(RegistryHive.LocalMachine, PowerKey, "HibernateEnabled")));
+
+        readings.Add(ReadWakeArmedTasks());
     }
 
-    private static string? DescribePlan(Guid? scheme)
+    /// <summary>
+    /// Tareas programadas con «despertar el equipo» armado.
+    ///
+    /// El ajuste global de temporizadores de reactivacion dice si se permite; esto dice
+    /// cuales lo tienen puesto, que es lo accionable. El desfragmentador y los
+    /// actualizadores de fabricante son los sospechosos habituales.
+    ///
+    /// Se usa el COM del planificador por ProgID en vez de una libreria: es la via
+    /// documentada y no anade dependencia. El recorrido es recursivo con tope, porque en
+    /// una maquina con software de fabricante hay carpetas anidadas de sobra.
+    /// </summary>
+    private static SettingReading ReadWakeArmedTasks()
     {
-        if (scheme is not Guid plan)
-        {
-            return null;
-        }
+        const int limit = 4000;
 
-        if (plan == PowerConfiguration.UltimatePerformanceScheme)
+        try
         {
-            return "ultimate";
-        }
+            Type? type = Type.GetTypeFromProgID("Schedule.Service");
+            if (type is null)
+            {
+                return SettingReading.Missing(SettingIds.WakeArmedTasks,
+                    "el planificador de tareas no esta disponible");
+            }
 
-        if (plan == PowerConfiguration.HighPerformanceScheme)
+            dynamic service = Activator.CreateInstance(type)!;
+            service.Connect();
+
+            List<string> armed = new();
+            Budget budget = new() { Remaining = limit };
+
+            // La raiz se saca a una variable de tipo object a proposito: si se pasara la
+            // expresion dynamic directamente, la llamada a Walk se resolveria en tiempo de
+            // ejecucion, y el enlazador dinamico no lleva bien los parametros por
+            // referencia. Con object, Walk es una llamada estatica normal.
+            object root = service.GetFolder("\\");
+
+            Walk(root, armed, budget);
+
+            return SettingReading.Of(SettingIds.WakeArmedTasks, armed.Count,
+                armed.Count == 0
+                    ? "ninguna"
+                    : string.Join(", ", armed.Take(4)) + (armed.Count > 4 ? "…" : string.Empty));
+        }
+        catch (Exception ex) when (ex is COMException or UnauthorizedAccessException
+                                      or global::System.Reflection.TargetInvocationException
+                                      or MissingMemberException)
         {
-            return "high";
+            return SettingReading.Missing(SettingIds.WakeArmedTasks,
+                "no se ha podido consultar el planificador de tareas");
         }
-
-        return plan == PowerConfiguration.BalancedScheme ? "balanced" : "other";
     }
 
-    private static string DescribeTimeout(uint seconds) =>
-        seconds == 0 ? "nunca" : $"{TimeSpan.FromSeconds(seconds).TotalMinutes:0.#} min";
-
-    private static void AddAc(
-        List<SettingReading> readings, string id, Guid subGroup, Guid setting,
-        Func<uint, (string Value, string? Display)> format)
+    /// <summary>Tope de tareas a visitar, para que una jerarquia rara no cuelgue el ciclo.</summary>
+    private sealed class Budget
     {
-        uint? raw = PowerConfiguration.ReadActiveAcValue(subGroup, setting);
+        public int Remaining { get; set; }
+    }
 
-        if (raw is not uint value)
+    private static void Walk(object folder, List<string> armed, Budget budget)
+    {
+        dynamic current = folder;
+
+        foreach (dynamic task in current.GetTasks(0))
         {
-            readings.Add(SettingReading.Missing(id, "el plan activo no expone este ajuste"));
-            return;
+            if (--budget.Remaining <= 0)
+            {
+                return;
+            }
+
+            // Una tarea deshabilitada no despierta nada, asi que no cuenta.
+            if ((bool)task.Enabled && (bool)task.Definition.Settings.WakeToRun)
+            {
+                armed.Add((string)task.Name);
+            }
         }
 
-        (string canonical, string? display) = format(value);
-        readings.Add(SettingReading.Of(id, canonical, display));
+        foreach (dynamic child in current.GetFolders(0))
+        {
+            if (budget.Remaining <= 0)
+            {
+                return;
+            }
+
+            Walk((object)child, armed, budget);
+        }
     }
 
     // ------------------------------------------------------------- Kernel y rendimiento
@@ -222,6 +273,14 @@ public static class SettingsProbe
                 (null, null) => (bool?)null,
                 _ => true,
             }));
+
+        // GlobalUserDisabled = 1 significa que estan desactivadas, que es lo que queremos.
+        bool? backgroundDisabled = RegistrySettingsReader.ReadBool(
+            RegistryHive.CurrentUser, BackgroundAppsKey, "GlobalUserDisabled");
+
+        readings.Add(SettingReading.Of(
+            SettingIds.BackgroundApps,
+            backgroundDisabled is null ? null : !backgroundDisabled));
 
         readings.Add(SettingReading.Of(
             SettingIds.MemoryIntegrity,
@@ -325,6 +384,16 @@ public static class SettingsProbe
         readings.Add(SettingReading.Of(
             SettingIds.StoreAutoUpdate,
             RegistrySettingsReader.ReadInt(RegistryHive.CurrentUser, StoreUpdateKey, "AutoDownload")));
+
+        // DisableCoInstallers = 1 significa que estan desactivados.
+        bool? coInstallersDisabled = RegistrySettingsReader.ReadBool(
+            RegistryHive.LocalMachine, DeviceInstallerKey, "DisableCoInstallers");
+
+        readings.Add(SettingReading.Of(
+            SettingIds.CoInstallers,
+            coInstallersDisabled is null ? null : !coInstallersDisabled));
+
+        readings.Add(ReadSearchIndexing());
 
         readings.Add(SettingReading.Of(
             SettingIds.StorageSense,
@@ -443,6 +512,10 @@ public static class SettingsProbe
             RegistryHive.LocalMachine, PoliciesSystemKey, "InactivityTimeoutSecs");
 
         readings.Add(SettingReading.Of(
+            SettingIds.RestartApps,
+            RegistrySettingsReader.ReadBool(RegistryHive.CurrentUser, WinlogonKey, "RestartApps")));
+
+        readings.Add(SettingReading.Of(
             SettingIds.InactivityLock,
             inactivity,
             inactivity switch
@@ -451,6 +524,73 @@ public static class SettingsProbe
                 int seconds => $"{seconds} s",
                 null => null,
             }));
+    }
+
+    // ------------------------------------------------------------- Adaptador de red
+
+    /// <summary>
+    /// Adaptadores con alguna descarga de proceso o ahorro de energia activo.
+    ///
+    /// No se mira un adaptador concreto sino cuantos tienen algo puesto, porque en un rig
+    /// con Dante y NDI la respuesta correcta es «ninguno» y lo unico que hace falta saber
+    /// es si eso se cumple y donde no.
+    /// </summary>
+    private static void ReadNetwork(List<SettingReading> readings)
+    {
+        // Los nombres son los de la propiedad avanzada del driver. Se compara por prefijo
+        // porque cada fabricante anade sufijos (*LsoV2IPv4, *LsoV2IPv6...).
+        string[] keywords =
+        {
+            "*LsoV2", "*InterruptModeration", "*EEE", "*FlowControl", "*RSC",
+        };
+
+        try
+        {
+            ManagementScope scope = new(@"root\StandardCimv2");
+            ObjectQuery query = new(
+                "SELECT Name, RegistryKeyword, RegistryValue " +
+                "FROM MSFT_NetAdapterAdvancedPropertySettingData");
+
+            using ManagementObjectSearcher searcher = new(scope, query);
+
+            HashSet<string> offenders = new(StringComparer.OrdinalIgnoreCase);
+
+            foreach (ManagementBaseObject property in searcher.Get())
+            {
+                using (property)
+                {
+                    if (property["RegistryKeyword"] is not string keyword ||
+                        property["Name"] is not string adapter)
+                    {
+                        continue;
+                    }
+
+                    if (!keywords.Any(k => keyword.StartsWith(k, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+
+                    // RegistryValue es un array de cadenas; «0» es desactivado.
+                    if (property["RegistryValue"] is string[] { Length: > 0 } values &&
+                        values[0] != "0")
+                    {
+                        offenders.Add(adapter);
+                    }
+                }
+            }
+
+            readings.Add(SettingReading.Of(SettingIds.NicOffloads, offenders.Count,
+                offenders.Count == 0
+                    ? "ninguno"
+                    : string.Join(", ", offenders.Take(3)) + (offenders.Count > 3 ? "…" : string.Empty)));
+        }
+        catch (ManagementException)
+        {
+            // root\StandardCimv2 no existe antes de Windows 8, y algunos drivers no
+            // publican propiedades avanzadas.
+            readings.Add(SettingReading.Missing(SettingIds.NicOffloads,
+                "el driver no publica propiedades avanzadas"));
+        }
     }
 
     // -------------------------------------------------------------------- Diagnóstico
@@ -499,6 +639,51 @@ public static class SettingsProbe
         {
             return SettingReading.Missing(SettingIds.UnexpectedShutdowns,
                 "sin acceso al registro de eventos del sistema");
+        }
+    }
+
+    /// <summary>
+    /// Volumenes fijos distintos del de sistema con la indexacion activa. En C: es normal;
+    /// en el disco donde grabas es el indexador leyendo mientras escribes.
+    /// </summary>
+    private static SettingReading ReadSearchIndexing()
+    {
+        try
+        {
+            string system = Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\";
+
+            using ManagementObjectSearcher searcher = new(
+                "SELECT DriveLetter, IndexingEnabled FROM Win32_Volume WHERE DriveType = 3");
+
+            List<string> indexed = new();
+
+            foreach (ManagementBaseObject volume in searcher.Get())
+            {
+                using (volume)
+                {
+                    if (volume["DriveLetter"] is not string letter || letter.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    if (string.Equals(letter + @"\", system, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (volume["IndexingEnabled"] is true)
+                    {
+                        indexed.Add(letter);
+                    }
+                }
+            }
+
+            return SettingReading.Of(SettingIds.SearchIndexing, indexed.Count,
+                indexed.Count == 0 ? "ninguna" : string.Join(", ", indexed));
+        }
+        catch (ManagementException)
+        {
+            return SettingReading.Missing(SettingIds.SearchIndexing, "WMI no ha respondido");
         }
     }
 
@@ -628,6 +813,13 @@ public static class SettingsProbe
     private const string DefenderPolicyKey = @"SOFTWARE\Policies\Microsoft\Windows Defender";
     private const string ControlledFolderAccessKey =
         @"SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access";
+
+    private const string BackgroundAppsKey =
+        @"SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications";
+    private const string DeviceInstallerKey =
+        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Device Installer";
+    private const string WinlogonKey =
+        @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon";
 
     private const string DesktopKey = @"Control Panel\Desktop";
     private const string PoliciesSystemKey =
