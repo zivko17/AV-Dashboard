@@ -22,6 +22,21 @@ dotnet build
 Si el build falla aquí, para y mándame la salida: significa que tu SDK resuelve paquetes
 distintos a los del CI.
 
+## 1-bis. El atajo, una vez has compilado la primera vez
+
+```powershell
+.\scripts\Start-Dev.ps1
+```
+
+Para el agente si estaba corriendo, compila, lo relanza en segundo plano y abre la
+consola. **El agente en marcha bloquea sus propias DLL**, así que un `dotnet build` con él
+vivo falla con MSB3027; el script hace el orden correcto para que no haya que recordarlo.
+
+`.\scripts\Stop-Dev.ps1` lo para todo. `-SinConsola` arranca solo el agente, para
+trastear con la API desde PowerShell.
+
+Lo que sigue es el detalle paso a paso, útil la primera vez y cuando algo falla.
+
 ## 2. Arrancar el agente
 
 En un terminal, **sin elevar**:
