@@ -28,9 +28,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             new DashboardViewModel(nodes, NavigateTo),
             new SystemViewModel(nodes),
             new AudioViewModel(nodes),
-            new PlaceholderViewModel(nodes, "Vídeo", "\uE714", "Fase 4",
-                "Topología de displays, EDID, layouts guardados, DeckLink y desviación de refresh. " +
-                "La enumeración básica de salidas ya la recoge el agente y alimenta la alerta de display desaparecido."),
+            new VideoViewModel(nodes),
             new NetworkViewModel(nodes),
             new ServicesViewModel(nodes),
             new PlaceholderViewModel(nodes, "Producción", "\uE7F4", "Fase 5",

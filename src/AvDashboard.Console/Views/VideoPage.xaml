@@ -1,0 +1,280 @@
+<UserControl x:Class="AvDashboard.Console.Views.VideoPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
+    <UserControl.Resources>
+        <controls:HealthBrushConverter x:Key="HealthBrush" />
+        <controls:SeverityBrushConverter x:Key="SeverityBrush" />
+        <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
+        <controls:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <controls:CountToVisibilityConverter x:Key="CountToVisibility" />
+    </UserControl.Resources>
+
+    <StackPanel>
+        <TextBlock Text="Vídeo" Style="{StaticResource TitleText}" Margin="6,0,0,12" />
+
+        <TextBlock Text="{Binding Error}" Foreground="{StaticResource CriticalBrush}" Margin="6,0,0,8"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}" />
+
+        <!-- Salidas activas -->
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="SALIDAS ACTIVAS" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,10" />
+                <ItemsControl ItemsSource="{Binding Outputs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="230" />
+                                    <ColumnDefinition Width="130" />
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="210" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DeviceName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text=" ★" Foreground="{StaticResource AccentBrush}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPrimary}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1" Text="{Binding MonitorName}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Text="{Binding Connector}"
+                                           Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Grid.Column="3" Text="{Binding Mode}" FontFamily="Consolas" />
+                                <TextBlock Grid.Column="4" Text="{Binding Refresh}" FontFamily="Consolas" />
+                                <TextBlock Grid.Column="5" Text="{Binding Color}"
+                                           Style="{StaticResource CaptionText}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding Edid}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,10,0,0"
+                           Text="El refresco viene de la fracción exacta que declara la ruta de display: un 59,94 real no se redondea a 60. ★ marca la pantalla principal." />
+            </StackPanel>
+        </Border>
+
+        <!-- Biblioteca de EDID -->
+        <Border Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Text="BIBLIOTECA DE EDID" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4" />
+                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,0,0,10"
+                           Text="Incluye los monitores que Windows recuerda aunque no estén enchufados: son la referencia contra la que comparar cuando vuelvan." />
+
+                <TextBlock Text="{Binding EdidUnavailable}" TextWrapping="Wrap"
+                           Foreground="{StaticResource WarningBrush}" Margin="0,0,0,8"
+                           Visibility="{Binding EdidUnavailable, Converter={StaticResource StringToVisibility}}" />
+
+                <ListBox ItemsSource="{Binding Entries}" SelectedItem="{Binding Selected}"
+                         ItemContainerStyle="{StaticResource RowItem}"
+                         MaxHeight="260" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         HorizontalContentAlignment="Stretch">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="250" />
+                                    <ColumnDefinition Width="170" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="110" />
+                                </Grid.ColumnDefinitions>
+
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsMarked}"
+                                          VerticalAlignment="Center" Margin="0,0,10,0"
+                                          ToolTip="Marca dos para compararlos." />
+                                <Ellipse Grid.Column="1" Width="8" Height="8" VerticalAlignment="Center"
+                                         Margin="0,0,10,0"
+                                         Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Label}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="3" Text="{Binding Where}"
+                                           Style="{StaticResource CaptionText}" />
+                                <TextBlock Grid.Column="4" Text="{Binding Summary}"
+                                           Style="{StaticResource CaptionText}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="5" Text="{Binding Fingerprint}" FontFamily="Consolas"
+                                           Style="{StaticResource CaptionText}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button Content="Comparar marcados" Command="{Binding DiffCommand}" />
+                    <Button Content="Quitar marcas" Command="{Binding ClearMarksCommand}" Margin="10,0,0,0" />
+                    <Button Content="Volcar a .bin" Command="{Binding DumpCommand}" Margin="10,0,0,0"
+                            ToolTip="Guarda el EDID seleccionado tal cual, que es lo que comen CRU y AW EDID Editor." />
+                    <TextBlock Text="{Binding DumpResult}" Style="{StaticResource CaptionText}"
+                               VerticalAlignment="Center" Margin="14,0,0,0"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Detalle del EDID seleccionado -->
+        <Border Style="{StaticResource Card}"
+                Visibility="{Binding Selected, Converter={StaticResource NotNullToVisibility}}">
+            <StackPanel DataContext="{Binding Selected}">
+                <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,2" />
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource CaptionText}" Margin="0,0,0,12" />
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Límites declarados"
+                               Style="{StaticResource CaptionText}" Width="160" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding RangeLimits}" FontFamily="Consolas" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="HDR"
+                               Style="{StaticResource CaptionText}" Width="160" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Hdr}" />
+                </Grid>
+
+                <TextBlock Text="TIMINGS DETALLADOS" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,8,0,6" />
+                <ItemsControl ItemsSource="{Binding DetailedTimings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" FontFamily="Consolas" Text="{Binding}" />
+                                <TextBlock Grid.Column="1" FontFamily="Consolas"
+                                           Text="{Binding PixelClockKhz, StringFormat='{}{0:N0} kHz'}" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource CaptionText}"
+                                           Text="{Binding HorizontalTotal, StringFormat='total {0}'}" />
+                                <TextBlock Grid.Column="3" Style="{StaticResource CaptionText}"
+                                           Text="{Binding VerticalTotal, StringFormat='× {0}'}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="AUDIO DECLARADO (CTA-861)" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,14,0,6"
+                           Visibility="{Binding AudioDescriptors.Count, Converter={StaticResource CountToVisibility}}" />
+                <ItemsControl ItemsSource="{Binding AudioDescriptors}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontFamily="Consolas" Margin="0,2" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="VALIDACIÓN" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,14,0,6" />
+                <ItemsControl ItemsSource="{Binding Findings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                         Margin="0,0,10,0"
+                                         Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="Sin problemas: checksums correctos y los timings caben en los límites que el monitor declara.">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Findings.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Diff -->
+        <Border Style="{StaticResource Card}" Margin="6,0,6,20">
+            <StackPanel>
+                <TextBlock Text="DIFERENCIAS" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" />
+                <TextBlock Text="{Binding DiffSummary}" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+                <ItemsControl ItemsSource="{Binding Differences}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="!" FontWeight="Bold"
+                                           Foreground="{StaticResource WarningBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Hidden" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Significant}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <TextBlock Grid.Column="1" Text="{Binding Field}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Left}" FontFamily="Consolas"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="3" Text="  →  " Foreground="{StaticResource TextMutedBrush}" />
+                                <TextBlock Grid.Column="4" Text="{Binding Right}" FontFamily="Consolas"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,10,0,0"
+                           Text="! marca lo que cambia lo que el equipo de enfrente va a negociar. Un número de serie distinto es informativo; un modo preferido distinto no lo es." />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" Margin="6,4,0,20">
+            <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

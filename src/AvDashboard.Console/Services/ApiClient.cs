@@ -61,6 +61,21 @@ public sealed class ApiClient : IDisposable
     public Task<ApiResult<ServicesResponse>> GetServicesAsync(CancellationToken ct = default) =>
         GetAsync<ServicesResponse>(ApiRoutes.Services, ct);
 
+    public Task<ApiResult<DisplayTopology>> GetDisplaysAsync(CancellationToken ct = default) =>
+        GetAsync<DisplayTopology>(ApiRoutes.VideoDisplays, ct);
+
+    public Task<ApiResult<EdidListResponse>> GetEdidAsync(CancellationToken ct = default) =>
+        GetAsync<EdidListResponse>(ApiRoutes.VideoEdid, ct);
+
+    public Task<ApiResult<EdidRawResponse>> GetEdidRawAsync(string id, CancellationToken ct = default) =>
+        GetAsync<EdidRawResponse>($"{ApiRoutes.VideoEdidRaw}?id={Uri.EscapeDataString(id)}", ct);
+
+    public Task<ApiResult<EdidDiffResponse>> GetEdidDiffAsync(
+        string left, string right, CancellationToken ct = default) =>
+        GetAsync<EdidDiffResponse>(
+            $"{ApiRoutes.VideoEdidDiff}?left={Uri.EscapeDataString(left)}&right={Uri.EscapeDataString(right)}",
+            ct);
+
     public Task<ApiResult<IReadOnlyList<PingStatistics>>> GetPingAsync(CancellationToken ct = default) =>
         GetAsync<IReadOnlyList<PingStatistics>>(ApiRoutes.NetworkPing, ct);
 

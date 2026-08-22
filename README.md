@@ -85,7 +85,8 @@ Para configurar el ping continuo a tus dispositivos críticos, edita
 |---|---|
 | M1 Sistema | Telemetría a 1 s, plan de energía, MMCSS, Fast Startup, HAGS, Windows Update, Defender (lectura) |
 | M3 Audio | Endpoints, formato en uso vs. declarado, mismatch de sample rate, medidores a 20 fps, drivers ASIO, watchdog de dispositivo desaparecido |
-| M4 Vídeo | Enumeración de displays y alerta de display desaparecido. El resto, Fase 4 |
+| M4 Vídeo | Topología con conector físico, refresco como fracción exacta (59,94 no se redondea a 60), HDR y alerta de display desaparecido. DeckLink y NVAPI, pendientes |
+| M18 EDID | Lectura del EDID crudo, decodificación completa, validación de coherencia y diff entre dos monitores. Volcado a `.bin` para CRU o una matriz |
 | M5 Red | Interfaces, power management de NIC, Nagle, throughput, link flap, escaneo del segmento, ping continuo con jitter y pérdida |
 | M6 Servicios | Inventario agrupado por sector AV, servicios esperados, diff contra baseline |
 | M9 Almacenamiento | Espacio libre y medida de escritura bajo demanda |

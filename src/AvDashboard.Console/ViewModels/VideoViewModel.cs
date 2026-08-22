@@ -1,0 +1,325 @@
+using System.Collections.ObjectModel;
+using AvDashboard.Console.Services;
+using AvDashboard.Core.Contracts;
+using AvDashboard.Core.Models;
+using AvDashboard.Core.Video;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace AvDashboard.Console.ViewModels;
+
+/// <summary>
+/// Vídeo (M4) y EDID Toolkit (M18).
+///
+/// La vista contesta a las dos preguntas que se hacen delante de un procesador LED que no
+/// engancha: por qué conector físico sale cada señal y a qué refresco exacto, y qué dice
+/// realmente el EDID del monitor que hay al otro lado.
+/// </summary>
+public sealed partial class VideoViewModel : PageViewModel
+{
+    public VideoViewModel(NodeManager nodes) : base(nodes)
+    {
+    }
+
+    public override string Title => "Vídeo";
+    public override string Glyph => "\uE714";
+
+    public ObservableCollection<DisplayOutputViewModel> Outputs { get; } = new();
+    public ObservableCollection<EdidEntryViewModel> Entries { get; } = new();
+    public ObservableCollection<EdidDifference> Differences { get; } = new();
+
+    [ObservableProperty]
+    private EdidEntryViewModel? _selected;
+
+    [ObservableProperty]
+    private string? _edidUnavailable;
+
+    [ObservableProperty]
+    private string _diffSummary = "Marca dos EDID de la lista y pulsa Comparar.";
+
+    [ObservableProperty]
+    private string? _dumpResult;
+
+    protected override async Task LoadAsync()
+    {
+        ApiClient api = Nodes.Api();
+
+        ApiResult<DisplayTopology> displays = await api.GetDisplaysAsync().ConfigureAwait(true);
+        if (!Apply(displays, out DisplayTopology topology))
+        {
+            return;
+        }
+
+        Outputs.Clear();
+        foreach (DisplayOutput output in topology.Outputs
+                     .OrderByDescending(o => o.IsPrimary)
+                     .ThenBy(o => o.DeviceName, StringComparer.CurrentCulture))
+        {
+            Outputs.Add(new DisplayOutputViewModel(output));
+        }
+
+        // Recordar qué había marcado antes del refresco: perder la selección cada cinco
+        // segundos haría inutilizable el diff.
+        HashSet<string> marked = Entries.Where(e => e.IsMarked).Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
+        string? selectedId = Selected?.Id;
+
+        ApiResult<EdidListResponse> edid = await api.GetEdidAsync().ConfigureAwait(true);
+
+        Entries.Clear();
+
+        if (!edid.Success)
+        {
+            EdidUnavailable = edid.Error;
+            Health = WorstOf(topology);
+            return;
+        }
+
+        EdidListResponse list = edid.Value!;
+        EdidUnavailable = list.UnavailableReason;
+
+        // La seleccion se resuelve contra la lista nueva. Conservar el objeto viejo la
+        // dejaria apuntando a una entrada que ya no esta en la coleccion.
+        Selected = null;
+
+        foreach (EdidEntry entry in list.Entries)
+        {
+            EdidEntryViewModel item = new(entry) { IsMarked = marked.Contains(entry.Id) };
+            Entries.Add(item);
+
+            if (entry.Id == selectedId)
+            {
+                Selected = item;
+            }
+        }
+
+        Selected ??= Entries.FirstOrDefault(e => e.Connected) ?? Entries.FirstOrDefault();
+
+        // La salud de la página combina las dos mitades: una salida perdida y un EDID con
+        // el checksum roto son igual de graves y ninguna debe tapar a la otra.
+        HealthState worst = WorstOf(topology);
+        foreach (EdidEntryViewModel entry in Entries)
+        {
+            if (entry.Health > worst)
+            {
+                worst = entry.Health;
+            }
+        }
+
+        Health = worst;
+    }
+
+    /// <summary>Salud de la topología por sí sola: sin salidas activas es un problema.</summary>
+    private static HealthState WorstOf(DisplayTopology topology) =>
+        topology.ActiveCount == 0 ? HealthState.Critical : HealthState.Ok;
+
+    /// <summary>
+    /// Vuelca el EDID seleccionado a .bin. Binario y no base64 porque es lo que comen CRU,
+    /// AW EDID Editor y la carga de EDID de una matriz.
+    /// </summary>
+    [RelayCommand]
+    private async Task DumpAsync()
+    {
+        if (Selected is null)
+        {
+            return;
+        }
+
+        ApiResult<EdidRawResponse> result = await Nodes.Api().GetEdidRawAsync(Selected.Id).ConfigureAwait(true);
+
+        if (!result.Success)
+        {
+            DumpResult = result.Error;
+            return;
+        }
+
+        EdidRawResponse raw = result.Value!;
+
+        Microsoft.Win32.SaveFileDialog dialog = new()
+        {
+            FileName = raw.SuggestedFileName,
+            DefaultExt = ".bin",
+            Filter = "EDID binario (*.bin)|*.bin|Todos los archivos (*.*)|*.*",
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            byte[] bytes = Convert.FromBase64String(raw.Base64);
+            await File.WriteAllBytesAsync(dialog.FileName, bytes).ConfigureAwait(true);
+            DumpResult = $"{bytes.Length} bytes escritos en {dialog.FileName}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            DumpResult = ex.Message;
+        }
+    }
+
+    /// <summary>Compara los dos EDID marcados.</summary>
+    [RelayCommand]
+    private async Task DiffAsync()
+    {
+        EdidEntryViewModel[] marked = Entries.Where(e => e.IsMarked).Take(3).ToArray();
+
+        if (marked.Length != 2)
+        {
+            DiffSummary = marked.Length < 2
+                ? "Marca exactamente dos EDID para compararlos."
+                : "Hay más de dos marcados. El diff compara dos.";
+            Differences.Clear();
+            return;
+        }
+
+        ApiResult<EdidDiffResponse> result = await Nodes.Api()
+            .GetEdidDiffAsync(marked[0].Id, marked[1].Id)
+            .ConfigureAwait(true);
+
+        if (!result.Success)
+        {
+            DiffSummary = result.Error ?? "El diff ha fallado.";
+            Differences.Clear();
+            return;
+        }
+
+        EdidDiffResponse diff = result.Value!;
+
+        Differences.Clear();
+        foreach (EdidDifference difference in diff.Differences)
+        {
+            Differences.Add(difference);
+        }
+
+        int significant = diff.Differences.Count(d => d.Significant);
+
+        DiffSummary = diff.Identical
+            ? $"{diff.LeftLabel} y {diff.RightLabel} son idénticos."
+            : $"{diff.Differences.Count} diferencias entre «{diff.LeftLabel}» y «{diff.RightLabel}», " +
+              (significant == 0
+                  ? "ninguna afecta a lo que se negocia en el cable."
+                  : $"{significant} de ellas cambian lo que se negocia en el cable.");
+    }
+
+    [RelayCommand]
+    private void ClearMarks()
+    {
+        foreach (EdidEntryViewModel entry in Entries)
+        {
+            entry.IsMarked = false;
+        }
+
+        Differences.Clear();
+        DiffSummary = "Marca dos EDID de la lista y pulsa Comparar.";
+    }
+}
+
+/// <summary>Una salida activa, con los campos ya formateados para la vista.</summary>
+public sealed class DisplayOutputViewModel
+{
+    public DisplayOutputViewModel(DisplayOutput output)
+    {
+        Output = output;
+    }
+
+    public DisplayOutput Output { get; }
+
+    public string DeviceName => Output.DeviceName;
+    public string MonitorName => Output.MonitorName ?? "monitor sin nombre";
+    public string Connector => Output.PhysicalConnector ?? "conector desconocido";
+    public bool IsPrimary => Output.IsPrimary;
+
+    public string Mode => $"{Output.Width}×{Output.Height}";
+
+    /// <summary>
+    /// El refresco escrito de las dos formas: el decimal para leerlo de un vistazo y la
+    /// fracción exacta debajo, porque 60000/1001 y 60/1 se ven igual redondeados y son
+    /// justo la diferencia que acumula deriva a lo largo de un show.
+    /// </summary>
+    public string Refresh => Output.RefreshDenominator > 0
+        ? $"{Output.RefreshHz:0.###} Hz  ({Output.RefreshNumerator}/{Output.RefreshDenominator})"
+        : $"{Output.RefreshHz:0.###} Hz";
+
+    public string Color
+    {
+        get
+        {
+            string depth = Output.BitsPerColorChannel is int bits ? $"{bits} bit/canal" : "profundidad desconocida";
+
+            return Output.HdrEnabled
+                ? $"HDR activo · {depth}"
+                : Output.HdrSupported ? $"HDR soportado, apagado · {depth}" : depth;
+        }
+    }
+
+    public string Edid => Output.EdidAvailable
+        ? $"EDID {Output.EdidHash}" +
+          (Output.EdidSerial is { Length: > 0 } serial ? $" · s/n {serial}" : string.Empty)
+        : "sin EDID legible";
+}
+
+/// <summary>
+/// Una entrada de la biblioteca de EDID. Envuelve el contrato para añadirle la marca de
+/// selección del diff, que es estado de la vista y no del agente.
+/// </summary>
+public sealed partial class EdidEntryViewModel : ObservableObject
+{
+    public EdidEntryViewModel(EdidEntry entry)
+    {
+        Entry = entry;
+    }
+
+    public EdidEntry Entry { get; }
+
+    [ObservableProperty]
+    private bool _isMarked;
+
+    public string Id => Entry.Id;
+    public string Label => Entry.Label;
+    public bool Connected => Entry.Connected;
+    public HealthState Health => Entry.Health;
+    public string Fingerprint => Entry.Fingerprint;
+
+    public string Where => Entry.Connected
+        ? $"conectado · {Entry.DeviceName}"
+        : "recordado por Windows";
+
+    public string Summary
+    {
+        get
+        {
+            Edid? parsed = Entry.Parsed;
+
+            if (parsed is null)
+            {
+                return $"{Entry.ByteCount} bytes que no se han podido decodificar";
+            }
+
+            string preferred = parsed.PreferredTiming is { } timing
+                ? $"{timing.HorizontalActive}×{timing.VerticalActive}@{timing.RefreshHz:0.###} Hz"
+                : "sin modo preferido";
+
+            string interfaceName = parsed.IsDigitalInput
+                ? parsed.DigitalInterface ?? "digital"
+                : "analógica";
+
+            return $"{preferred} · {interfaceName} · EDID {parsed.Version}.{parsed.Revision} · {Entry.ByteCount} bytes";
+        }
+    }
+
+    public IReadOnlyList<EdidFinding> Findings => Entry.Findings;
+
+    /// <summary>Timings detallados del EDID, que es donde se mira cuando algo no negocia.</summary>
+    public IReadOnlyList<DetailedTiming> DetailedTimings =>
+        Entry.Parsed?.DetailedTimings ?? Array.Empty<DetailedTiming>();
+
+    public IReadOnlyList<ShortAudioDescriptor> AudioDescriptors =>
+        Entry.Parsed?.Cta?.AudioDescriptors ?? Array.Empty<ShortAudioDescriptor>();
+
+    public string RangeLimits => Entry.Parsed?.RangeLimits?.ToString() ?? "sin límites declarados";
+
+    public string Hdr => Entry.Parsed?.Cta?.Hdr is { } hdr && hdr.SupportedEotf.Count > 0
+        ? string.Join(", ", hdr.SupportedEotf)
+        : "sin metadatos HDR";
+}

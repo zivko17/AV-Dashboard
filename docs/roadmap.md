@@ -62,6 +62,11 @@ Tailscale como alerta antes de que muerda.
 M4 completo (`QueryDisplayConfig`, NVAPI, layouts de pantalla, Window Coordinate Keeper,
 DeckLink, desviación de refresh) y M18 EDID Toolkit. La fase más técnica.
 
+Hecho: `QueryDisplayConfig` como fuente de la topología —conector físico, nombre real del
+panel y refresco como fracción exacta— y M18 entero salvo el forzado de EDID por NVAPI.
+Pendiente: NVAPI, layouts de pantalla, Window Coordinate Keeper, DeckLink y la medida de
+desviación de refresh.
+
 Criterio de salida: el procesador LED reinicia, Windows recoloca todo, y un clic lo
 devuelve a su sitio.
 

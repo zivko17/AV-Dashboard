@@ -29,6 +29,9 @@
         <DataTemplate DataType="{x:Type vm:AudioViewModel}">
             <views:AudioPage />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:VideoViewModel}">
+            <views:VideoPage />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:NetworkViewModel}">
             <views:NetworkPage />
         </DataTemplate>
