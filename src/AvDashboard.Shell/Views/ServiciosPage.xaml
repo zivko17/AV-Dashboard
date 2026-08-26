@@ -1,0 +1,104 @@
+<UserControl
+    x:Class="AvDashboard.Shell.Views.ServiciosPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AvDashboard.Shell"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls">
+
+    <UserControl.Resources>
+        <local:HealthBrushConverter x:Key="HealthBrush" />
+        <local:StringNotEmptyConverter x:Key="StringNotEmpty" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <!--
+            La fila de servicio. Es un SettingsCard como las de Sistema, y no una rejilla de
+            columnas fijas: el control se estrecha solo, que es lo que hacía falta cuando el
+            panel de navegación está desplegado y la ventana no es ancha.
+        -->
+        <DataTemplate x:Key="FilaDeServicio">
+            <tk:SettingsCard
+                Header="{Binding DisplayName}"
+                Description="{Binding Name}"
+                IsClickEnabled="False">
+
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="{Binding StoppedWarning}"
+                               VerticalAlignment="Center"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Visibility="{Binding IsUnexpectedlyStopped, Converter={StaticResource BoolToVisibility}}" />
+
+                    <Border Style="{StaticResource ChipBorderStyle}">
+                        <TextBlock Text="{Binding StartModeText}" Style="{StaticResource ChipTextStyle}" />
+                    </Border>
+
+                    <TextBlock Text="{Binding StateText}"
+                               MinWidth="90"
+                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               Style="{StaticResource MonoTextBlockStyle}" />
+                </StackPanel>
+            </tk:SettingsCard>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer>
+        <StackPanel Spacing="8" Padding="0,8,0,24">
+
+            <InfoBar
+                IsOpen="{Binding Error, Converter={StaticResource StringNotEmpty}, Mode=OneWay}"
+                Severity="Error"
+                IsClosable="False"
+                Message="{Binding Error}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <AutoSuggestBox
+                    MinWidth="260"
+                    PlaceholderText="Buscar un servicio"
+                    QueryIcon="Find"
+                    Text="{Binding Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                <CheckBox Content="Solo AV" IsChecked="{Binding OnlyAv, Mode=TwoWay}"
+                          VerticalAlignment="Center" />
+
+                <Button Content="Tomar baseline" Command="{Binding TakeBaselineCommand}" />
+                <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding BaselineSummary}"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="2,0,0,8" />
+
+            <!-- Agrupado por sector AV, no por el orden alfabético de services.msc. -->
+            <ItemsControl ItemsSource="{Binding Sectors}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <tk:SettingsExpander
+                            Header="{Binding DisplayName}"
+                            Description="{Binding ExpectedText}"
+                            IsExpanded="True"
+                            ItemsSource="{Binding Services}"
+                            ItemTemplate="{StaticResource FilaDeServicio}"
+                            Margin="0,0,0,4">
+
+                            <tk:SettingsExpander.HeaderIcon>
+                                <FontIcon Glyph="&#xE915;"
+                                          Foreground="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                            </tk:SettingsExpander.HeaderIcon>
+                        </tk:SettingsExpander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <InfoBar
+                IsOpen="True"
+                IsClosable="False"
+                Severity="Informational"
+                Title="Arrancar y parar llega en la Fase 2"
+                Message="Con confirmación explícita en el sector Sistema: parar el servicio equivocado en una máquina en directo se nota en la sala."
+                Margin="0,12,0,0" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

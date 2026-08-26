@@ -13,8 +13,36 @@
     -->
     <Grid x:Name="Root">
         <Grid.Resources>
+            <DataTemplate x:Key="PlantillaDashboard">
+                <views:DashboardPage />
+            </DataTemplate>
+
             <DataTemplate x:Key="PlantillaSistema">
                 <views:SistemaPage />
+            </DataTemplate>
+
+            <DataTemplate x:Key="PlantillaAudio">
+                <views:AudioPage />
+            </DataTemplate>
+
+            <DataTemplate x:Key="PlantillaVideo">
+                <views:VideoPage />
+            </DataTemplate>
+
+            <DataTemplate x:Key="PlantillaRed">
+                <views:RedPage />
+            </DataTemplate>
+
+            <DataTemplate x:Key="PlantillaServicios">
+                <views:ServiciosPage />
+            </DataTemplate>
+
+            <DataTemplate x:Key="PlantillaPerfiles">
+                <views:PerfilesPage />
+            </DataTemplate>
+
+            <DataTemplate x:Key="PlantillaTimeline">
+                <views:TimelinePage />
             </DataTemplate>
 
             <DataTemplate x:Key="PlantillaPendiente">
@@ -23,7 +51,14 @@
 
             <local:PageTemplateSelector
                 x:Key="SelectorDePagina"
+                Dashboard="{StaticResource PlantillaDashboard}"
                 Sistema="{StaticResource PlantillaSistema}"
+                Audio="{StaticResource PlantillaAudio}"
+                Video="{StaticResource PlantillaVideo}"
+                Red="{StaticResource PlantillaRed}"
+                Servicios="{StaticResource PlantillaServicios}"
+                Perfiles="{StaticResource PlantillaPerfiles}"
+                Timeline="{StaticResource PlantillaTimeline}"
                 Pendiente="{StaticResource PlantillaPendiente}" />
         </Grid.Resources>
 

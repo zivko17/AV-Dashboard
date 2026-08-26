@@ -200,7 +200,7 @@
                                 <tk:SettingsExpander
                                     Header="{Binding Name}"
                                     Description="{Binding TotalText}"
-                                    IsExpanded="True"
+                                    IsExpanded="False"
                                     ItemsSource="{Binding Rows}"
                                     ItemTemplate="{StaticResource FilaDeAjuste}"
                                     Margin="0,0,0,4">

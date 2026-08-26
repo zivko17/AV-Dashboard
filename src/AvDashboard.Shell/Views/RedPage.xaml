@@ -1,0 +1,155 @@
+<UserControl
+    x:Class="AvDashboard.Shell.Views.RedPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AvDashboard.Shell"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls">
+
+    <UserControl.Resources>
+        <local:HealthBrushConverter x:Key="HealthBrush" />
+        <local:StringNotEmptyConverter x:Key="StringNotEmpty" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <local:CountToVisibilityConverter x:Key="CountToVisibility" />
+        <local:InverseBooleanConverter x:Key="BoolNot" />
+    </UserControl.Resources>
+
+    <ScrollViewer>
+        <StackPanel Spacing="8" Padding="0,8,0,24">
+
+            <InfoBar
+                IsOpen="{Binding Error, Converter={StaticResource StringNotEmpty}, Mode=OneWay}"
+                Severity="Error"
+                IsClosable="False"
+                Message="{Binding Error}" />
+
+            <!-- ===================================================== INTERFACES -->
+            <TextBlock Text="Interfaces" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,4,0,0" />
+
+            <ItemsControl ItemsSource="{Binding Interfaces}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <tk:SettingsCard
+                            Header="{Binding Name}"
+                            Description="{Binding Description}"
+                            IsClickEnabled="False">
+
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                                            ToolTipService.ToolTip="{Binding PowerManagementText}"
+                                            Visibility="{Binding PowerManagementWarning, Converter={StaticResource BoolToVisibility}}">
+                                    <FontIcon Glyph="&#xE7BA;" FontSize="14"
+                                              Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                                    <TextBlock Text="power management"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                                </StackPanel>
+
+                                <Border Style="{StaticResource ChipBorderStyle}">
+                                    <TextBlock Text="{Binding LinkSpeedText}" Style="{StaticResource ChipTextStyle}" />
+                                </Border>
+
+                                <TextBlock Text="{Binding ThroughputText}"
+                                           MinWidth="110" TextAlignment="Right" VerticalAlignment="Center"
+                                           Style="{StaticResource MonoTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                                <StackPanel MinWidth="140" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Ipv4Text}"
+                                               Style="{StaticResource MonoTextBlockStyle}"
+                                               TextAlignment="Right" />
+                                    <TextBlock Text="{Binding SubnetMask}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               TextAlignment="Right" />
+                                </StackPanel>
+                            </StackPanel>
+                        </tk:SettingsCard>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- ================================================== PING CONTINUO -->
+            <TextBlock Text="Ping continuo" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,16,0,0" />
+
+            <ItemsControl ItemsSource="{Binding Pings}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="2,5" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="220" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                     Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Target}"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="{Binding Summary}"
+                                       Style="{StaticResource MonoTextBlockStyle}" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <InfoBar
+                IsOpen="True"
+                IsClosable="False"
+                Severity="Informational"
+                Title="Sin dispositivos críticos configurados"
+                Message="Añádelos en appsettings.json del agente, sección Agent:CriticalDevices, y reinícialo."
+                Visibility="{Binding Pings.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=invert}" />
+
+            <!-- =============================================== ESCANEO DEL SEGMENTO -->
+            <TextBlock Text="Escaneo del segmento" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,16,0,0" />
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBox
+                    MinWidth="220"
+                    PlaceholderText="172.31.0.0/24"
+                    Text="{Binding ScanRange, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTipService.ToolTip="CIDR. En blanco, se deduce de la interfaz activa." />
+
+                <Button Content="Escanear" Command="{Binding ScanCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}" />
+
+                <TextBlock Text="{Binding ScanSummary}"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+
+            <ItemsControl ItemsSource="{Binding Discovered}" Margin="0,8,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="2,3" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="200" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="{Binding IpAddress}"
+                                       Style="{StaticResource MonoTextBlockStyle}" />
+                            <TextBlock Grid.Column="1" Text="{Binding MacAddress}"
+                                       Style="{StaticResource MonoTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock Grid.Column="2" Text="{Binding Vendor}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="3" Text="{Binding DisplayName}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,16,0,0">
+                <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

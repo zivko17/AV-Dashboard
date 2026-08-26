@@ -1,0 +1,347 @@
+<UserControl
+    x:Class="AvDashboard.Shell.Views.VideoPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AvDashboard.Shell"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls">
+
+    <UserControl.Resources>
+        <local:HealthBrushConverter x:Key="HealthBrush" />
+        <local:SeverityBrushConverter x:Key="SeverityBrush" />
+        <local:StringToVisibilityConverter x:Key="StringToVisibility" />
+        <local:StringNotEmptyConverter x:Key="StringNotEmpty" />
+        <local:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <local:CountToVisibilityConverter x:Key="CountToVisibility" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <local:InverseBooleanConverter x:Key="BoolNot" />
+    </UserControl.Resources>
+
+    <Pivot>
+        <!-- ======================================================== SALIDAS -->
+        <PivotItem Header="Salidas">
+            <ScrollViewer>
+                <StackPanel Spacing="8" Padding="0,8,0,24">
+
+                    <InfoBar
+                        IsOpen="{Binding Error, Converter={StaticResource StringNotEmpty}, Mode=OneWay}"
+                        Severity="Error"
+                        IsClosable="False"
+                        Message="{Binding Error}" />
+
+                    <ItemsControl ItemsSource="{Binding Outputs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <tk:SettingsCard
+                                    Header="{Binding MonitorName}"
+                                    Description="{Binding DeviceName}"
+                                    IsClickEnabled="False">
+
+                                    <tk:SettingsCard.HeaderIcon>
+                                        <FontIcon Glyph="&#xE7F4;" />
+                                    </tk:SettingsCard.HeaderIcon>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Border Style="{StaticResource ChipBorderStyle}"
+                                                Visibility="{Binding IsPrimary, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="principal" Style="{StaticResource ChipTextStyle}" />
+                                        </Border>
+
+                                        <Border Style="{StaticResource ChipBorderStyle}">
+                                            <TextBlock Text="{Binding Connector}" Style="{StaticResource ChipTextStyle}" />
+                                        </Border>
+
+                                        <StackPanel VerticalAlignment="Center" MinWidth="210">
+                                            <!--
+                                                El refresco sale de la fracción exacta que
+                                                declara la ruta de display: un 59,94 real no
+                                                se redondea a 60, que es justo lo que delata
+                                                un procesador a 50 y un render a 59,94.
+                                            -->
+                                            <TextBlock Text="{Binding Refresh}"
+                                                       Style="{StaticResource MonoTextBlockStyle}"
+                                                       TextAlignment="Right" />
+                                            <TextBlock Text="{Binding Mode}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                       TextAlignment="Right" />
+                                        </StackPanel>
+
+                                        <StackPanel VerticalAlignment="Center" MinWidth="180">
+                                            <TextBlock Text="{Binding Color}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       TextAlignment="Right"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Edid}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                       TextAlignment="Right"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </tk:SettingsCard>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!--
+                        La acción de pánico vive en esta pestaña y no en la barra porque es
+                        aquí donde miras cuando la pantalla se ha quedado congelada.
+                    -->
+                    <TextBlock Text="Si algo se ha quedado congelado"
+                               Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,20,0,0" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Content="⚡ Reiniciar el controlador gráfico"
+                                Command="{Binding RestartGraphicsDriverCommand}"
+                                IsEnabled="{Binding IsPanicBusy, Converter={StaticResource BoolNot}}" />
+                        <TextBlock Text="{Binding PanicResult}"
+                                   VerticalAlignment="Center" TextWrapping="Wrap"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Text="Las salidas se quedan en negro uno o dos segundos y Windows puede recolocar las ventanas. Se pulsa cuando algo ya está roto, no como medida preventiva." />
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,12,0,0">
+                        <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </PivotItem>
+
+        <!-- ==================================================== BIBLIOTECA EDID -->
+        <PivotItem Header="EDID">
+            <ScrollViewer>
+                <StackPanel Spacing="8" Padding="0,8,0,24">
+
+                    <TextBlock
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Text="Incluye los monitores que Windows recuerda aunque no estén enchufados: son la referencia contra la que comparar cuando vuelvan." />
+
+                    <InfoBar
+                        IsOpen="{Binding EdidUnavailable, Converter={StaticResource StringNotEmpty}, Mode=OneWay}"
+                        Severity="Warning"
+                        IsClosable="False"
+                        Message="{Binding EdidUnavailable}" />
+
+                    <ListView
+                        ItemsSource="{Binding Entries}"
+                        SelectedItem="{Binding Selected, Mode=TwoWay}"
+                        SelectionMode="Single"
+                        MaxHeight="280"
+                        HorizontalContentAlignment="Stretch">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,6" ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="220" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="100" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsMarked, Mode=TwoWay}"
+                                              MinWidth="0" VerticalAlignment="Center"
+                                              ToolTipService.ToolTip="Marca dos para compararlos." />
+                                    <Ellipse Grid.Column="1" Width="8" Height="8" VerticalAlignment="Center"
+                                             Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Label}"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Where}"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource ChipTextStyle}" />
+                                    <TextBlock Grid.Column="4" Text="{Binding Summary}"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource ChipTextStyle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="5" Text="{Binding Fingerprint}"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource MonoTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
+                        <TextBlock Text="Guardar como referencia" VerticalAlignment="Center" />
+                        <TextBox MinWidth="220"
+                                 PlaceholderText="«VX600 rack B», «Proyector sala 2»"
+                                 Text="{Binding ReferenceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Content="Guardar" Command="{Binding SaveReferenceCommand}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding ReferenceSummary}"
+                               Style="{StaticResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap" Margin="2,0,0,0" />
+
+                    <ItemsControl ItemsSource="{Binding Drift}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <InfoBar
+                                    IsOpen="True"
+                                    IsClosable="False"
+                                    Severity="Warning"
+                                    Title="{Binding ReferenceName}"
+                                    Message="{Binding MonitorName}"
+                                    Margin="0,4" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
+                        <Button Content="Comparar marcados" Command="{Binding DiffCommand}" />
+                        <Button Content="Quitar marcas" Command="{Binding ClearMarksCommand}" />
+                        <Button Content="Volcar a .bin" Command="{Binding DumpCommand}"
+                                ToolTipService.ToolTip="Guarda el EDID seleccionado tal cual, que es lo que comen CRU y AW EDID Editor." />
+                        <TextBlock Text="{Binding DumpResult}"
+                                   VerticalAlignment="Center"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <!-- Detalle del EDID seleccionado. -->
+                    <StackPanel Visibility="{Binding Selected, Converter={StaticResource NotNullToVisibility}}">
+                      <StackPanel DataContext="{Binding Selected}" Spacing="4">
+
+                        <TextBlock Text="{Binding Label}"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,20,0,0" />
+                        <TextBlock Text="{Binding Summary}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Margin="2,0,0,8" />
+
+                        <tk:SettingsCard Header="Límites declarados" IsClickEnabled="False">
+                            <TextBlock Text="{Binding RangeLimits}" Style="{StaticResource MonoTextBlockStyle}" />
+                        </tk:SettingsCard>
+
+                        <tk:SettingsCard Header="HDR" IsClickEnabled="False">
+                            <TextBlock Text="{Binding Hdr}" />
+                        </tk:SettingsCard>
+
+                        <TextBlock Text="Timings detallados"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,16,0,4" />
+
+                        <ItemsControl ItemsSource="{Binding DetailedTimings}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="2,2" ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="200" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding ModeText}"
+                                                   Style="{StaticResource MonoTextBlockStyle}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding PixelClockText}"
+                                                   Style="{StaticResource MonoTextBlockStyle}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding TotalsText}"
+                                                   Style="{StaticResource ChipTextStyle}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Audio declarado (CTA-861)"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,16,0,4"
+                                   Visibility="{Binding AudioDescriptors.Count, Converter={StaticResource CountToVisibility}}" />
+
+                        <ItemsControl ItemsSource="{Binding AudioDescriptors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Style="{StaticResource MonoTextBlockStyle}"
+                                               Margin="2,2" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Validación"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,16,0,4" />
+
+                        <ItemsControl ItemsSource="{Binding Findings}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="2,3" ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                                 Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap"
+                            Margin="2,0,0,0"
+                            Visibility="{Binding Findings.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=invert}"
+                            Text="Sin problemas: checksums correctos y los timings caben en los límites que el monitor declara." />
+                      </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </PivotItem>
+
+        <!-- ===================================================== DIFERENCIAS -->
+        <PivotItem Header="Diferencias">
+            <ScrollViewer>
+                <StackPanel Spacing="8" Padding="0,8,0,24">
+
+                    <TextBlock Text="{Binding DiffSummary}" TextWrapping="Wrap" Margin="2,4,0,8" />
+
+                    <ItemsControl ItemsSource="{Binding Differences}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="2,3" ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="20" />
+                                        <ColumnDefinition Width="200" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="!"
+                                               FontWeight="Bold"
+                                               Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                               Visibility="{Binding Significant, Converter={StaticResource BoolToVisibility}}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Field}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Left}"
+                                               Style="{StaticResource MonoTextBlockStyle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Text="→"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Grid.Column="4" Text="{Binding Right}"
+                                               Style="{StaticResource MonoTextBlockStyle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Margin="2,10,0,0"
+                        Text="! marca lo que cambia lo que el equipo de enfrente va a negociar. Un número de serie distinto es informativo; un modo preferido distinto no lo es." />
+                </StackPanel>
+            </ScrollViewer>
+        </PivotItem>
+    </Pivot>
+</UserControl>

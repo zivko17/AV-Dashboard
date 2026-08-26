@@ -1,0 +1,166 @@
+<UserControl
+    x:Class="AvDashboard.Shell.Views.AudioPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AvDashboard.Shell"
+    xmlns:controls="using:AvDashboard.Shell.Controls"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls">
+
+    <UserControl.Resources>
+        <local:HealthBrushConverter x:Key="HealthBrush" />
+        <local:StringNotEmptyConverter x:Key="StringNotEmpty" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <local:CountToVisibilityConverter x:Key="CountToVisibility" />
+
+        <!-- Los que están sonando: formato en uso, declarado y nivel en vivo. -->
+        <DataTemplate x:Key="FilaActiva">
+            <tk:SettingsCard Header="{Binding Name}" IsClickEnabled="False">
+                <tk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE915;"
+                              Foreground="{Binding Health, Converter={StaticResource HealthBrush}}" />
+                </tk:SettingsCard.HeaderIcon>
+
+                <tk:SettingsCard.Description>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Direction}" Style="{StaticResource ChipTextStyle}" />
+                        <TextBlock Text="predeterminado"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                   Visibility="{Binding IsDefault, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+                </tk:SettingsCard.Description>
+
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                    <StackPanel VerticalAlignment="Center" MinWidth="180">
+                        <TextBlock Text="{Binding Format}"
+                                   Style="{StaticResource MonoTextBlockStyle}"
+                                   TextAlignment="Right" />
+                        <!--
+                            El declarado se pinta en ámbar cuando no coincide con el formato
+                            en uso: es exactamente el crujido que nadie sabe explicar.
+                        -->
+                        <TextBlock Text="{Binding Declared}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   TextAlignment="Right"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Visibility="{Binding HasMismatch, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
+                        <TextBlock Text="{Binding Declared}"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   TextAlignment="Right"
+                                   FontWeight="SemiBold"
+                                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                   Visibility="{Binding HasMismatch, Converter={StaticResource BoolToVisibility}}" />
+                    </StackPanel>
+
+                    <controls:LevelMeter Height="10" Width="140" VerticalAlignment="Center"
+                                         Peak="{Binding Peak, Mode=OneWay}" />
+                </StackPanel>
+            </tk:SettingsCard>
+        </DataTemplate>
+
+        <!-- Los inactivos no tienen formato ni nivel: enseñar columnas vacías es ruido. -->
+        <DataTemplate x:Key="FilaInactiva">
+            <tk:SettingsCard Header="{Binding Name}" Description="{Binding Direction}" IsClickEnabled="False">
+                <tk:SettingsCard.HeaderIcon>
+                    <FontIcon Glyph="&#xE915;"
+                              Foreground="{ThemeResource TextFillColorDisabledBrush}" />
+                </tk:SettingsCard.HeaderIcon>
+
+                <TextBlock Text="{Binding StateText}"
+                           Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           VerticalAlignment="Center" />
+            </tk:SettingsCard>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer>
+        <StackPanel Spacing="8" Padding="0,8,0,24">
+
+            <InfoBar
+                IsOpen="{Binding Error, Converter={StaticResource StringNotEmpty}, Mode=OneWay}"
+                Severity="Error"
+                IsClosable="False"
+                Message="{Binding Error}" />
+
+            <InfoBar
+                IsOpen="True"
+                IsClosable="False"
+                Severity="Warning"
+                Message="{Binding MismatchSummary}" />
+
+            <TextBlock Text="Dispositivos activos"
+                       Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,12,0,0" />
+
+            <ItemsControl ItemsSource="{Binding ActiveDevices}"
+                          ItemTemplate="{StaticResource FilaActiva}" />
+
+            <TextBlock Text="Ningún endpoint activo. Si esperabas alguno, mira la lista de abajo."
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Margin="2,4,0,0"
+                       Visibility="{Binding ActiveCount, Converter={StaticResource CountToVisibility}, ConverterParameter=invert}" />
+
+            <!--
+                Los que Windows recuerda. Plegado: nadie abre esta página para ver una
+                tarjeta que quitó hace un año, pero cuando falta una interfaz es lo primero
+                que hay que mirar.
+            -->
+            <tk:SettingsExpander
+                Header="Dispositivos inactivos"
+                Description="Registrados en Windows y ahora mismo desenchufados, apagados o ausentes."
+                ItemsSource="{Binding InactiveDevices}"
+                ItemTemplate="{StaticResource FilaInactiva}"
+                Margin="0,12,0,0"
+                Visibility="{Binding InactiveCount, Converter={StaticResource CountToVisibility}}">
+
+                <tk:SettingsExpander.HeaderIcon>
+                    <FontIcon Glyph="&#xE7B3;" />
+                </tk:SettingsExpander.HeaderIcon>
+
+                <Border Style="{StaticResource ChipBorderStyle}">
+                    <TextBlock Text="{Binding InactiveCount}" Style="{StaticResource ChipTextStyle}" />
+                </Border>
+            </tk:SettingsExpander>
+
+            <TextBlock Text="Drivers ASIO"
+                       Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,16,0,0" />
+
+            <ItemsControl ItemsSource="{Binding AsioDrivers}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="2,4" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="260" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="1" Text="{Binding DriverPath}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="Sin drivers ASIO registrados en esta máquina."
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Margin="2,2,0,0"
+                       Visibility="{Binding AsioDrivers.Count, Converter={StaticResource CountToVisibility}, ConverterParameter=invert}" />
+
+            <InfoBar
+                IsOpen="True"
+                IsClosable="False"
+                Severity="Informational"
+                Title="PTP / IEEE 1588"
+                Message="Requiere Npcap en modo compatible con WinPcap: PTP no se puede leer con sockets normales. Cuando esté: Grandmaster del segmento, offset, deriva y aviso de cambio de Grandmaster."
+                Margin="0,16,0,0" />
+
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,12,0,0">
+                <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

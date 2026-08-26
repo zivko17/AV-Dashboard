@@ -1,0 +1,118 @@
+<UserControl
+    x:Class="AvDashboard.Shell.Views.PerfilesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AvDashboard.Shell">
+
+    <UserControl.Resources>
+        <local:StringToVisibilityConverter x:Key="StringToVisibility" />
+        <local:StringNotEmptyConverter x:Key="StringNotEmpty" />
+        <local:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+    </UserControl.Resources>
+
+    <ScrollViewer>
+        <StackPanel Spacing="8" Padding="0,8,0,24">
+
+            <InfoBar
+                IsOpen="{Binding Error, Converter={StaticResource StringNotEmpty}, Mode=OneWay}"
+                Severity="Error"
+                IsClosable="False"
+                Message="{Binding Error}" />
+
+            <TextBlock Text="Perfiles" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,4,0,0" />
+
+            <ListView
+                ItemsSource="{Binding Profiles}"
+                SelectedItem="{Binding Selected, Mode=TwoWay}"
+                SelectionMode="Single"
+                MaxHeight="320"
+                HorizontalContentAlignment="Stretch">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Padding="0,8" Spacing="2">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+
+                                <Border Style="{StaticResource ChipBorderStyle}">
+                                    <TextBlock Text="{Binding Origin}" Style="{StaticResource ChipTextStyle}" />
+                                </Border>
+
+                                <Border Style="{StaticResource ChipBorderStyle}">
+                                    <TextBlock Text="{Binding Steps}" Style="{StaticResource ChipTextStyle}" />
+                                </Border>
+
+                                <TextBlock Text="{Binding Disruptive}"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                           TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding Disruptive, Converter={StaticResource StringToVisibility}}" />
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding Description}"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap"
+                                       Visibility="{Binding Description, Converter={StaticResource StringToVisibility}}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+                <!--
+                    Aplicar se queda visible y deshabilitado a propósito: enseñar lo que va a
+                    haber es mejor que esconderlo, y así nadie lo busca en otro sitio.
+                -->
+                <Button Content="Aplicar" IsEnabled="False"
+                        ToolTipService.ToolTip="Llega con los actuadores de la Fase 2, con snapshot previo y rollback." />
+                <Button Content="Exportar a fichero" Command="{Binding ExportCommand}" />
+                <Button Content="Importar de fichero" Command="{Binding ImportCommand}" />
+                <Button Content="Actualizar" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+
+            <TextBlock Text="{Binding Status}"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="2,4,0,8" />
+
+            <!--
+                Los pasos del perfil marcado, en el orden en que se aplicarían.
+
+                La visibilidad se enlaza fuera y el DataContext se cambia dentro, y no las
+                dos en el mismo elemento: con Selected en null, el DataContext sería null y
+                un enlace sin ruta sobre un contexto nulo no llega a llamar al conversor.
+            -->
+            <StackPanel Visibility="{Binding Selected, Converter={StaticResource NotNullToVisibility}}">
+              <StackPanel DataContext="{Binding Selected}" Spacing="4">
+
+                <TextBlock Text="{Binding Name}" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="2,8,0,4" />
+
+                <ItemsControl ItemsSource="{Binding StepRows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="2,3" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="240" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="{Binding Number}"
+                                           Style="{StaticResource MonoTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Grid.Column="1" Text="{Binding ActionId}"
+                                           Style="{StaticResource MonoTextBlockStyle}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Text="{Binding Label}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

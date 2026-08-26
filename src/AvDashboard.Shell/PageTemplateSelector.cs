@@ -14,14 +14,34 @@ namespace AvDashboard.Shell;
 /// </summary>
 public sealed partial class PageTemplateSelector : DataTemplateSelector
 {
+    public DataTemplate? Dashboard { get; set; }
     public DataTemplate? Sistema { get; set; }
+    public DataTemplate? Audio { get; set; }
+    public DataTemplate? Video { get; set; }
+    public DataTemplate? Red { get; set; }
+    public DataTemplate? Servicios { get; set; }
+    public DataTemplate? Perfiles { get; set; }
+    public DataTemplate? Timeline { get; set; }
 
-    /// <summary>Todo lo que aún no se ha portado. Se irá vaciando.</summary>
+    /// <summary>
+    /// Las secciones que todavía no existen en ninguna interfaz.
+    ///
+    /// Ya no es «lo que falta por portar»: es el marcador de las tres que llegan en fases
+    /// posteriores, y por eso el ViewModel que lo usa es el PlaceholderViewModel y no un
+    /// caso por defecto que se trague un tipo nuevo sin avisar.
+    /// </summary>
     public DataTemplate? Pendiente { get; set; }
 
     protected override DataTemplate? SelectTemplateCore(object item) => item switch
     {
+        DashboardViewModel => Dashboard,
         SystemViewModel => Sistema,
+        AudioViewModel => Audio,
+        VideoViewModel => Video,
+        NetworkViewModel => Red,
+        ServicesViewModel => Servicios,
+        ProfilesViewModel => Perfiles,
+        TimelineViewModel => Timeline,
         _ => Pendiente,
     };
 

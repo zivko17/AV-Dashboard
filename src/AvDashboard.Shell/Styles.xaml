@@ -41,4 +41,24 @@
         <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
     </Style>
 
+    <!--
+      Tarjeta del dashboard.
+
+      Es un Button y no un Border con un manejador de clic: cada tarjeta navega a su
+      seccion, y siendo un boton se llega con el teclado, sale el foco del sistema y el
+      lector de pantalla la anuncia como lo que es. En la version de WPF esto era un
+      MouseBinding sobre un Border, que con el teclado no existia.
+    -->
+    <Style x:Key="TarjetaBotonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="16,14" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+    </Style>
+
 </ResourceDictionary>
