@@ -32,15 +32,39 @@ public class SettingsRepairTests
     }
 
     [Fact]
-    public void Ningun_ajuste_con_riesgo_declara_objetivo_en_el_catalogo()
+    public void Un_ajuste_con_contrapartida_no_declara_objetivo_en_el_catalogo()
     {
-        // Es la garantia de verdad, y es del catalogo y no del filtro: sin valor objetivo no
-        // hay nada que escribir, asi que HVCI, las mitigaciones de Spectre y HAGS no pueden
-        // entrar en un barrido ni por descuido. Esta prueba salta el dia que alguien le ponga
-        // objetivo a uno de ellos, que es justo el dia en que hay que pararse a pensarlo.
+        // Es la garantia de verdad para estos dos, y es del catalogo y no del filtro: sin
+        // valor objetivo no hay nada que escribir, asi que HVCI, las mitigaciones de Spectre
+        // y HAGS no pueden entrar en un barrido ni por descuido. Esta prueba salta el dia que
+        // alguien le ponga objetivo a uno de ellos, que es justo el dia en que hay que
+        // pararse a pensarlo.
+        //
+        // Los disruptivos son otra cosa y por eso quedan fuera de esta comprobacion: de esos
+        // si se sabe cual es el valor bueno —los offloads de la NIC se apagan y punto— y por
+        // tanto si declaran objetivo. Lo que no pueden es aplicarse solos, y de eso se
+        // encarga el filtro, que tiene su propia prueba justo debajo.
         Assert.All(
-            SettingsCatalog.All.Where(d => d.Risk != SettingRisk.None),
+            SettingsCatalog.All.Where(d =>
+                d.Risk is SettingRisk.Security or SettingRisk.Tradeoff),
             d => Assert.False(d.HasTarget, $"«{d.Name}» tiene riesgo {d.Risk} y ademas objetivo"));
+    }
+
+    [Fact]
+    public void Un_ajuste_disruptivo_del_catalogo_real_no_entra_en_el_barrido()
+    {
+        // Los offloads de la NIC son el caso: el valor bueno es «ninguno» y no hay duda, pero
+        // aplicarlo reinicia el adaptador y el enlace se cae un segundo. En un rig con Dante
+        // eso es un corte de audio, y un boton que dice «arreglar lo que este en rojo» no
+        // puede decidir por su cuenta que este es buen momento.
+        SettingsAudit audit = SettingsCatalog.Evaluate(
+            new[] { SettingReading.Of(SettingIds.NicOffloads, 2, "Ethernet, Ethernet 2") },
+            SettingsCatalog.All.Select(d => d.Id).ToHashSet());
+
+        RepairPlan plan = SettingsRepair.Plan(audit, includeWarnings: true);
+
+        Assert.DoesNotContain(plan.Fixable, f => f.Definition.Id == SettingIds.NicOffloads);
+        Assert.Contains(plan.SkippedByRisk, f => f.Definition.Id == SettingIds.NicOffloads);
     }
 
     [Fact]

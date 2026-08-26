@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using AvDashboard.Core.Models;
 
 namespace AvDashboard.Core.Settings;
@@ -59,6 +59,21 @@ public enum SettingRisk
     /// que se aplica de un clic: se enseña, se explica la contrapartida y se confirma a mano.
     /// </summary>
     Security,
+
+    /// <summary>
+    /// Se sabe cuál es el valor correcto, pero aplicarlo corta algo mientras se aplica.
+    ///
+    /// Los offloads de la NIC son el caso: el valor bueno es «ninguno» y no hay duda, pero
+    /// tocar una propiedad avanzada reinicia el adaptador y el enlace se cae un segundo. En
+    /// un rig con Dante eso es un corte de audio.
+    ///
+    /// La diferencia con los otros dos riesgos importa: estos **sí** declaran valor
+    /// objetivo, porque se sabe cuál es. Lo que no pueden es entrar en un barrido de «arregla
+    /// lo que esté en rojo» sin que nadie haya decidido que es buen momento. Se aplican de
+    /// uno en uno, o dentro de un perfil, que es algo que se aplica a propósito y antes de
+    /// que empiece el show.
+    /// </summary>
+    Disruptive,
 }
 
 /// <summary>Resultado de comparar lo que hay con lo que debería haber.</summary>

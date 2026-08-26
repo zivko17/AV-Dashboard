@@ -1,4 +1,4 @@
-# Contexto del proyecto
+﻿# Contexto del proyecto
 
 Panel de control para rigs de AV en directo sobre Windows. Un **agente** que corre en cada
 máquina y una **consola** que lo mira. Contesta a la pregunta de las siete y media de la
@@ -101,6 +101,11 @@ el registro. Las **escrituras** —powercfg, los offloads de la NIC, el reinicio
 SetupAPI y todas las escrituras de registro— siguen sin verificar: compilan, y eso es todo
 lo que se sabe de ellas. La verificación es `Get-Diagnostico.ps1` en una máquina de verdad.
 
+**Un actuador comprueba el resultado; no se cree el código de retorno.** Costó siete
+esquemas de energía basura en una máquina real: `PowerDuplicateScheme` devolvía cero, el
+actuador daba éxito, y el Timeline anotó un cambio que no había ocurrido porque nadie
+volvió a leer. Se descubrió por una captura de pantalla, no por una prueba.
+
 Un valor ausente en el registro no es lo mismo que un valor que no se deja leer, y la sonda
 los distingue (`RegistrySettingsReader.Probe`). La mitad de las claves de M1 solo existen
 cuando alguien ha tocado el ajuste, así que la ausencia se resuelve al valor por defecto
@@ -108,7 +113,7 @@ documentado. La excepción es la que no lo tiene estable entre versiones: esa se
 lectura, pero declarando el motivo. **Una fila sin valor y sin motivo es un fallo.**
 
 Nueve módulos funcionan, uno espera a Npcap y diez están declarados y devuelven `501` con la
-fase en la que llegan. Cuarenta y nueve ajustes en el catálogo, treinta escribibles.
+fase en la que llegan. Cuarenta y nueve ajustes en el catálogo, treinta y cuatro escribibles.
 
 La interfaz de WinUI 3 tiene portadas las ocho secciones que existen. Las tres que dicen
 «pendiente» —Producción, Nodos e Informes— tampoco existen en la de WPF. La de WPF sigue

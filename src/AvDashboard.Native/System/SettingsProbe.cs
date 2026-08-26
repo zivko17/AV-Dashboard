@@ -1,6 +1,7 @@
-using System.Management;
+﻿using System.Management;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using AvDashboard.Core.Networking;
 using AvDashboard.Core.Settings;
 using Microsoft.Win32;
 using EventLogQuery = global::System.Diagnostics.Eventing.Reader.EventLogQuery;
@@ -694,13 +695,6 @@ public static class SettingsProbe
     /// </summary>
     private static void ReadNetwork(List<SettingReading> readings)
     {
-        // Los nombres son los de la propiedad avanzada del driver. Se compara por prefijo
-        // porque cada fabricante anade sufijos (*LsoV2IPv4, *LsoV2IPv6...).
-        string[] keywords =
-        {
-            "*LsoV2", "*InterruptModeration", "*EEE", "*FlowControl", "*RSC",
-        };
-
         try
         {
             ManagementScope scope = new(@"root\StandardCimv2");
@@ -710,7 +704,7 @@ public static class SettingsProbe
 
             using ManagementObjectSearcher searcher = new(scope, query);
 
-            HashSet<string> offenders = new(StringComparer.OrdinalIgnoreCase);
+            List<NicAdvancedProperty> properties = new();
 
             foreach (ManagementBaseObject property in searcher.Get())
             {
@@ -722,24 +716,19 @@ public static class SettingsProbe
                         continue;
                     }
 
-                    if (!keywords.Any(k => keyword.StartsWith(k, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        continue;
-                    }
-
                     // RegistryValue es un array de cadenas; «0» es desactivado.
-                    if (property["RegistryValue"] is string[] { Length: > 0 } values &&
-                        values[0] != "0")
-                    {
-                        offenders.Add(adapter);
-                    }
+                    properties.Add(new NicAdvancedProperty(adapter, keyword,
+                        property["RegistryValue"] is string[] { Length: > 0 } values ? values[0] : null));
                 }
             }
 
-            readings.Add(SettingReading.Of(SettingIds.NicOffloads, offenders.Count,
-                offenders.Count == 0
-                    ? "ninguno"
-                    : string.Join(", ", offenders.Take(3)) + (offenders.Count > 3 ? "…" : string.Empty)));
+            // Que se apaga y que no lo decide Core, no esta lectura. La escritura usa la
+            // misma politica, y esa es la unica forma de que la fila y el boton de
+            // arreglarla no se separen.
+            NicOffloadPlan plan = NicOffloadPolicy.Plan(properties);
+
+            readings.Add(SettingReading.Of(
+                SettingIds.NicOffloads, plan.Adapters.Count, plan.Describe()));
         }
         catch (ManagementException)
         {

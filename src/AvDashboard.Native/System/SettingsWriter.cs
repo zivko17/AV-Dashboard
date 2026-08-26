@@ -1,5 +1,7 @@
-using System.Runtime.Versioning;
+﻿using System.Runtime.Versioning;
+using AvDashboard.Core.Networking;
 using AvDashboard.Core.Settings;
+using AvDashboard.Native.Network;
 using Microsoft.Win32;
 
 // Ver la nota sobre este namespace en PowerConfiguration.cs.
@@ -93,6 +95,9 @@ public static class SettingsWriter
         SettingIds.ScreenSaver,
         SettingIds.InactivityLock,
         SettingIds.RestartApps,
+
+        // Red
+        SettingIds.NicOffloads,
     };
 
     /// <summary>
@@ -226,6 +231,8 @@ public static class SettingsWriter
                 SettingIds.RestartApps => Flag(id, value, dryRun,
                     RegistryHive.CurrentUser, WinlogonKey, "RestartApps"),
 
+                SettingIds.NicOffloads => ApplyNicOffloads(value, dryRun),
+
                 // ScreenSaveActive se guarda como cadena «1» o «0», no como entero.
                 SettingIds.ScreenSaver => Text(id, value, dryRun,
                     RegistryHive.CurrentUser, DesktopKey, "ScreenSaveActive",
@@ -246,6 +253,48 @@ public static class SettingsWriter
             return Failed(id, ex.Message);
         }
     }
+
+    /// <summary>
+    /// Apaga las descargas del adaptador de red.
+    ///
+    /// El unico valor que se acepta es el objetivo del catalogo, «0»: no hay un caso de uso
+    /// para volver a encenderlas desde aqui, y ofrecer el camino de vuelta seria ofrecer un
+    /// boton para romper Dante.
+    ///
+    /// Corta el enlace un segundo mientras se aplica. El catalogo lo declara Disruptive por
+    /// eso, y el barrido de «arregla lo que este en rojo» lo deja fuera: se toca de uno en
+    /// uno, o dentro de un perfil, que es algo que se aplica antes de que empiece el show.
+    /// </summary>
+    private static SettingWriteResult ApplyNicOffloads(string value, bool dryRun)
+    {
+        if (!string.Equals(value, NicOffloadPolicy.Disabled, StringComparison.Ordinal))
+        {
+            return Failed(SettingIds.NicOffloads,
+                "Las descargas de la NIC solo se apagan desde aquí. Volver a encenderlas se " +
+                "hace en el Administrador de dispositivos, y a sabiendas.");
+        }
+
+        NicOffloadResult result = NicOffloadWriter.DisableAll(dryRun);
+
+        if (!result.Success)
+        {
+            return Failed(SettingIds.NicOffloads, result.Failures.Count > 0
+                ? result.Failures[0]
+                : $"Quedan descargas activas en {result.Remaining.Describe()}. " +
+                  "Suele hacer falta que el agente corra como servicio.");
+        }
+
+        // El valor de esta fila es «cuantos adaptadores tienen algo encendido». En seco,
+        // Remaining es lo que hay ahora y el resultado seria cero: informar de «1 → 1»
+        // dejaria al usuario creyendo que el ensayo no iba a cambiar nada.
+        string previous = Count(result.Remaining.Adapters.Count);
+        string applied = result.DryRun ? Count(0) : Count(result.Remaining.Adapters.Count);
+
+        return Ok(SettingIds.NicOffloads, previous, applied, dryRun);
+    }
+
+    private static string Count(int value) =>
+        value.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
 
     private static bool Boolean(string value) =>
         string.Equals(value, SettingReading.BooleanOn, StringComparison.OrdinalIgnoreCase);

@@ -1,4 +1,4 @@
-# AV Dashboard
+﻿# AV Dashboard
 
 Consola nativa de Windows y agente para diagnosticar y controlar rigs audiovisuales en
 directo: sistema, audio, vídeo, red, servicios y perfiles de escenario.
@@ -6,9 +6,15 @@ directo: sistema, audio, vídeo, red, servicios y perfiles de escenario.
 Nace de [`av-light-tools`](docs/heredado.md) y le añade lo que a un script de PowerShell
 le falta: estado persistente, alertas correladas y multi-nodo.
 
-> **Estado: Fase 1 (solo lectura).** El agente lee y no escribe nada en el sistema. Es
-> deliberado — ver [el roadmap](docs/roadmap.md). La escritura llega en la Fase 2 con
-> snapshot previo, `dryRun` y rollback.
+> **Estado: el agente ya escribe, con lista blanca.** Treinta y cuatro ajustes del catálogo
+> tienen actuador, todos con `dryRun` y todos dejando rastro en el Timeline con su valor
+> anterior. Lo que **no** hay todavía es deshacer: `POST /runs/{id}/rollback` sigue
+> devolviendo 501, así que un cambio se revierte a mano. Aplicar un perfil entero tampoco
+> está. Ver [el roadmap](docs/roadmap.md).
+>
+> La regla que no se rompe sigue intacta: el agente nunca ejecuta un comando arbitrario, y
+> el `switch` de `SettingsWriter.Apply` **es** la lista blanca. Ver
+> [ADR 0003](docs/adr/0003-lista-blanca-de-actuadores.md).
 
 ---
 

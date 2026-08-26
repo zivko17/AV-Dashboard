@@ -1,4 +1,4 @@
-using AvDashboard.Core.Profiles;
+﻿using AvDashboard.Core.Profiles;
 
 namespace AvDashboard.Core.Settings;
 
@@ -544,6 +544,13 @@ public static class SettingsCatalog
             AcceptableValues = new[] { "0" },
             TargetDescription = "Ningún adaptador con offloads activos",
             Impact = SettingImpact.High,
+
+            // Disruptivo y no None: se sabe cuál es el valor bueno y no hay duda, pero
+            // tocar una propiedad avanzada reinicia el adaptador y el enlace se cae un
+            // segundo. En un rig con Dante eso es un corte de audio, así que este no entra
+            // en un barrido de «arregla lo que esté en rojo»: se aplica de uno en uno, o
+            // dentro de un perfil, que es algo que se aplica a propósito antes del show.
+            Risk = SettingRisk.Disruptive,
             Rationale = "Large Send Offload, moderación de interrupciones y Energy Efficient Ethernet rompen la temporización de Dante y de NDI, y no aparecen en ninguna pantalla de red normal.",
         },
 
