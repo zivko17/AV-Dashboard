@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Win32Exception = System.ComponentModel.Win32Exception;
@@ -10,10 +10,10 @@ using Win32Exception = System.ComponentModel.Win32Exception;
 namespace AvDashboard.Native.System;
 
 /// <summary>
-/// Planes de energia via PowrProf (M1). Se usa la API y no `powercfg.exe` para leer:
-/// lanzar un proceso una vez por segundo no cabe en el presupuesto de CPU.
-/// La duplicacion del esquema Ultimate Performance si usa powercfg, porque no hay
-/// equivalente en la API publica.
+/// Planes de energia via PowrProf (M1). Se usa la API y no `powercfg.exe`: lanzar un
+/// proceso una vez por segundo no cabe en el presupuesto de CPU, y para escribir tampoco
+/// hace falta —la API cubre todo lo que se necesita aqui, duplicar el esquema Ultimate
+/// Performance incluido—.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class PowerConfiguration
@@ -114,9 +114,33 @@ public static class PowerConfiguration
         return schemes;
     }
 
-    /// <summary>true si Ultimate Performance ya esta duplicado y se puede seleccionar.</summary>
-    public static bool IsUltimatePerformanceAvailable() =>
-        EnumerateSchemes().Any(s => s.Guid == UltimatePerformanceScheme);
+    /// <summary>
+    /// true si Ultimate Performance ya esta duplicado y se puede seleccionar.
+    ///
+    /// Buscar el GUID conocido no basta, y creerlo costo dejar siete esquemas basura en una
+    /// maquina real. Al duplicar, Windows crea el esquema con un **GUID nuevo**: el conocido
+    /// pertenece a la plantilla, que sigue oculta. Asi que la comprobacion nunca daba true,
+    /// la fila seguia diciendo «off» y cada intento de arreglarla creaba otra copia.
+    ///
+    /// El duplicado si hereda el nombre de la plantilla, y ese nombre se puede leer aunque
+    /// la plantilla este oculta. Comparar por ahi funciona en cualquier idioma sin llevar
+    /// una tabla de traducciones: en una maquina en espanol los dos son «Maximo rendimiento»
+    /// y no hay que saberlo de antemano.
+    /// </summary>
+    public static bool IsUltimatePerformanceAvailable()
+    {
+        IReadOnlyList<(Guid Guid, string? Name)> schemes = EnumerateSchemes();
+
+        if (schemes.Any(s => s.Guid == UltimatePerformanceScheme))
+        {
+            return true;
+        }
+
+        string? template = GetSchemeName(UltimatePerformanceScheme);
+
+        return template is not null
+               && schemes.Any(s => string.Equals(s.Name, template, StringComparison.OrdinalIgnoreCase));
+    }
 
     /// <summary>Cambia el plan activo. Requiere elevacion.</summary>
     public static bool SetActiveScheme(Guid scheme)
@@ -144,11 +168,31 @@ public static class PowerConfiguration
 
         Guid source = UltimatePerformanceScheme;
 
-        // El destino se pasa como puntero nulo para que Windows genere el GUID: duplicar
-        // sobre el mismo GUID de origen es justo lo que hace powercfg /duplicatescheme, y
-        // es lo que deja el esquema con su nombre de siempre.
-        return PowerDuplicateScheme(IntPtr.Zero, ref source, out IntPtr created) == 0
-               && Free(created);
+        // El destino va nulo para que lo genere Windows. Pasarle el GUID conocido no vale:
+        // es el de la propia plantilla que se esta duplicando, y la API responde 183,
+        // ERROR_ALREADY_EXISTS. Quien evita las copias repetidas es la comprobacion de
+        // arriba, que ahora si reconoce el duplicado.
+        IntPtr created = IntPtr.Zero;
+
+        try
+        {
+            if (PowerDuplicateScheme(IntPtr.Zero, ref source, ref created) != 0)
+            {
+                return false;
+            }
+        }
+        finally
+        {
+            if (created != IntPtr.Zero)
+            {
+                LocalFree(created);
+            }
+        }
+
+        // Y se comprueba en vez de creerselo. Devolver true porque la llamada no dio error
+        // es lo que hizo que el Timeline anotara «off → on» de algo que no habia pasado, y
+        // una escritura que miente es peor que una que falla: la que falla se ve.
+        return IsUltimatePerformanceAvailable();
     }
 
     /// <summary>
@@ -166,17 +210,6 @@ public static class PowerConfiguration
 
         return CallNtPowerInformation(
             SystemReserveHiberFile, input, (uint)input.Length, IntPtr.Zero, 0) == 0;
-    }
-
-    /// <summary>Libera un GUID devuelto por la API de energia. true siempre: es un helper de expresion.</summary>
-    private static bool Free(IntPtr guid)
-    {
-        if (guid != IntPtr.Zero)
-        {
-            LocalFree(guid);
-        }
-
-        return true;
     }
 
     /// <summary>InformationLevel de CallNtPowerInformation para reservar o soltar el hiberfil.</summary>
@@ -293,9 +326,14 @@ public static class PowerConfiguration
         IntPtr rootPowerKey, ref Guid schemeGuid, ref Guid subGroupOfPowerSettingsGuid,
         ref Guid powerSettingGuid, out uint acValueIndex);
 
+    /// <summary>
+    /// El destino es un puntero a puntero: si apunta a nulo, la API reserva el GUID y lo
+    /// devuelve, y hay que soltarlo con LocalFree. Darle el GUID conocido no funciona, ver
+    /// la nota de TryDuplicateUltimatePerformance.
+    /// </summary>
     [DllImport("powrprof.dll")]
     private static extern uint PowerDuplicateScheme(
-        IntPtr rootPowerKey, ref Guid sourceSchemeGuid, out IntPtr destinationSchemeGuid);
+        IntPtr rootPowerKey, ref Guid sourceSchemeGuid, ref IntPtr destinationSchemeGuid);
 
     [DllImport("powrprof.dll")]
     private static extern uint CallNtPowerInformation(
