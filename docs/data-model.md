@@ -1,4 +1,4 @@
-# Modelo de datos
+﻿# Modelo de datos
 
 SQLite por nodo, en modo WAL. Un solo proceso escribe y las lecturas no lo bloquean, que
 es exactamente el patrón del agente.
@@ -14,7 +14,6 @@ El esquema ejecutable está en `AvDashboard.Agent/Storage/AgentDatabase.cs`.
 nodes            (id, hostname, tailscale_ip, lan_ip, agent_version, last_seen)
 snapshots        (id, node_id, taken_at, trigger_kind, payload_json, notes)
 profiles         (id, name, description, actions_json, inverse_id, created_at, updated_at)
-profile_runs     (id, profile_id, node_id, started_at, finished_at, status, snapshot_id, log_json)
 devices          (id, node_id, mac, ip, alias, vendor, kind, web_port, is_critical,
                   first_seen, last_seen, notes)
 ping_samples     (device_id, ts, rtt_ms, lost)
@@ -23,22 +22,25 @@ metrics          (node_id, ts, key, value_num, value_txt)
 events           (id, node_id, ts, module, sector, severity, kind, message, payload_json)
 alerts           (id, node_id, raised_at, cleared_at, module, sector, severity, kind,
                   message, acknowledged)
-remote_hosts     (id, label, address, protocol, port, credential_ref, notes)
-media_scans      (id, path, scanned_at, results_json)
-manifests        (id, node_id, taken_at, payload_json)
-window_layouts   (id, name, node_id, entries_json, saved_at)
-display_layouts  (id, name, node_id, topology_json, edid_blobs, saved_at)
-service_sectors  (service_name, sector)
-service_baseline (taken_at, payload_json)
+edid_references  (connector_key, name, fingerprint, bytes, device_name, saved_at)
+meta             (key, value)
 ```
+
+Ocho tablas más se crearon para módulos que todavía no existen y estuvieron meses sin que
+nadie las leyera ni las escribiera: `profile_runs`, `remote_hosts`, `media_scans`,
+`manifests`, `window_layouts`, `display_layouts`, `service_sectors` y `service_baseline`.
+Se han quitado. Un esquema que declara lo que no existe no documenta el proyecto: lo
+disfraza, y hace que leer el fichero cueste el doble para saber qué se usa de verdad.
+Cuando llegue el módulo, llega su tabla.
 
 Notas de diseño:
 
 - `trigger_kind` y no `trigger`: **`trigger` es palabra reservada en SQLite**.
 - `events` es el Show Timeline. `sector` está desnormalizado a propósito para poder
   filtrar la vista sin joins.
-- `service_sectors` guarda la clasificación manual: mueves un servicio de sector una vez y
-  se queda ahí para siempre, en todos los nodos.
+- `meta` guarda las marcas del propio agente: qué migraciones se han hecho, cuándo fue el
+  último barrido de red. Es también donde iría la versión de esquema si algún día hace
+  falta una migración de verdad.
 - Índice parcial en `alerts(cleared_at) WHERE cleared_at IS NULL`: la consulta de alertas
   activas se hace cada cinco segundos y es la más frecuente de todas.
 
@@ -59,6 +61,6 @@ fórmula que la vista en vivo, para que el histórico y el directo digan lo mism
 
 ## Lo que nunca entra en SQLite
 
-- **Credenciales de acceso remoto.** Van a Windows Credential Manager (DPAPI);
-  `remote_hosts.credential_ref` guarda solo la referencia.
+- **Credenciales de acceso remoto.** Cuando lleguen los nodos remotos irán a Windows
+  Credential Manager (DPAPI), y la base guardará solo la referencia.
 - **El token del agente.** Está en su fichero con ACL restringida y rota en cada arranque.

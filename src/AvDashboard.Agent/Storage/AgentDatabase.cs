@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 
 namespace AvDashboard.Agent.Storage;
 
@@ -117,19 +117,6 @@ public sealed class AgentDatabase : IDisposable
             updated_at   TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS profile_runs (
-            id          TEXT PRIMARY KEY,
-            profile_id  TEXT NOT NULL,
-            node_id     TEXT NOT NULL,
-            started_at  TEXT NOT NULL,
-            finished_at TEXT,
-            status      TEXT NOT NULL,
-            snapshot_id TEXT,
-            log_json    TEXT NOT NULL,
-            FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
-        );
-        CREATE INDEX IF NOT EXISTS ix_runs_profile ON profile_runs(profile_id, started_at DESC);
-
         CREATE TABLE IF NOT EXISTS devices (
             id          TEXT PRIMARY KEY,
             node_id     TEXT NOT NULL,
@@ -207,54 +194,6 @@ public sealed class AgentDatabase : IDisposable
         );
         CREATE INDEX IF NOT EXISTS ix_alerts_active ON alerts(cleared_at) WHERE cleared_at IS NULL;
 
-        CREATE TABLE IF NOT EXISTS remote_hosts (
-            id             TEXT PRIMARY KEY,
-            label          TEXT NOT NULL,
-            address        TEXT NOT NULL,
-            protocol       TEXT NOT NULL,
-            port           INTEGER,
-            credential_ref TEXT,
-            notes          TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS media_scans (
-            id           TEXT PRIMARY KEY,
-            path         TEXT NOT NULL,
-            scanned_at   TEXT NOT NULL,
-            results_json TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS manifests (
-            id           TEXT PRIMARY KEY,
-            node_id      TEXT NOT NULL,
-            taken_at     TEXT NOT NULL,
-            payload_json TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS window_layouts (
-            id           TEXT PRIMARY KEY,
-            name         TEXT NOT NULL,
-            node_id      TEXT NOT NULL,
-            entries_json TEXT NOT NULL,
-            saved_at     TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS display_layouts (
-            id            TEXT PRIMARY KEY,
-            name          TEXT NOT NULL,
-            node_id       TEXT NOT NULL,
-            topology_json TEXT NOT NULL,
-            edid_blobs    BLOB,
-            saved_at      TEXT NOT NULL
-        );
-
-        -- Clasificacion manual de servicios: se mueve un servicio de sector una vez y se
-        -- queda ahi para siempre, en todos los nodos.
-        CREATE TABLE IF NOT EXISTS service_sectors (
-            service_name TEXT PRIMARY KEY,
-            sector       TEXT NOT NULL
-        );
-
         -- Biblioteca de EDID de referencia (M18). La clave es el conector fisico y no el
         -- monitor: la pregunta que se contesta es «por esta salida sigue estando lo mismo
         -- que el dia que funcionaba», y guardarla contra el monitor no la contestaria.
@@ -265,12 +204,6 @@ public sealed class AgentDatabase : IDisposable
             bytes         BLOB NOT NULL,
             device_name   TEXT,
             saved_at      TEXT NOT NULL
-        );
-
-        -- Baseline de servicios contra el que se hace el diff.
-        CREATE TABLE IF NOT EXISTS service_baseline (
-            taken_at     TEXT NOT NULL,
-            payload_json TEXT NOT NULL
         );
 
         -- Marcas del propio agente sobre su base: migraciones hechas, versión del esquema.
