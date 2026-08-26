@@ -6,6 +6,9 @@ puente con Companion las consumen desde la misma constante.
 
 **Base:** `http://127.0.0.1:47821/api/v1` — y la IP de Tailscale, si la hay. Nunca `0.0.0.0`.
 
+> El agente **escribe**. Treinta y cuatro ajustes del catálogo tienen actuador y todos
+> aceptan `dryRun`. Lo que no hay es deshacer: `/runs/{id}/rollback` sigue devolviendo 501.
+
 ## Autenticación
 
 Token bearer en cada petición:
@@ -28,7 +31,8 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 - Los errores tienen forma uniforme (`ApiError`): `code`, `message`, `detail`. El agente
   nunca devuelve un stack trace.
 - Un módulo no implementado responde **501** con la fase en la que llega, no 404: la
-  consola necesita distinguir «no existe» de «todavía no».
+  consola necesita distinguir «no existe» de «todavía no». **Toda constante de `ApiRoutes`
+  se sirve**, aunque sea para decir que todavía no está; un 404 aquí sería un fallo.
 - Un módulo sin primera lectura responde **503** en vez de ceros que parecen datos.
 
 ## Rutas
@@ -47,8 +51,9 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | Método | Ruta | Estado |
 |---|---|---|
 | GET | `/system` | ✅ Telemetría y ajustes de M1 |
-| GET | `/system/audit` | ✅ Los 42 ajustes del catálogo contra su objetivo, con impacto y motivo |
-| POST | `/system/{setting}` | 501 — Fase 2 |
+| GET | `/system/audit` | ✅ Los 49 ajustes del catálogo contra su objetivo, con impacto y motivo |
+| POST | `/system/{setting}?value=&dryRun=` | ✅ Escribe uno de los 34 con actuador. Lista blanca compilada: un id que no esté en `SettingsWriter.Apply` se rechaza aunque la petición venga bien formada |
+| GET | `/system/processes` | 501 — Fase 2 |
 
 ### Audio
 
@@ -58,6 +63,7 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | GET | `/audio/asio` | ✅ |
 | GET | `/audio/ptp` | ✅ Devuelve `available: false` y el motivo si falta Npcap |
 | POST | `/audio/default` | 501 — Fase 2 |
+| GET | `/audio/sessions` · `/audio/session/{pid}` | 501 — Fase 2 |
 | POST | `/audio/session/{pid}` | 501 — Fase 2 |
 
 ### Vídeo
@@ -69,7 +75,7 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | GET | `/video/edid/raw?id=` | ✅ Bytes crudos en base64, con nombre de fichero sugerido |
 | GET | `/video/edid/diff?left=&right=` | ✅ Comparación campo a campo, marcando lo que cambia la negociación |
 | GET · POST | `/video/edid/reference` | ✅ Biblioteca de referencia con nombre y salidas cuyo EDID ya no coincide |
-| GET | `/video/decklink` · `/video/sync` · `/video/led-processors` | 501 — Fases 4 y 7 |
+| GET | `/video/decklink` · `/video/sync` · `/video/led-processors` · `/video/gpu` | 501 — Fases 4 y 7 |
 | POST | `/video/displays/restore` · `/video/windows/restore` | 501 — Fase 4 |
 
 ### Red
@@ -100,8 +106,8 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 
 | Método | Ruta | Estado |
 |---|---|---|
-| GET | `/profiles` · `/runs` | Fase 2 |
 | GET | `/profiles` | ✅ Los de serie y los guardados en el nodo |
+| GET | `/runs` | 501 — Fase 2 |
 | GET | `/profiles/export?id=` | ✅ El perfil escrito a fichero, para llevarlo a otra máquina |
 | POST | `/profiles/import` | ✅ Lee, valida y guarda; avisa de actuadores que este nodo no conoce |
 | POST | `/profiles/{id}/apply` · `/runs/{runId}/rollback` | 501 — Fase 2 |
