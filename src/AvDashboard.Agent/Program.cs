@@ -69,6 +69,7 @@ builder.Services.AddSingleton<PingRepository>();
 builder.Services.AddSingleton<ModuleRegistry>();
 builder.Services.AddSingleton<AvDashboard.Agent.Video.EdidLibrary>();
 builder.Services.AddSingleton<AvDashboard.Agent.Storage.EdidReferenceRepository>();
+builder.Services.AddSingleton<AvDashboard.Agent.Storage.DeviceRepository>();
 builder.Services.AddSingleton<AvDashboard.Agent.Storage.ProfileRepository>();
 builder.Services.AddSingleton<AvDashboard.Agent.Video.EdidDriftDetector>();
 builder.Services.AddSingleton<ServiceTaxonomy>(_ => new ServiceTaxonomy());
@@ -125,6 +126,21 @@ logger.LogInformation(
 if (OperatingSystem.IsWindows())
 {
     logger.LogInformation("Token del agente en {TokenPaths}", string.Join(" y ", tokens.WrittenTo));
+}
+
+// Los criticos que quedasen en appsettings.json suben a la base una sola vez. A partir de
+// ahi manda la base y la seccion Agent:CriticalDevices deja de tener efecto: si no se
+// migrasen, quien ya tuviera equipos configurados los perderia al actualizar.
+int? migrados = await app.Services
+    .GetRequiredService<AvDashboard.Agent.Storage.DeviceRepository>()
+    .SeedFromConfigurationAsync(options.CriticalDevices, DateTimeOffset.UtcNow)
+    .ConfigureAwait(false);
+
+if (migrados is int cuantos)
+{
+    logger.LogInformation(
+        "Migrados {Count} dispositivos críticos de appsettings.json al inventario. " +
+        "La sección Agent:CriticalDevices ya no se usa.", cuantos);
 }
 
 app.Run();

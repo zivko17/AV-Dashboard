@@ -272,5 +272,19 @@ public sealed class AgentDatabase : IDisposable
             taken_at     TEXT NOT NULL,
             payload_json TEXT NOT NULL
         );
+
+        -- Marcas del propio agente sobre su base: migraciones hechas, versión del esquema.
+        --
+        -- Entra con la migración de los dispositivos críticos, que necesita saber si ya se
+        -- hizo. La alternativa era «sembrar solo si la tabla está vacía», y eso significa
+        -- que quien borre todos sus equipos y reinicie se los encuentra de vuelta.
+        --
+        -- Esta base no ha tenido nunca versión de esquema. Cuando haga falta una migración
+        -- de verdad —renombrar una columna, partir una tabla— este es el sitio donde
+        -- apuntarla, y por eso la tabla es genérica y no un `criticals_seeded INTEGER`.
+        CREATE TABLE IF NOT EXISTS meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
         """;
 }

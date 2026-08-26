@@ -1,6 +1,7 @@
-using AvDashboard.Agent.Modules;
+﻿using AvDashboard.Agent.Modules;
 using AvDashboard.Agent.Storage;
 using AvDashboard.Agent.Video;
+using System.Net;
 using System.Text.Json;
 using AvDashboard.Core.Profiles;
 using AvDashboard.Core.Settings;
@@ -200,6 +201,8 @@ public static class AgentEndpoints
                 : Results.Ok(Array.Empty<PingSample>());
         });
 
+        MapInventory(app);
+
         app.MapPost(ApiRoutes.NetworkScan, async (
             ScanRequest request, NodeState state, CancellationToken cancellationToken) =>
         {
@@ -240,6 +243,125 @@ public static class AgentEndpoints
             }
         });
     }
+
+    /// <summary>
+    /// Inventario de la red (M17) y la lista de equipos vigilados (M5).
+    ///
+    /// Un solo POST para alta manual, renombrar, marcar y desmarcar, porque las cuatro son
+    /// «asi queda este equipo». Tener un unico sitio donde se valida es la misma idea que
+    /// el conmutador de SettingsWriter: la validacion no se puede rodear construyendo la
+    /// peticion a mano.
+    /// </summary>
+    private static void MapInventory(WebApplication app)
+    {
+        app.MapGet(ApiRoutes.NetworkDevices, async (
+            DeviceRepository devices, CancellationToken cancellationToken) =>
+            Results.Ok(await devices.ListAsync(cancellationToken).ConfigureAwait(false)));
+
+        app.MapPost(ApiRoutes.NetworkDevices, async (
+            DeviceUpsertRequest request,
+            DeviceRepository devices,
+            EventRepository events,
+            CancellationToken cancellationToken) =>
+        {
+            // Solo direcciones, no nombres. El indice unico de la tabla es sobre la IP y el
+            // barrido produce IP: un nombre que resuelve a una direccion distinta cada dia
+            // rompe la identidad del inventario. Y en la red de un show el DNS o no esta o
+            // miente, asi que tampoco se pierde gran cosa.
+            if (!IPAddress.TryParse(request.IpAddress, out IPAddress? parsed))
+            {
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "bad_address",
+                    Message = "Hace falta una dirección IP. Los nombres de host no valen aquí.",
+                    Detail = request.IpAddress,
+                });
+            }
+
+            string address = parsed.ToString();
+
+            DiscoveredDevice? known = await devices
+                .FindAsync(address, cancellationToken).ConfigureAwait(false);
+
+            DiscoveredDevice device = known is null
+                ? new DiscoveredDevice
+                {
+                    Id = address,
+                    IpAddress = address,
+                    Alias = Trim(request.Alias),
+                    IsCritical = request.IsCritical ?? true,
+                    Kind = request.Kind ?? DeviceKind.Unknown,
+                    Notes = Trim(request.Notes),
+                    SeenBy = DiscoveryMethod.Manual,
+                    FirstSeen = DateTimeOffset.UtcNow,
+
+                    // Sin LastSeen a proposito: darlo de alta no prueba que responda. La
+                    // columna «visto» dira «midiendo» hasta que conteste, que es la verdad.
+                }
+                : known with
+                {
+                    // Null deja el campo como estaba; cadena vacia lo borra. Asi marcar una
+                    // estrella no obliga a reenviar el alias y arriesgarse a perderlo.
+                    Alias = request.Alias is null ? known.Alias : Trim(request.Alias),
+                    IsCritical = request.IsCritical ?? known.IsCritical,
+                    Kind = request.Kind ?? known.Kind,
+                    Notes = request.Notes is null ? known.Notes : Trim(request.Notes),
+                };
+
+            await devices.SaveAsync(device, cancellationToken).ConfigureAwait(false);
+
+            // Marcar y desmarcar cambia lo que se vigila, y eso se apunta. Renombrar no:
+            // el Timeline existe para reconstruir que paso a las 21:04, y un cambio de
+            // etiqueta no explica ninguna averia.
+            bool wasCritical = known?.IsCritical ?? false;
+
+            if (device.IsCritical != wasCritical)
+            {
+                await events.AppendAsync("M5", Sector.Network, Severity.Info,
+                    device.IsCritical ? "device.watched" : "device.unwatched",
+                    device.IsCritical
+                        ? $"«{device.DisplayName}» entra en el ping continuo."
+                        : $"«{device.DisplayName}» sale del ping continuo.",
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+
+            return Results.Ok(device);
+        });
+
+        app.MapDelete(ApiRoutes.NetworkDevice, async (
+            string address,
+            DeviceRepository devices,
+            EventRepository events,
+            CancellationToken cancellationToken) =>
+        {
+            DiscoveredDevice? known = await devices
+                .FindAsync(address, cancellationToken).ConfigureAwait(false);
+
+            if (known is null)
+            {
+                return Results.NotFound(new ApiError
+                {
+                    Code = "device_not_found",
+                    Message = "Ese equipo no está en el inventario.",
+                    Detail = address,
+                });
+            }
+
+            await devices.DeleteAsync(address, cancellationToken).ConfigureAwait(false);
+
+            // Borrar un equipo que estaba en rojo dejaria su alerta colgando para siempre:
+            // ya no hay nadie que la baje, porque el colector solo limpia las de los
+            // equipos que sigue vigilando. El colector tambien lo hace al detectar la baja,
+            // pero hacerlo aqui es lo que garantiza que este limpia antes de responder.
+            await events.ClearAlertAsync("M5", $"ping.critical:{address}", cancellationToken)
+                .ConfigureAwait(false);
+
+            return Results.Ok(new { removed = address });
+        });
+    }
+
+    private static string? Trim(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static void MapServices(WebApplication app)
     {

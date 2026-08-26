@@ -29,7 +29,17 @@ public sealed class AgentOptions
     public TelemetryOptions Telemetry { get; set; } = new();
     public RetentionOptions Retention { get; set; } = new();
 
-    /// <summary>Dispositivos que entran en el ping continuo y en la checklist pre-show.</summary>
+    /// <summary>
+    /// Reliquia de migracion. **Ya no configura nada.**
+    ///
+    /// Los equipos vigilados viven en la tabla `devices` de la base y se gestionan desde la
+    /// interfaz o por `/api/v1/network/devices`. Lo que quede aqui se sube a la base la
+    /// primera vez que arranca esta version y despues se ignora, asi que editarlo no tiene
+    /// efecto. Se mantiene la propiedad para que esa migracion siga siendo posible en una
+    /// maquina que venga de una version anterior; el dia que ya no queden, se borra.
+    ///
+    /// Ver `docs/adr/0008-los-dispositivos-criticos-viven-en-la-base.md`.
+    /// </summary>
     public List<CriticalDeviceOptions> CriticalDevices { get; set; } = new();
 }
 

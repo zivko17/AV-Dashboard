@@ -72,6 +72,28 @@ public sealed record ScanRequest
     public int TimeoutMs { get; init; } = 800;
 }
 
+/// <summary>
+/// Cuerpo de <c>POST /api/v1/network/devices</c>: como queda un equipo del inventario.
+///
+/// Un solo contrato para alta manual, renombrar, marcar y desmarcar, porque las cuatro son
+/// la misma frase. Los campos son opcionales para que marcar una estrella no obligue a
+/// reenviar el alias y arriesgarse a borrarlo por olvido.
+/// </summary>
+public sealed record DeviceUpsertRequest
+{
+    /// <summary>Direccion IP. Es la identidad del equipo en el inventario.</summary>
+    public required string IpAddress { get; init; }
+
+    /// <summary>Nombre que le pones tu. Cadena vacia lo borra; null lo deja como estaba.</summary>
+    public string? Alias { get; init; }
+
+    /// <summary>Si entra en el ping continuo. Null lo deja como estaba.</summary>
+    public bool? IsCritical { get; init; }
+
+    public DeviceKind? Kind { get; init; }
+    public string? Notes { get; init; }
+}
+
 public sealed record ScanResponse
 {
     public required DateTimeOffset StartedAt { get; init; }

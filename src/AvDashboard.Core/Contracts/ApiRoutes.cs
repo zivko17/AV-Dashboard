@@ -50,7 +50,12 @@ public static class ApiRoutes
     public const string NetworkInterfaces = Base + "/network/interfaces";
     public const string NetworkProfile = Base + "/network/profile";
     public const string NetworkScan = Base + "/network/scan";
+
+    /// <summary>Inventario de la red: lo visto en los barridos mas lo anadido a mano (M17).</summary>
     public const string NetworkDevices = Base + "/network/devices";
+
+    /// <summary>Un equipo del inventario, por su direccion. Solo para borrarlo.</summary>
+    public const string NetworkDevice = Base + "/network/devices/{address}";
     public const string NetworkPing = Base + "/network/ping";
 
     /// <summary>Muestras en crudo de la ventana en vivo, para el grafico del dashboard.</summary>
