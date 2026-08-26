@@ -89,9 +89,16 @@
                                                 <!-- La barra repite el dato en forma y no solo
                                                      en color: sin ella, quien no distinga bien
                                                      el verde del ambar se queda sin la mitad. -->
+                                                <!--
+                                                  El canal se pinta explicito. Con el color
+                                                  de pista del sistema, un medidor al 0 %
+                                                  no se ve en absoluto y la fila parece que
+                                                  le falta algo en vez de estar en reposo.
+                                                -->
                                                 <ProgressBar Grid.Row="1" Grid.ColumnSpan="2"
                                                              Height="4" Minimum="0" Maximum="100"
                                                              Margin="0,4,0,0"
+                                                             Background="#14FFFFFF"
                                                              Value="{Binding Percent, Mode=OneWay, FallbackValue=0}"
                                                              Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
                                             </Grid>

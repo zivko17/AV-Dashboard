@@ -813,6 +813,25 @@ public static class AgentEndpoints
 
         (string Route, string What)[] pendingReads =
         {
+            // Las cinco de abajo estaban declaradas en ApiRoutes y no las servia nadie:
+            // devolvian 404 con el cuerpo vacio, que es indistinguible de una version del
+            // agente que no las conoce. La regla del proyecto es que una ruta declarada
+            // responde 501 con la fase en la que llega, y ahora la cumplen las veintiuna.
+            //
+            // La de procesos ademas devolvia 405 y no 404, porque «processes» encajaba en la
+            // plantilla de POST /system/{setting}: se estaba interpretando como el nombre de
+            // un ajuste. Mapearla con GET es lo que lo desambigua.
+            (ApiRoutes.Processes, "Prioridad y afinidad por proceso (Fase 2)"),
+            (ApiRoutes.AudioSessions, "Las sesiones de audio por aplicación (Fase 2)"),
+            (ApiRoutes.AudioSession, "El volumen de una aplicación concreta (Fase 2)"),
+
+            // Se podria servir a medias con lo que ya lee el colector —carga y VRAM—, pero
+            // GpuStatus pide ademas version y rama del driver, que no se leen todavia.
+            // Media respuesta en una ruta que promete la entera es peor que un 501 honesto.
+            (ApiRoutes.VideoGpu, "El estado de la GPU con su driver (Fase 4)"),
+
+            (ApiRoutes.Runs, "El historial de ejecuciones de perfil (Fase 2)"),
+
             (ApiRoutes.VideoDeckLink, "La lectura de DeckLink (Fase 4)"),
             (ApiRoutes.VideoSync, "La desviación de refresh (Fase 4)"),
             (ApiRoutes.VideoLedProcessors, "Los procesadores LED (Fase 7)"),

@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Video;
@@ -349,7 +349,12 @@ public sealed class DisplayOutputViewModel
     public DisplayOutput Output { get; }
 
     public string DeviceName => Output.DeviceName;
-    public string MonitorName => Output.MonitorName ?? "monitor sin nombre";
+    /// <summary>
+    /// El nombre que se lee. Sale de Core para que el panel y esta pagina digan lo mismo:
+    /// antes el panel ensenaba el nombre de dispositivo en crudo y aqui «monitor sin
+    /// nombre», que son dos respuestas distintas a la misma pregunta.
+    /// </summary>
+    public string MonitorName => Output.DisplayLabel;
     public string Connector => Output.PhysicalConnector ?? "conector desconocido";
     public bool IsPrimary => Output.IsPrimary;
 

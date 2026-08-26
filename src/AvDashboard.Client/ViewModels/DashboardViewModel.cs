@@ -391,7 +391,7 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         List<string> lines = new()
         {
-            primary.MonitorName ?? primary.DeviceName,
+            primary.DisplayLabel,
             $"{primary.Width}×{primary.Height} · {primary.RefreshHz:0.###} Hz",
         };
 

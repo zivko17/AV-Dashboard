@@ -1,4 +1,4 @@
-# API del agente
+﻿# API del agente
 
 REST para acciones, WebSocket (SignalR) para telemetría. Todas las rutas están declaradas
 en `AvDashboard.Core/Contracts/ApiRoutes.cs`: el agente las sirve y la consola, el CLI y el
@@ -79,7 +79,7 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | GET | `/network/interfaces` | ✅ |
 | GET | `/network/ping` | ✅ Estadística por dispositivo crítico |
 | GET | `/network/ping/samples?device=` | ✅ Ventana en vivo, desde memoria |
-| POST | `/network/scan` | ✅ Barrido ICMP + ARP + sondeo web |
+| POST | `/network/scan` | ✅ Barrido ICMP + ARP + sondeo web, y vuelca al inventario |
 | GET | `/network/devices` | ✅ Inventario: lo barrido más lo añadido a mano |
 | POST | `/network/devices` | ✅ Alta, renombrar, marcar y desmarcar. Upsert por IP |
 | DELETE | `/network/devices/{ip}` | ✅ Sacarlo del inventario |

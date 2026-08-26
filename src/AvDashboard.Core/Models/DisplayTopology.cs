@@ -1,4 +1,4 @@
-namespace AvDashboard.Core.Models;
+﻿namespace AvDashboard.Core.Models;
 
 /// <summary>Topologia completa de salida de video de un nodo (M4).</summary>
 public sealed record DisplayTopology
@@ -16,6 +16,39 @@ public sealed record DisplayOutput
 
     /// <summary>Nombre del monitor tal y como lo reporta el EDID o el driver.</summary>
     public string? MonitorName { get; init; }
+
+    /// <summary>
+    /// Cómo se escribe esta salida en una pantalla.
+    ///
+    /// El nombre del monitor cuando lo hay. Cuando no —pasa con capturadoras, con splitters
+    /// que no pasan el EDID y con salidas virtuales— lo que quedaba era el nombre de
+    /// dispositivo de Windows en crudo, y en el panel se leía <c>\\.\DISPLAY145</c>: no le
+    /// dice nada a nadie y encima parece un error de la aplicación.
+    ///
+    /// Se le quita el prefijo y se deja el número, que es lo único que distingue una salida
+    /// de otra cuando ninguna tiene nombre.
+    /// </summary>
+    public string DisplayLabel
+    {
+        get
+        {
+            if (MonitorName is { Length: > 0 } name)
+            {
+                return name;
+            }
+
+            const string prefix = @"\\.\";
+            const string display = "DISPLAY";
+
+            string device = DeviceName.StartsWith(prefix, StringComparison.Ordinal)
+                ? DeviceName[prefix.Length..]
+                : DeviceName;
+
+            return device.StartsWith(display, StringComparison.OrdinalIgnoreCase)
+                ? $"Salida {device[display.Length..]}"
+                : device;
+        }
+    }
 
     /// <summary>Salida fisica de la GPU: HDMI 1, DP 3... Requiere NVAPI para ser fiable.</summary>
     public string? PhysicalConnector { get; init; }
