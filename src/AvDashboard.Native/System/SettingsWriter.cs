@@ -99,6 +99,9 @@ public static class SettingsWriter
         // Red
         SettingIds.NicOffloads,
 
+        SettingIds.NicPowerManagement,
+        SettingIds.NicNagle,
+
         // Presentación de vídeo
         SettingIds.FullscreenOptimizations,
         SettingIds.VariableRefreshRate,
@@ -236,6 +239,18 @@ public static class SettingsWriter
 
                 SettingIds.NicOffloads => ApplyNicOffloads(value, dryRun),
 
+                SettingIds.NicPowerManagement => ApplyNic(
+                    SettingIds.NicPowerManagement, value, dryRun,
+                    NicRegistryWriter.DisablePowerManagement,
+                    "El ahorro de energía de la NIC solo se apaga desde aquí. Volver a " +
+                    "encenderlo se hace en el Administrador de dispositivos, y a sabiendas."),
+
+                SettingIds.NicNagle => ApplyNic(
+                    SettingIds.NicNagle, value, dryRun,
+                    NicRegistryWriter.DisableNagle,
+                    "Nagle solo se desactiva desde aquí. Volver a activarlo es borrar dos " +
+                    "valores del registro a mano."),
+
                 SettingIds.FullscreenOptimizations => ApplyPresentation(
                     SettingIds.FullscreenOptimizations,
                     DirectXGlobalSettings.SwapEffectUpgrade, value, dryRun),
@@ -372,6 +387,42 @@ public static class SettingsWriter
         return DirectXGlobalSettings.Effective(after, key) == target
             ? Ok(id, previousText, targetText)
             : Failed(id, "El valor no se ha quedado escrito.");
+    }
+
+    /// <summary>
+    /// Los dos ajustes de adaptador que se escriben en el registro.
+    ///
+    /// Comparten forma con el de las descargas: solo se acepta apagarlos, se aplica a todas
+    /// las tarjetas fisicas activas, y se comprueba releyendo en vez de creerse la llamada.
+    /// Ofrecer el camino de vuelta seria ofrecer un boton para romper Dante.
+    /// </summary>
+    private static SettingWriteResult ApplyNic(
+        string id, string value, bool dryRun, Func<bool, NicWriteResult> apply, string refusal)
+    {
+        // Se compara contra «0» y no con Boolean(), que espera «on»/«off». Estas filas se
+        // miden en «cuantos adaptadores infringen», asi que su valor es un numero. Con
+        // Boolean() el guardarrail no guardaba nada: mandar «1» no se rechazaba, se colaba
+        // e intentaba escribir, y solo fallaba despues por falta de permisos.
+        if (!string.Equals(value, "0", StringComparison.Ordinal))
+        {
+            return Failed(id, refusal);
+        }
+
+        NicWriteResult result = apply(dryRun);
+
+        if (!result.Success)
+        {
+            return Failed(id, result.Failures.Count > 0
+                ? result.Failures[0]
+                : $"Siguen mal: {string.Join(", ", result.Remaining)}.");
+        }
+
+        // El valor de estas filas es «cuantos adaptadores infringen». En seco, lo que se
+        // tocaria; aplicado, lo que queda, que si ha ido bien es cero.
+        string previous = Count(result.DryRun ? result.Touched.Count : result.Touched.Count);
+        string applied = Count(result.DryRun ? 0 : result.Remaining.Count);
+
+        return Ok(id, previous, applied, dryRun);
     }
 
     private static bool Boolean(string value) =>
