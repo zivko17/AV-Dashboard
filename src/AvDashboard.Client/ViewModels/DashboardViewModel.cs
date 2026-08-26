@@ -130,7 +130,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     }
 
     /// <summary>Como mucho tres medidores por tarjeta, o la rejilla se rompe.</summary>
-    private const int MaxGauges = 3;
+    internal const int MaxGauges = 3;
 
     /// <summary>
     /// Los medidores de una seccion, recortados a los que caben.
@@ -145,7 +145,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     /// —hoy CPU arriba, dentro de un minuto RAM— y un panel que cambia de sitio sus filas no
     /// se puede leer de memoria, que es justo como se lee cuando hay prisa.
     /// </summary>
-    private static (IReadOnlyList<LoadGaugeViewModel> Shown, string? More) Rank(
+    internal static (IReadOnlyList<LoadGaugeViewModel> Shown, string? More) Rank(
         IEnumerable<LoadGaugeViewModel> gauges, bool bySeverity = false)
     {
         List<LoadGaugeViewModel> all = bySeverity

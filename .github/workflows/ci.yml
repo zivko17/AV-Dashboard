@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -35,6 +35,11 @@ jobs:
           dotnet test tests/AvDashboard.Core.Tests/AvDashboard.Core.Tests.csproj
           --configuration Release --no-build --logger "trx;LogFileName=core-tests.trx"
 
+      - name: Probar el cliente
+        run: >
+          dotnet test tests/AvDashboard.Client.Tests/AvDashboard.Client.Tests.csproj
+          --configuration Release --no-build --logger "trx;LogFileName=client-tests.trx"
+
       - name: Publicar resultados
         if: always()
         uses: actions/upload-artifact@v4
@@ -66,6 +71,15 @@ jobs:
 
       - name: Probar Core
         run: dotnet test tests/AvDashboard.Core.Tests/AvDashboard.Core.Tests.csproj --configuration Release
+
+      # Y probarlo, no solo compilarlo. Client tenia cuatro mil lineas sin una sola prueba
+      # mientras aqui se decia que este job era «donde se prueba de verdad»: la logica de las
+      # filas de formato y del panel se rompio una vez y lo pillo una captura de pantalla.
+      #
+      # Correrlo en Linux ademas prueba algo que en Windows no se ve: que Client no se ha
+      # atado a Windows por accidente.
+      - name: Probar el cliente
+        run: dotnet test tests/AvDashboard.Client.Tests/AvDashboard.Client.Tests.csproj --configuration Release
 
       # El mapa del proyecto se genera desde el codigo. Si alguien commitea sin
       # regenerarlo, el diagrama empieza a mentir, y un diagrama que miente es peor que no

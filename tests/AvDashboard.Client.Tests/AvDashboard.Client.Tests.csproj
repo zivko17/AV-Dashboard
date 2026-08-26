@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    net8.0 a secas y no net8.0-windows, igual que el proyecto que prueba. Client es
+    multiplataforma a propósito —lo comparten la interfaz de WPF y la de WinUI 3— y este
+    proyecto es lo que impide que se ate a Windows sin que nadie se dé cuenta: si alguien
+    mete un `using System.Windows` en un ViewModel, el CI de Linux se pone rojo aquí.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>AvDashboard.Client.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AvDashboard.Client\AvDashboard.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+    <PackageReference Include="xunit" Version="2.7.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.7" />
+  </ItemGroup>
+
+</Project>

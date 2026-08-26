@@ -1,4 +1,4 @@
-using AvDashboard.Core.Models;
+﻿using AvDashboard.Core.Models;
 using AvDashboard.Core.Networking;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -116,6 +116,10 @@ public sealed partial class DeviceRow : ObservableObject
             DeviceSeenState.NeverAnswered => "no responde desde que se añadió",
             DeviceSeenState.NeverSeen => "añadido a mano, sin confirmar",
 
+            // El caso sin hora no se puede dar: SeenInLastScan solo sale cuando hay un
+            // barrido con el que comparar. Se deja como salida por defecto del patrón, no
+            // como una posibilidad real; si algún día aparece en pantalla, es que
+            // DeviceSeenStates ha cambiado y hay que mirar allí y no aquí.
             DeviceSeenState.SeenInLastScan => lastScanAt is DateTimeOffset scan
                 ? $"visto en el escaneo de las {scan.ToLocalTime():HH:mm}"
                 : "visto en el último escaneo",

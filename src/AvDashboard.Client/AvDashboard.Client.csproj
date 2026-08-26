@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -15,6 +15,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AvDashboard.Core\AvDashboard.Core.csproj" />
+  </ItemGroup>
+
+  <!--
+    Las pruebas ven lo interno. Se usa para lo que decide y no se ensena: el orden de los
+    medidores de una tarjeta, por ejemplo, que no tiene por que ser publico para que las dos
+    interfaces funcionen pero si tiene que estar probado, porque ya se rompio una vez.
+  -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>AvDashboard.Client.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>

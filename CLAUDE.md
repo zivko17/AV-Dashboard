@@ -44,6 +44,9 @@ Que Core y Client sean `net8.0` a secas no es casualidad: es lo que permite que 
 Linux los compile y los pruebe, y por tanto lo que impide que se aten a Windows sin que
 nadie se dé cuenta. **Si algo se puede escribir en Core, va en Core.**
 
+Los dos tienen proyecto de pruebas y el CI de Linux los corre. `Native` y `Agent` no
+tienen ninguna, y ahí es donde han salido los fallos que han llegado a una máquina real.
+
 ## Compilar y arrancar
 
 ```powershell
