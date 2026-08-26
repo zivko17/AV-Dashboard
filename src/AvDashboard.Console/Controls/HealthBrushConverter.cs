@@ -156,3 +156,29 @@ public sealed class HexBrushConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>
+/// El semaforo en palabras, para los lectores de pantalla.
+///
+/// El punto de color de la barra lateral es la unica senal de que una seccion esta en rojo,
+/// y el color por si solo no llega: entre el 5 y el 8 % de los hombres no distingue bien el
+/// verde del ambar, y quien usa un lector no ve el punto en absoluto. Esto va en
+/// AutomationProperties.ItemStatus, que es el sitio para un estado que cambia sin que cambie
+/// el nombre del elemento.
+/// </summary>
+public sealed class HealthNameConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is HealthState health
+            ? health switch
+            {
+                HealthState.Ok => "correcto",
+                HealthState.Warning => "conviene revisarlo",
+                HealthState.Critical => "afecta a producción",
+                _ => "sin datos",
+            }
+            : "sin datos";
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

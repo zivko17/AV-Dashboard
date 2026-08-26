@@ -1,5 +1,9 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
+
+    <!-- Lo usa RailItem para anunciar el estado de cada seccion a un lector de pantalla. -->
+    <controls:HealthNameConverter x:Key="HealthName" />
 
     <!--
       Tema Fluent, el de Windows 11 en oscuro.
@@ -332,6 +336,25 @@
       Ese detalle es la mitad de lo que hace que un menu lateral se vea de Windows 11.
     -->
     <Style x:Key="RailItem" TargetType="ListBoxItem">
+        <!--
+            Sin esto, un ListBoxItem toma su nombre accesible del ToString() de su contenido,
+            que aqui es el ViewModel: un lector de pantalla anunciaba
+            «AvDashboard.Client.ViewModels.SystemViewModel» en vez de «Sistema». Va en el
+            contenedor y no en la plantilla del elemento porque el nombre lo publica el
+            contenedor; ponerlo dentro no cambia lo que se anuncia.
+
+            Ademas es lo unico que queda cuando el panel esta replegado a iconos: ahi el
+            titulo desaparece de la pantalla y el glifo no dice nada por si solo.
+        -->
+        <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+
+        <!--
+            El punto de color es la unica senal de que una seccion esta en rojo, y el color
+            solo no llega. ItemStatus lo pone en palabras para quien no lo ve.
+        -->
+        <Setter Property="AutomationProperties.ItemStatus"
+                Value="{Binding Health, Converter={StaticResource HealthName}}" />
+
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <!-- Ocho y no doce: con el panel replegado a iconos, doce se come el glifo. -->
         <Setter Property="Padding" Value="8,0" />
