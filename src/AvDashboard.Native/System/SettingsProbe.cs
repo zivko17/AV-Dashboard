@@ -743,6 +743,7 @@ public static class SettingsProbe
             ReadProductionPriority(readings);
             ReadPresentation(readings);
             ReadPagefile(readings);
+            ReadTimeSync(readings);
         }
         catch (ManagementException)
         {
@@ -937,6 +938,81 @@ public static class SettingsProbe
             PagingFile.Describe(entries)));
     }
 
+
+    /// <summary>
+    /// El reloj: si el servicio arranca solo, cuando sincronizo bien por ultima vez, y de
+    /// donde saca la hora.
+    ///
+    /// La fecha se lee del registro y no de «w32tm /query /status» a proposito: esa consulta
+    /// **necesita el servicio en marcha**, y el caso que hay que detectar es justo el
+    /// contrario. Windows deja LastKnownGoodTime escrito aunque el servicio este parado, y
+    /// coincide al segundo con el evento 35 del visor.
+    /// </summary>
+    private static void ReadTimeSync(List<SettingReading> readings)
+    {
+        // --- El resultado: cuando se puso el reloj en hora por ultima vez.
+        RegistryValue lastGood = RegistrySettingsReader.Probe(
+            RegistryHive.LocalMachine, W32TimeConfigKey, "LastKnownGoodTime");
+
+        if (lastGood.Outcome == RegistryOutcome.Denied)
+        {
+            readings.Add(SettingReading.Missing(SettingIds.TimeLastSync,
+                "sin permiso para leer la configuración del servicio de hora"));
+        }
+        else
+        {
+            DateTimeOffset? when = TimeSync.FromFileTime(
+                lastGood.Raw switch { long l => l, int i => i, _ => 0 });
+
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            readings.Add(SettingReading.Of(
+                SettingIds.TimeLastSync,
+                TimeSync.Canonical(TimeSync.Rate(when, now)),
+                TimeSync.DescribeAge(when, now)));
+        }
+
+        // --- La causa mas probable de que el resultado sea malo.
+        readings.Add(ReadTimeServiceStartup());
+
+        // --- El contexto para entender lo anterior.
+        readings.Add(SettingReading.Of(
+            SettingIds.TimeSource,
+            TimeSync.DescribeSource(
+                RegistrySettingsReader.ReadString(
+                    RegistryHive.LocalMachine, W32TimeParametersKey, "Type"),
+                RegistrySettingsReader.ReadString(
+                    RegistryHive.LocalMachine, W32TimeParametersKey, "NtpServer"))));
+    }
+
+    private static SettingReading ReadTimeServiceStartup()
+    {
+        (ServiceStartMode Mode, bool Running)? service =
+            WindowsServiceReader.Inspect("W32Time");
+
+        if (service is null)
+        {
+            return SettingReading.Missing(SettingIds.TimeServiceStartup,
+                "no se ha podido consultar el servicio W32Time");
+        }
+
+        string? canonical = TimeSync.StartupCanonical(service.Value.Mode);
+
+        if (canonical is null)
+        {
+            return SettingReading.Missing(SettingIds.TimeServiceStartup,
+                "el servicio declara un modo de arranque que no se reconoce");
+        }
+
+        // Se ensena tambien si esta corriendo ahora. Parado con arranque manual es el valor
+        // de fabrica de Windows y no es un fallo por si solo; parado con arranque automatico
+        // si lo es, y de un vistazo son la misma palabra sin este detalle.
+        return SettingReading.Of(
+            SettingIds.TimeServiceStartup,
+            canonical,
+            service.Value.Running ? $"{canonical}, en marcha" : $"{canonical}, parado");
+    }
+
     // -------------------------------------------------------------------- Diagnóstico
 
     private static void ReadDiagnostics(List<SettingReading> readings)
@@ -1116,6 +1192,10 @@ public static class SettingsProbe
     private const string SessionManagerKey = @"SYSTEM\CurrentControlSet\Control\Session Manager";
     private const string MemoryManagementKey =
         @"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management";
+
+    private const string W32TimeKey = @"SYSTEM\CurrentControlSet\Services\W32Time";
+    private const string W32TimeConfigKey = W32TimeKey + @"\Config";
+    private const string W32TimeParametersKey = W32TimeKey + @"\Parameters";
 
     private const string MmcssKey =
         @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile";

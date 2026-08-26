@@ -53,6 +53,9 @@ public static class ActionIds
     /// <summary>Fija el archivo de paginacion. Necesita reinicio para surtir efecto.</summary>
     public const string PagefileFixed = "kernel.pagefile-fixed";
 
+    /// <summary>Pone W32Time en automatico y lo arranca.</summary>
+    public const string TimeServiceStartup = "time.service-startup";
+
     // --- M5 Red ---
     public const string NetworkProfile = "network.profile";
     public const string NicPowerManagement = "network.nic-power-management";
@@ -73,6 +76,7 @@ public static class ActionIds
         AudioDefaultDevice, AudioSessionRoute,
         DisplayLayoutRestore, WindowLayoutRestore, RestartGraphicsDriver,
         FullscreenOptimizations, VariableRefreshRate, PagefileFixed,
+        TimeServiceStartup,
         NetworkProfile, NicPowerManagement, NicNagle, NdiDiscovery,
         ServiceState, ServiceStartMode,
     };

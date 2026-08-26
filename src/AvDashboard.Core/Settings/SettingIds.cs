@@ -43,6 +43,17 @@ public static class SettingIds
     /// <summary>Archivo de paginacion de tamano fijo: el que no crece a mitad de show.</summary>
     public const string PagefileFixed = "kernel.pagefile-fixed";
 
+    // --- Sincronia de hora ---
+
+    /// <summary>El servicio de hora arrancando solo, y no a golpe de desencadenador.</summary>
+    public const string TimeServiceStartup = "time.service-startup";
+
+    /// <summary>Cuando se puso el reloj en hora por ultima vez. Es el resultado.</summary>
+    public const string TimeLastSync = "time.last-sync";
+
+    /// <summary>De donde sale la hora. Informativo: depende del montaje.</summary>
+    public const string TimeSource = "time.source";
+
     // --- Interrupciones y actualizaciones ---
     public const string UpdatePaused = "updates.paused";
     public const string RebootPending = "updates.reboot-pending";

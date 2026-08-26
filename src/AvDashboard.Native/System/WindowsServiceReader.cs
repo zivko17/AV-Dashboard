@@ -1,4 +1,4 @@
-using System.Management;
+﻿using System.Management;
 using System.Runtime.Versioning;
 using System.ServiceProcess;
 using AvDashboard.Core.Models;
@@ -211,6 +211,43 @@ public sealed class WindowsServiceReader
         ServiceControllerStatus.Paused => ServiceState.Paused,
         _ => ServiceState.Unknown,
     };
+
+    /// <summary>
+    /// Como arranca un servicio concreto y si esta corriendo, o null si no se deja mirar.
+    ///
+    /// Existe para no recorrer los trescientos servicios de la maquina cuando la pregunta es
+    /// por uno solo, y para que la sonda y el escritor no acaben con dos copias de la misma
+    /// tabla de equivalencias, que es como se empiezan a comportar distinto.
+    ///
+    /// El arranque automatico retrasado sale como automatico: ServiceController no los
+    /// distingue, y para la unica fila que usa esto la diferencia no cambia nada.
+    /// </summary>
+    public static (ServiceStartMode Mode, bool Running)? Inspect(string serviceName)
+    {
+        try
+        {
+            using ServiceController service = new(serviceName);
+
+            ServiceStartMode mode = service.StartType switch
+            {
+                global::System.ServiceProcess.ServiceStartMode.Boot => ServiceStartMode.Boot,
+                global::System.ServiceProcess.ServiceStartMode.System => ServiceStartMode.System,
+                global::System.ServiceProcess.ServiceStartMode.Automatic
+                    => ServiceStartMode.Automatic,
+                global::System.ServiceProcess.ServiceStartMode.Manual => ServiceStartMode.Manual,
+                global::System.ServiceProcess.ServiceStartMode.Disabled
+                    => ServiceStartMode.Disabled,
+                _ => ServiceStartMode.Unknown,
+            };
+
+            return (mode, service.Status == ServiceControllerStatus.Running);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException
+                                      or global::System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
+    }
 
     private static ServiceStartMode MapStartMode(string? wmiValue, bool delayed) => wmiValue switch
     {

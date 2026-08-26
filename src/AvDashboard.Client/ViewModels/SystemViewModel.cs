@@ -520,6 +520,7 @@ public sealed class SettingGroupViewModel
         SettingGroup.Security => "\uEA18",
         SettingGroup.Startup => "\uE7E8",
         SettingGroup.Network => "\uE839",
+        SettingGroup.Time => "\uE823",
         SettingGroup.Diagnostics => "\uE9F9",
         _ => "\uE713",
     };

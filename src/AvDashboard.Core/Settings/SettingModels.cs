@@ -27,6 +27,14 @@ public enum SettingGroup
     /// </summary>
     Network,
 
+    /// <summary>
+    /// El reloj: de dónde sale la hora y cuándo se puso bien por última vez.
+    ///
+    /// Tiene grupo propio porque no encaja en ninguno de los otros y porque es lo primero
+    /// que se mira cuando dos nodos discrepan y hay que cruzar sus registros.
+    /// </summary>
+    Time,
+
     /// <summary>Solo lectura, sin objetivo: contexto para entender por qué algo va mal.</summary>
     Diagnostics,
 }

@@ -1,4 +1,12 @@
-﻿using System.Runtime.Versioning;
+﻿using System.ServiceProcess;
+using AvDashboard.Core.Models;
+
+// System.ServiceProcess trae su propio ServiceStartMode; aqui gana el nuestro, igual que en
+// WindowsServiceReader.
+using ServiceStartMode = AvDashboard.Core.Models.ServiceStartMode;
+using System.Globalization;
+using System.Management;
+using System.Runtime.Versioning;
 using AvDashboard.Core.Networking;
 using AvDashboard.Core.Settings;
 using AvDashboard.Native.Network;
@@ -108,6 +116,9 @@ public static class SettingsWriter
 
         // Memoria
         SettingIds.PagefileFixed,
+
+        // Sincronía de hora
+        SettingIds.TimeServiceStartup,
     };
 
     /// <summary>
@@ -263,6 +274,8 @@ public static class SettingsWriter
                     DirectXGlobalSettings.VariableRefreshRate, value, dryRun),
 
                 SettingIds.PagefileFixed => ApplyPagefile(value, dryRun),
+
+                SettingIds.TimeServiceStartup => ApplyTimeService(value, dryRun),
 
                 // ScreenSaveActive se guarda como cadena «1» o «0», no como entero.
                 SettingIds.ScreenSaver => Text(id, value, dryRun,
@@ -556,6 +569,129 @@ public static class SettingsWriter
                 + "sigue funcionando y el nuevo tamaño se reserva en el próximo arranque.",
             PreviousValue = previous,
             AppliedValue = applied,
+        };
+    }
+
+    /// <summary>
+    /// Pone W32Time en automatico y lo arranca, o lo devuelve a manual.
+    ///
+    /// El modo de arranque se cambia por WMI y no escribiendo «Start» en el registro. Las
+    /// dos cosas funcionan, pero el SCM tiene su propia copia en memoria: por el registro el
+    /// valor queda bien y el servicio se sigue comportando como antes hasta el siguiente
+    /// arranque, que es la clase de exito a medias que este proyecto ya ha pagado una vez.
+    ///
+    /// Arrancarlo corrige el reloj, y si esta desviado la correccion es un salto. Por eso la
+    /// fila es disruptiva: se aplica antes del show, no durante.
+    /// </summary>
+    private static SettingWriteResult ApplyTimeService(string value, bool dryRun)
+    {
+        string id = SettingIds.TimeServiceStartup;
+
+        string target = value switch
+        {
+            TimeSync.TargetStartup => "Automatic",
+            TimeSync.ManualStartup => "Manual",
+            _ => string.Empty,
+        };
+
+        if (target.Length == 0)
+        {
+            return Failed(id,
+                "Desde aquí solo se pone en automático o se devuelve a manual. Desactivar "
+                + "el servicio de hora dejaría el reloj yendo solo, que es peor que el "
+                + "problema que se estaba arreglando.");
+        }
+
+        (ServiceStartMode Mode, bool Running)? before =
+            WindowsServiceReader.Inspect("W32Time");
+
+        if (before is null)
+        {
+            return Failed(id, "No se ha podido consultar el servicio W32Time.");
+        }
+
+        string? previous = TimeSync.StartupCanonical(before.Value.Mode);
+
+        if (dryRun)
+        {
+            return Ok(id, previous, value, dryRun: true);
+        }
+
+        try
+        {
+            using ManagementObject service = new(
+                new ManagementPath("Win32_Service.Name='W32Time'"));
+
+            object result = service.InvokeMethod(
+                "ChangeStartMode", new object[] { target })!;
+
+            uint code = Convert.ToUInt32(result, CultureInfo.InvariantCulture);
+
+            if (code != 0)
+            {
+                // 2 es acceso denegado, y es el que se va a ver mientras el agente no sea
+                // servicio. El resto se dice con su numero: son raros y sin el numero no hay
+                // por donde empezar a mirar.
+                return Failed(id, code == 2
+                    ? "Hace falta que el agente corra como servicio para tocar esto."
+                    : $"Windows ha rechazado el cambio de arranque (código {code}).");
+            }
+        }
+        catch (ManagementException)
+        {
+            return Failed(id, "No se ha podido cambiar el arranque del servicio W32Time.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Failed(id, "Hace falta que el agente corra como servicio para tocar esto.");
+        }
+
+        string arrancado = string.Empty;
+
+        if (target == "Automatic" && !before.Value.Running)
+        {
+            try
+            {
+                using ServiceController controller = new("W32Time");
+                controller.Start();
+                controller.WaitForStatus(
+                    ServiceControllerStatus.Running, TimeSpan.FromSeconds(20));
+
+                arrancado = " Arrancado: el reloj se pone en hora en cuanto conteste el "
+                    + "servidor.";
+            }
+            catch (Exception ex) when (ex is InvalidOperationException
+                                          or global::System.ServiceProcess.TimeoutException)
+            {
+                // El arranque en automatico ya esta escrito y eso es lo que pedia la fila.
+                // Que ademas no haya arrancado ahora es una noticia, no un fracaso, y
+                // decirlo es mas util que revertir el cambio bueno.
+                arrancado = " No ha arrancado ahora; lo hará en el próximo reinicio.";
+            }
+        }
+
+        // Se relee del SCM, que es quien manda, y no del registro.
+        (ServiceStartMode Mode, bool Running)? check = WindowsServiceReader.Inspect("W32Time");
+
+        if (check is null)
+        {
+            return Failed(id, "No se ha podido comprobar el servicio después de escribir.");
+        }
+
+        string? after = TimeSync.StartupCanonical(check.Value.Mode);
+
+        if (after != value)
+        {
+            return Failed(id, "El arranque no se ha quedado cambiado.");
+        }
+
+        return new SettingWriteResult
+        {
+            Id = id,
+            Success = true,
+            Message = "Aplicado." + arrancado,
+            PreviousValue = previous,
+            AppliedValue = after,
         };
     }
 

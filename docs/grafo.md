@@ -82,8 +82,9 @@ graph LR
 | Seguridad | 3 | 1 | 1 | 0 |
 | Arranque y sesión | 4 | 4 | 3 | 0 |
 | Adaptador de red | 3 | 3 | 2 | 0 |
+| Sincronía de hora | 3 | 2 | 0 | 0 |
 | Diagnóstico | 4 | 0 | 0 | 0 |
-| **Total** | **55** | **46** | **32** | **2** |
+| **Total** | **58** | **48** | **32** | **2** |
 
 «Fuera de los perfiles» son los que nunca entran en un cambio automático porque
 tocarlos reduce la seguridad de la máquina de forma real.
@@ -91,7 +92,7 @@ tocarlos reduce la seguridad de la máquina de forma real.
 ## Superficie
 
 - **27 comandos** de CLI y paleta.
-- **27 actuadores** declarados, de los cuales 10 pueden interrumpir una salida en directo.
+- **28 actuadores** declarados, de los cuales 10 pueden interrumpir una salida en directo.
 
 ### Comandos por sector
 

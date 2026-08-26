@@ -158,6 +158,21 @@ public static class RegistrySettingsReader
         ReadValue(hive, keyPath, valueName) as string;
 
     /// <summary>
+    /// Un REG_QWORD. Hace falta para LastKnownGoodTime, que es un FILETIME y no cabe en int.
+    ///
+    /// ReadInt lo truncaria a treinta y dos bits sin quejarse, y el resultado seria una
+    /// fecha de 1601 en vez de un fallo de lectura: exactamente la clase de dato falso que
+    /// pinta una fila de rojo por el motivo equivocado.
+    /// </summary>
+    public static long? ReadLong(RegistryHive hive, string keyPath, string valueName) =>
+        ReadValue(hive, keyPath, valueName) switch
+        {
+            long l => l,
+            int i => i,
+            _ => null,
+        };
+
+    /// <summary>
     /// Un REG_MULTI_SZ como lista de lineas.
     ///
     /// Devuelve null solo si el valor no esta o no se deja leer. Una lista **vacia** es un

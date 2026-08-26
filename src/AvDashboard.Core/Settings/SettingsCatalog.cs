@@ -645,6 +645,41 @@ public static class SettingsCatalog
             Rationale = "VRR hace que la pantalla siga al ordenador en vez de al reves. En un monitor de escritorio es una mejora; contra una pared LED o un proyector la cadencia deja de ser fija, y el material a 25 o 50 fps empieza a dar tirones.",
         },
 
+        // ---------------------------------------------------------- Sincronía de hora
+        new()
+        {
+            Id = SettingIds.TimeLastSync,
+            Group = SettingGroup.Time,
+            Name = "Última sincronía correcta",
+            Source = @"HKLM\...\Services\W32Time\Config\LastKnownGoodTime",
+            AcceptableValues = new[] { TimeSync.Target },
+            TargetDescription = "Hace menos de una semana",
+            Impact = SettingImpact.Medium,
+            Rationale = "Es el resultado, no la configuración: el servicio puede decir que sincroniza con un servidor al que la VLAN del rig no llega, fallar en silencio durante meses y seguir pareciendo correcto. Con la hora desviada los registros de dos nodos dejan de poderse cruzar cuando algo falla, y lo que hable TLS empieza a dar errores raros de certificado.",
+        },
+        new()
+        {
+            Id = SettingIds.TimeServiceStartup,
+            Group = SettingGroup.Time,
+            Name = "Servicio de hora en arranque automático",
+            Source = "Servicio W32Time",
+            AcceptableValues = new[] { TimeSync.TargetStartup },
+            TargetDescription = "Automático",
+            Impact = SettingImpact.Medium,
+            Risk = SettingRisk.Disruptive,
+            ActionId = ActionIds.TimeServiceStartup,
+            Rationale = "Windows lo deja en manual y lo arranca con un desencadenador y una tarea semanal. Ese arreglo es el que falla en silencio cuando el servidor de hora no contesta. En automático el servicio se queda residente y vuelve a preguntar cada pocas horas. Se aplica antes del show y no durante: al arrancar corrige el reloj, y si está desviado la corrección es un salto.",
+        },
+        new()
+        {
+            Id = SettingIds.TimeSource,
+            Group = SettingGroup.Time,
+            Name = "Origen de la hora",
+            Source = @"HKLM\...\Services\W32Time\Parameters",
+            Impact = SettingImpact.Low,
+            Rationale = "Sin objetivo a propósito: la respuesta correcta depende del montaje. Un NTP de internet si el rig tiene salida, uno del switch de FOH si la red está aislada, o el dominio si lo hay. Lo que hace falta es verlo antes de preguntarse por qué la hora no cuadra.",
+        },
+
         // ----------------------------------------------------------------- Diagnóstico
         new()
         {
@@ -700,6 +735,7 @@ public static class SettingsCatalog
         SettingGroup.Security,
         SettingGroup.Startup,
         SettingGroup.Network,
+        SettingGroup.Time,
         SettingGroup.Diagnostics,
     };
 
@@ -797,6 +833,7 @@ public static class SettingsCatalog
         SettingGroup.Updates => "Interrupciones y actualizaciones",
         SettingGroup.Security => "Seguridad",
         SettingGroup.Startup => "Arranque y sesión",
+        SettingGroup.Time => "Sincronía de hora",
         SettingGroup.Diagnostics => "Diagnóstico",
         _ => group.ToString(),
     };
