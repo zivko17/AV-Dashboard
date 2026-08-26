@@ -248,6 +248,37 @@ public class SettingsCatalogTests
         Assert.Equal(SettingIds.FastStartup, audit.Deviations.Single().Definition.Id);
     }
 
+    [Fact]
+    public void Delivery_Optimization_sin_pares_vale_en_cualquiera_de_sus_tres_modos()
+    {
+        // Salio de una auditoria en una maquina real: en modo 99 la fila se pintaba en rojo
+        // mientras su propio texto decia «sin descarga entre pares». Lo que el catalogo
+        // quiere evitar es que la maquina sirva actualizaciones a la red del venue, y eso
+        // lo cumplen el 0 (solo HTTP), el 99 (descarga simple) y el 100 (se salta DO).
+        foreach (string modo in new[] { "0", "99", "100" })
+        {
+            SettingsAudit audit = SettingsCatalog.Evaluate(new[]
+            {
+                SettingReading.Of(SettingIds.DeliveryOptimization, modo),
+            });
+
+            Assert.Equal(SettingVerdict.Match, Single(audit, SettingIds.DeliveryOptimization).Verdict);
+        }
+
+        // Los que si reparten siguen en rojo: son el motivo de que la fila exista.
+        foreach (string modo in new[] { "1", "2", "3" })
+        {
+            SettingsAudit audit = SettingsCatalog.Evaluate(new[]
+            {
+                SettingReading.Of(SettingIds.DeliveryOptimization, modo),
+            });
+
+            Assert.Equal(
+                SettingVerdict.DiffersCritical,
+                Single(audit, SettingIds.DeliveryOptimization).Verdict);
+        }
+    }
+
     private static SettingEvaluation Single(SettingsAudit audit, string id) =>
         audit.All.Single(s => s.Definition.Id == id);
 }

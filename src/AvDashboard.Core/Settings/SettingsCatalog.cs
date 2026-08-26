@@ -373,8 +373,15 @@ public static class SettingsCatalog
             Group = SettingGroup.Updates,
             Name = "Delivery Optimization",
             Source = @"...\DeliveryOptimization\DODownloadMode",
-            AcceptableValues = new[] { "0" },
-            TargetDescription = "0 (solo HTTP, sin P2P)",
+
+            // Lo que importa aquí es que no haya intercambio entre pares, y eso lo cumplen
+            // tres modos, no solo el 0: el 99 es descarga simple sin par ni servicio en la
+            // nube, y el 100 se salta Delivery Optimization entero y baja por BITS. Con
+            // solo el 0 en la lista, una máquina en modo 99 salía en rojo mientras la
+            // propia fila decía «sin descarga entre pares», que es la clase de falso rojo
+            // que hace que dejes de mirar la pantalla.
+            AcceptableValues = new[] { "0", "99", "100" },
+            TargetDescription = "Sin descarga entre pares (0, 99 o 100)",
             Impact = SettingImpact.High,
             Rationale = "Con el valor por defecto tu máquina sirve actualizaciones a la red del venue, la misma que lleva Dante o NDI.",
         },
