@@ -23,6 +23,9 @@ public sealed class DeviceRepository
     /// <summary>Marca en `meta` de que los críticos de la configuración ya se migraron.</summary>
     private const string SeededKey = "devices.seeded-from-config";
 
+    /// <summary>Instante del último barrido, en `meta`. Ver <see cref="GetLastScanAsync"/>.</summary>
+    private const string LastScanKey = "devices.last-scan";
+
     public DeviceRepository(AgentDatabase database, NodeIdentity identity)
     {
         _database = database;
@@ -295,6 +298,43 @@ public sealed class DeviceRepository
         await SaveManyAsync(devices, cancellationToken).ConfigureAwait(false);
         return devices.Count;
     }
+
+    /// <summary>
+    /// Cuándo se hizo el último barrido.
+    ///
+    /// Lo necesita la columna «visto» para poder decir «visto en el escaneo de las 17:12» en
+    /// lugar de insinuar una vigilancia que no existe. Va en `meta` y no en memoria porque
+    /// si no, tras reiniciar el agente todas las filas no vigiladas caerían a «visto por
+    /// última vez», que es un dato distinto del que se tiene.
+    /// </summary>
+    public async Task<DateTimeOffset?> GetLastScanAsync(CancellationToken cancellationToken = default)
+    {
+        await using SqliteConnection connection = _database.OpenConnection();
+        await using SqliteCommand command = connection.CreateCommand();
+
+        command.CommandText = "SELECT value FROM meta WHERE key = $key;";
+        command.Parameters.AddWithValue("$key", LastScanKey);
+
+        object? value = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+        return value is string raw && DateTimeOffset.TryParse(raw, out DateTimeOffset at) ? at : null;
+    }
+
+    public Task SetLastScanAsync(DateTimeOffset at, CancellationToken cancellationToken = default) =>
+        _database.WriteAsync(async connection =>
+        {
+            await using SqliteCommand command = connection.CreateCommand();
+
+            command.CommandText = """
+                INSERT INTO meta (key, value) VALUES ($key, $ts)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+                """;
+
+            command.Parameters.AddWithValue("$key", LastScanKey);
+            command.Parameters.AddWithValue("$ts", at.ToString("O"));
+
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }, cancellationToken);
 
     private async Task<bool> HasSeededAsync(CancellationToken cancellationToken)
     {

@@ -9,6 +9,7 @@ using AvDashboard.Core.Video;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
+using AvDashboard.Core.Networking;
 using AvDashboard.Core.Taxonomy;
 using AvDashboard.Native;
 using AvDashboard.Native.Network;
@@ -204,7 +205,11 @@ public static class AgentEndpoints
         MapInventory(app);
 
         app.MapPost(ApiRoutes.NetworkScan, async (
-            ScanRequest request, NodeState state, CancellationToken cancellationToken) =>
+            ScanRequest request,
+            NodeState state,
+            DeviceRepository devices,
+            EventRepository events,
+            CancellationToken cancellationToken) =>
         {
             string? cidr = request.Cidr;
 
@@ -230,7 +235,10 @@ public static class AgentEndpoints
 
             try
             {
-                return Results.Ok(await scanner.ScanAsync(cidr, request, cancellationToken)
+                ScanResponse scan = await scanner.ScanAsync(cidr, request, cancellationToken)
+                    .ConfigureAwait(false);
+
+                return Results.Ok(await RecordScanAsync(scan, devices, events, cancellationToken)
                     .ConfigureAwait(false));
             }
             catch (Exception ex) when (ex is FormatException or ArgumentOutOfRangeException or NotSupportedException)
@@ -358,6 +366,68 @@ public static class AgentEndpoints
 
             return Results.Ok(new { removed = address });
         });
+    }
+
+    /// <summary>
+    /// Vuelca un barrido al inventario y devuelve la respuesta ya fusionada.
+    ///
+    /// La fusion la hace Core, que es donde se prueba que un barrido no pisa tu alias ni te
+    /// borra las estrellas. Aqui solo se persiste y se anota.
+    /// </summary>
+    private static async Task<ScanResponse> RecordScanAsync(
+        ScanResponse scan,
+        DeviceRepository devices,
+        EventRepository events,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<DiscoveredDevice> inventory =
+            await devices.ListAsync(cancellationToken).ConfigureAwait(false);
+
+        // «El primero» se mide por si ha habido barrido antes, no por si el inventario
+        // estaba vacio. Con un solo equipo anadido a mano, la condicion del inventario
+        // vacio ya no se cumple y el primer escaneo de verdad soltaba una linea por cada
+        // cosa que hubiera en la red.
+        bool firstEver = await devices.GetLastScanAsync(cancellationToken).ConfigureAwait(false) is null;
+
+        DeviceMerge merge = DeviceInventory.Merge(inventory, scan.Devices, scan.StartedAt);
+
+        await devices.SaveManyAsync(merge.Devices, cancellationToken).ConfigureAwait(false);
+        await devices.SetLastScanAsync(scan.StartedAt, cancellationToken).ConfigureAwait(false);
+
+        if (merge.Added.Count > 0)
+        {
+            // El primer barrido de una maquina no son catorce novedades, es un inventario
+            // inicial. Anotarlas una a una llenaria el Timeline de lineas que no son un
+            // cambio, y cada una de esas resta a lo que el Timeline existe para hacer:
+            // reconstruir que paso a las 21:04. Es la misma regla que setting.unchanged.
+            if (firstEver)
+            {
+                await events.AppendAsync("M17", Sector.Network, Severity.Info, "inventory.initial",
+                    $"Inventario inicial: {merge.Added.Count} equipos en {scan.Range}.",
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                foreach (DiscoveredDevice device in merge.Added)
+                {
+                    await events.AppendAsync("M17", Sector.Network, Severity.Info, "device.new",
+                        $"Equipo nuevo en la red: {device.DisplayName}" +
+                        (device.Vendor is null ? "." : $" ({device.Vendor})."),
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+
+        // La respuesta lleva lo fusionado y no lo barrido: asi la lista sale ya con sus
+        // alias y sus estrellas sin una segunda llamada, y sin que la pantalla tenga que
+        // saber que dos cosas distintas hay que cruzar.
+        return scan with
+        {
+            Devices = merge.Devices
+                .Where(d => scan.Devices.Any(found => string.Equals(
+                    found.IpAddress, d.IpAddress, StringComparison.OrdinalIgnoreCase)))
+                .ToList(),
+        };
     }
 
     private static string? Trim(string? value) =>
