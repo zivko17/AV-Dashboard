@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="AvDashboard.Shell.Views.TimelinePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -8,6 +8,8 @@
         <local:SeverityBrushConverter x:Key="SeverityBrush" />
         <local:StringNotEmptyConverter x:Key="StringNotEmpty" />
         <local:CountToVisibilityConverter x:Key="CountToVisibility" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <local:InverseBooleanConverter x:Key="BoolNot" />
     </UserControl.Resources>
 
     <ScrollViewer>
@@ -56,6 +58,7 @@
                                 <ColumnDefinition Width="120" />
                                 <ColumnDefinition Width="180" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
                             <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
@@ -73,6 +76,19 @@
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        TextTrimming="CharacterEllipsis" />
                             <TextBlock Grid.Column="5" Text="{Binding Message}" TextWrapping="Wrap" />
+
+                            <!--
+                              Solo en las lineas que cambiaron un ajuste. Quien decide de
+                              verdad si se puede es el agente: aqui solo se evita ofrecerlo
+                              en una linea de ping, que no tiene nada que deshacer.
+                            -->
+                            <Button Grid.Column="6" Content="Deshacer"
+                                    Background="Transparent" BorderThickness="0" Padding="8,2"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding UndoCommand}"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
+                                    ToolTipService.ToolTip="Devolver este ajuste al valor que tenía antes de este cambio"
+                                    Visibility="{Binding CanAttemptUndo, Converter={StaticResource BoolToVisibility}}" />
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

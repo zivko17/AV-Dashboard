@@ -1,10 +1,12 @@
-<UserControl x:Class="AvDashboard.Console.Views.TimelinePage"
+﻿<UserControl x:Class="AvDashboard.Console.Views.TimelinePage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
     <UserControl.Resources>
         <controls:SeverityBrushConverter x:Key="SeverityBrush" />
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
+        <controls:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <controls:InverseBooleanConverter x:Key="BoolNot" />
     </UserControl.Resources>
 
     <StackPanel>
@@ -38,6 +40,7 @@
                                 <ColumnDefinition Width="130" />
                                 <ColumnDefinition Width="200" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
                                      Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
@@ -49,6 +52,18 @@
                             <TextBlock Grid.Column="4" Text="{Binding Kind}" FontFamily="{StaticResource MonoFont}"
                                        Style="{StaticResource CaptionText}" />
                             <TextBlock Grid.Column="5" Text="{Binding Message}" TextWrapping="Wrap" />
+
+                            <!--
+                              Solo en las lineas que cambiaron un ajuste. Quien decide de
+                              verdad si se puede es el agente: aqui solo se evita ofrecerlo
+                              en una linea de ping, que no tiene nada que deshacer.
+                            -->
+                            <Button Grid.Column="6" Content="Deshacer" Margin="12,0,0,0"
+                                    Style="{StaticResource SubtleButton}" Padding="8,2"
+                                    Command="{Binding UndoCommand}"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
+                                    ToolTip="Devolver este ajuste al valor que tenía antes de este cambio"
+                                    Visibility="{Binding CanAttemptUndo, Converter={StaticResource BoolToVisibility}}" />
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

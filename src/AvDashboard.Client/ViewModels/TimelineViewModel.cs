@@ -1,8 +1,10 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
+using AvDashboard.Core.Settings;
 using AvDashboard.Core.Taxonomy;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace AvDashboard.Client.ViewModels;
 
@@ -57,7 +59,7 @@ public sealed partial class TimelineViewModel : PageViewModel
         Events.Clear();
         foreach (TimelineEvent item in timeline.Events.Where(e => e.Severity >= MinimumSeverity))
         {
-            Events.Add(new TimelineEventRow(item));
+            Events.Add(new TimelineEventRow(item, UndoAsync));
         }
 
         Summary = timeline.Truncated
@@ -69,6 +71,56 @@ public sealed partial class TimelineViewModel : PageViewModel
             : Events.Any(e => e.Severity >= Severity.Warning)
                 ? HealthState.Warning
                 : HealthState.Ok;
+    }
+
+    /// <summary>
+    /// Deshace la escritura de esta linea, ensenando antes lo que va a pasar.
+    ///
+    /// Se calcula en seco contra el agente y se confirma con el resultado real, no con lo
+    /// que el cliente crea: si el ajuste ya no vale lo que dejo ese cambio —porque alguien
+    /// lo toco despues— el agente se niega y el motivo se lee aqui, antes de aceptar nada.
+    /// </summary>
+    private async Task UndoAsync(TimelineEventRow row)
+    {
+        row.IsBusy = true;
+
+        try
+        {
+            ApiResult<SettingWriteResponse> preview = await Nodes.Api()
+                .UndoAsync(row.Event.Id, dryRun: true).ConfigureAwait(true);
+
+            if (!preview.Success || preview.Value is null)
+            {
+                Summary = preview.Error ?? "No se puede deshacer esa línea.";
+                return;
+            }
+
+            bool go = await Shell.ConfirmAsync(
+                "Deshacer este cambio",
+                $"{row.Message}" + Environment.NewLine + Environment.NewLine +
+                $"Volvería a: {preview.Value.AppliedValue}." + Environment.NewLine +
+                "Queda anotado en el Timeline como deshecho.",
+                "Deshacer").ConfigureAwait(true);
+
+            if (!go)
+            {
+                Summary = "Cancelado. No se ha tocado nada.";
+                return;
+            }
+
+            ApiResult<SettingWriteResponse> result = await Nodes.Api()
+                .UndoAsync(row.Event.Id).ConfigureAwait(true);
+
+            Summary = result.Success && result.Value is not null
+                ? $"Deshecho: {result.Value.PreviousValue ?? "sin valor"} → {result.Value.AppliedValue}"
+                : result.Error ?? "No se ha podido deshacer.";
+        }
+        finally
+        {
+            row.IsBusy = false;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     partial void OnWindowMinutesChanged(int value) => _ = RefreshAsync();
@@ -83,11 +135,14 @@ public sealed partial class TimelineViewModel : PageViewModel
 /// la hora y el nombre del sector se resuelven aquí y no en cada XAML: si se escribieran en
 /// la vista habría que escribirlos dos veces, una por interfaz, y acabarían divergiendo.
 /// </summary>
-public sealed class TimelineEventRow
+public sealed partial class TimelineEventRow : ObservableObject
 {
-    public TimelineEventRow(TimelineEvent source)
+    private readonly Func<TimelineEventRow, Task>? _undo;
+
+    public TimelineEventRow(TimelineEvent source, Func<TimelineEventRow, Task>? undo = null)
     {
         Event = source;
+        _undo = undo;
     }
 
     public TimelineEvent Event { get; }
@@ -101,4 +156,24 @@ public sealed class TimelineEventRow
     public string TimeText => Event.Timestamp.LocalDateTime.ToString("dd/MM HH:mm:ss");
 
     public string SectorText => SectorNames.Display(Event.Sector);
+
+    /// <summary>
+    /// Si esta linea es una escritura que cambio algo, y por tanto tiene sentido ofrecer
+    /// deshacerla.
+    ///
+    /// Es una condicion optimista y no la verdad: quien decide de verdad es el agente, que
+    /// mira ademas si el ajuste sigue existiendo, si sabe escribirlo y —sobre todo— si
+    /// alguien lo ha tocado despues. Replicar aqui esas cuatro comprobaciones seria
+    /// escribirlas dos veces y verlas divergir; lo que se replica es solo lo que evita
+    /// ofrecer un boton en una linea de ping, que no tiene nada que ver.
+    /// </summary>
+    public bool CanAttemptUndo =>
+        _undo is not null && string.Equals(Kind, SettingUndo.ChangedKind, StringComparison.Ordinal);
+
+    /// <summary>Mientras se calcula o se aplica, para que no se pulse dos veces.</summary>
+    [ObservableProperty]
+    private bool _isBusy;
+
+    [RelayCommand]
+    private Task UndoAsync() => _undo is null ? Task.CompletedTask : _undo(this);
 }

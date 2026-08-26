@@ -6,8 +6,10 @@ puente con Companion las consumen desde la misma constante.
 
 **Base:** `http://127.0.0.1:47821/api/v1` — y la IP de Tailscale, si la hay. Nunca `0.0.0.0`.
 
-> El agente **escribe**. Treinta y cuatro ajustes del catálogo tienen actuador y todos
-> aceptan `dryRun`. Lo que no hay es deshacer: `/runs/{id}/rollback` sigue devolviendo 501.
+> El agente **escribe**. Treinta y cuatro ajustes del catálogo tienen actuador, todos
+> aceptan `dryRun`, y una escritura suelta se puede **deshacer** desde su línea del
+> Timeline. Lo que no hay es rollback de una ejecución de perfil entera:
+> `/runs/{id}/rollback` sigue devolviendo 501.
 
 ## Autenticación
 
@@ -118,6 +120,7 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 |---|---|---|
 | GET | `/storage` | ✅ |
 | GET | `/timeline?from=&to=&modules=&limit=` | ✅ |
+| POST | `/timeline/{id}/undo?dryRun=` | ✅ Devuelve un ajuste al valor anterior a esa escritura. Se niega si alguien lo tocó después |
 | POST | `/report/preshow` | ✅ Veredicto verde/rojo con la lista de fallos |
 | POST | `/media/scan` | 501 — Fase 5 |
 | GET | `/licenses` · `/power/ups` · `/companion/variables` | 501 — Fases 5 y 6 |

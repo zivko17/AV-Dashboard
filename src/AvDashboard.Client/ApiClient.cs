@@ -180,6 +180,20 @@ public sealed class ApiClient : IDisposable
     public Task<ApiResult<ScanResponse>> ScanAsync(ScanRequest request, CancellationToken ct = default) =>
         PostAsync<ScanResponse>(ApiRoutes.NetworkScan, request, ct);
 
+    /// <summary>
+    /// Devuelve un ajuste al valor que tenia antes de una escritura concreta del Timeline.
+    ///
+    /// Con dryRun se calcula el cambio y no se toca nada, que es lo que se usa para poder
+    /// ensenar «de X a Y» en la confirmacion antes de que nadie acepte.
+    /// </summary>
+    public Task<ApiResult<SettingWriteResponse>> UndoAsync(
+        long eventId, bool dryRun = false, CancellationToken ct = default) =>
+        PostAsync<SettingWriteResponse>(
+            ApiRoutes.TimelineUndo.Replace("{eventId:long}", eventId.ToString(
+                global::System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal) +
+            (dryRun ? "?dryRun=true" : string.Empty),
+            null, ct);
+
     public Task<ApiResult<InventoryResponse>> GetDevicesAsync(CancellationToken ct = default) =>
         GetAsync<InventoryResponse>(ApiRoutes.NetworkDevices, ct);
 
