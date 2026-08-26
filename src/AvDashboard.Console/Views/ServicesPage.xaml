@@ -39,12 +39,8 @@
                                 <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontWeight="SemiBold"
                                            FontSize="15" />
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource CaptionText}" VerticalAlignment="Center">
-                                        <Run Text="{Binding RunningExpected, Mode=OneWay}" />
-                                        <Run Text="/" />
-                                        <Run Text="{Binding TotalExpected, Mode=OneWay}" />
-                                        <Run Text="esperados" />
-                                    </TextBlock>
+                                    <TextBlock Text="{Binding ExpectedText}"
+                                               Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
                                     <Ellipse Width="9" Height="9" Margin="10,0,0,0" VerticalAlignment="Center"
                                              Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
                                 </StackPanel>
@@ -62,8 +58,8 @@
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Margin="0,0,14,0"
                                                        TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
-                                            <TextBlock Grid.Column="1" Text="{Binding State}" FontFamily="{StaticResource MonoFont}" />
-                                            <TextBlock Grid.Column="2" Text="{Binding StartMode}"
+                                            <TextBlock Grid.Column="1" Text="{Binding StateText}" FontFamily="{StaticResource MonoFont}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding StartModeText}"
                                                        Style="{StaticResource CaptionText}" />
                                             <TextBlock Grid.Column="3" Text="{Binding ProcessId}"
                                                        Style="{StaticResource CaptionText}" FontFamily="{StaticResource MonoFont}" />
@@ -74,7 +70,7 @@
                                                         <Setter Property="Text" Value="" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsUnexpectedlyStopped}" Value="True">
-                                                                <Setter Property="Text" Value="⚠ se esperaba en marcha" />
+                                                                <Setter Property="Text" Value="{Binding StoppedWarning}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>

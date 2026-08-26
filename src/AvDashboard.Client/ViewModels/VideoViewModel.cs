@@ -434,8 +434,10 @@ public sealed partial class EdidEntryViewModel : ObservableObject
     public IReadOnlyList<EdidFinding> Findings => Entry.Findings;
 
     /// <summary>Timings detallados del EDID, que es donde se mira cuando algo no negocia.</summary>
-    public IReadOnlyList<DetailedTiming> DetailedTimings =>
-        Entry.Parsed?.DetailedTimings ?? Array.Empty<DetailedTiming>();
+    public IReadOnlyList<DetailedTimingRow> DetailedTimings =>
+        (Entry.Parsed?.DetailedTimings ?? Array.Empty<DetailedTiming>())
+        .Select(t => new DetailedTimingRow(t))
+        .ToList();
 
     public IReadOnlyList<ShortAudioDescriptor> AudioDescriptors =>
         Entry.Parsed?.Cta?.AudioDescriptors ?? Array.Empty<ShortAudioDescriptor>();
@@ -445,4 +447,31 @@ public sealed partial class EdidEntryViewModel : ObservableObject
     public string Hdr => Entry.Parsed?.Cta?.Hdr is { } hdr && hdr.SupportedEotf.Count > 0
         ? string.Join(", ", hdr.SupportedEotf)
         : "sin metadatos HDR";
+}
+
+/// <summary>
+/// Un timing detallado, ya escrito.
+///
+/// El reloj de pixel y los totales son numeros que sin unidad ni etiqueta no se leen, y en
+/// WinUI los enlaces no tienen <c>StringFormat</c> con el que ponersela desde el XAML.
+/// </summary>
+public sealed class DetailedTimingRow
+{
+    public DetailedTimingRow(DetailedTiming source)
+    {
+        Timing = source;
+    }
+
+    public DetailedTiming Timing { get; }
+
+    /// <summary>El modo tal cual lo escribe el propio timing: «1920×1080@60 Hz».</summary>
+    public string ModeText => Timing.ToString() ?? string.Empty;
+
+    public string PixelClockText => $"{Timing.PixelClockKhz:N0} kHz";
+
+    /// <summary>
+    /// Totales con blanking incluido. Son los que hay que comparar contra lo que declara un
+    /// procesador LED cuando el modo entra pero la imagen sale corrida.
+    /// </summary>
+    public string TotalsText => $"total {Timing.HorizontalTotal} × {Timing.VerticalTotal}";
 }

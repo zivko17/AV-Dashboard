@@ -117,7 +117,7 @@
                                 <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
                                          Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
                                 <TextBlock Grid.Column="1" Margin="10,0,0,0" FontFamily="{StaticResource MonoFont}"
-                                           Text="{Binding RaisedAt, StringFormat='{}{0:HH:mm:ss}'}" />
+                                           Text="{Binding TimeText}" />
                                 <TextBlock Grid.Column="2" Text="{Binding Module}"
                                            Style="{StaticResource CaptionText}" />
                                 <TextBlock Grid.Column="3" Text="{Binding Message}" TextTrimming="CharacterEllipsis" />

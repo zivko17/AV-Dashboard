@@ -21,7 +21,7 @@ public sealed partial class NetworkViewModel : PageViewModel
     public override string Title => "Red";
     public override string Glyph => "\uE968";
 
-    public ObservableCollection<NetworkInterfaceInfo> Interfaces { get; } = new();
+    public ObservableCollection<NetworkInterfaceRow> Interfaces { get; } = new();
     public ObservableCollection<PingSeriesViewModel> Pings { get; } = new();
     public ObservableCollection<DiscoveredDevice> Discovered { get; } = new();
 
@@ -66,7 +66,7 @@ public sealed partial class NetworkViewModel : PageViewModel
         foreach (NetworkInterfaceInfo nic in value.Interfaces.OrderByDescending(i => i.IsUp)
                      .ThenBy(i => i.Name, StringComparer.CurrentCulture))
         {
-            Interfaces.Add(nic);
+            Interfaces.Add(new NetworkInterfaceRow(nic));
         }
 
         ApiResult<IReadOnlyList<PingStatistics>> pings = await api.GetPingAsync().ConfigureAwait(true);
@@ -116,4 +116,46 @@ public sealed partial class NetworkViewModel : PageViewModel
             IsBusy = false;
         }
     }
+}
+
+/// <summary>
+/// Una interfaz de red en la tabla.
+///
+/// Como la fila del Timeline, existe para dar formato: en WinUI los enlaces no tienen
+/// <c>StringFormat</c>, y la velocidad de enlace y el caudal son justo dos números que sin
+/// unidad no dicen nada. El aviso de power management se escribe entero aquí por lo mismo.
+/// </summary>
+public sealed class NetworkInterfaceRow
+{
+    public NetworkInterfaceRow(NetworkInterfaceInfo source)
+    {
+        Interface = source;
+    }
+
+    public NetworkInterfaceInfo Interface { get; }
+
+    public string Name => Interface.Name;
+    public string? Description => Interface.Description;
+    public string? SubnetMask => Interface.SubnetMask;
+
+    public string Ipv4Text => Interface.Ipv4Addresses.Count > 0
+        ? Interface.Ipv4Addresses[0]
+        : "sin IPv4";
+
+    /// <summary>
+    /// Un gigabit que ha negociado a 100 Mb se lee aquí, y es la avería silenciosa que más
+    /// veces explica un NDI que va a tirones. Por eso sale en Mb/s y no en bits crudos.
+    /// </summary>
+    public string LinkSpeedText => Interface.LinkSpeedBps <= 0
+        ? "sin enlace"
+        : Interface.LinkSpeedBps >= 1_000_000_000
+            ? $"{Interface.LinkSpeedBps / 1_000_000_000.0:0.#} Gb/s"
+            : $"{Interface.LinkSpeedBps / 1_000_000.0:0.#} Mb/s";
+
+    public string ThroughputText => $"↓ {Interface.ReceiveMbps:0.0} Mb/s";
+
+    public bool PowerManagementWarning => Interface.PowerManagementEnabled == true;
+
+    public string PowerManagementText =>
+        "⚠ power management activo — puede tumbar Dante y NDI en silencio";
 }

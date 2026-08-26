@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Profiles;
@@ -183,6 +184,16 @@ public sealed class ProfileRowViewModel
     public string Steps => Profile.Steps.Count == 1 ? "1 paso" : $"{Profile.Steps.Count} pasos";
 
     /// <summary>
+    /// Los pasos como se enseñan, en el orden en que se aplicarían.
+    ///
+    /// Se numeran desde uno. <c>ProfileStep.Order</c> empieza en cero porque es el índice de
+    /// ejecución, y pintarlo tal cual dejaba un perfil de quince pasos numerado del 0 al 14,
+    /// que delante de un cliente se lee como un error de la aplicación.
+    /// </summary>
+    public IReadOnlyList<ProfileStepRow> StepRows =>
+        Profile.Steps.OrderBy(s => s.Order).Select(s => new ProfileStepRow(s)).ToList();
+
+    /// <summary>
     /// Los pasos que tocarían algo que puede interrumpir una salida en directo. Es lo que
     /// mira el guardarraíl de show activo, y conviene verlo antes de aplicar nada.
     /// </summary>
@@ -199,4 +210,19 @@ public sealed class ProfileRowViewModel
                     : $"{count} pasos pueden interrumpir una salida en directo";
         }
     }
+}
+
+/// <summary>Un paso del perfil, numerado como lo lee una persona.</summary>
+public sealed class ProfileStepRow
+{
+    public ProfileStepRow(ProfileStep step)
+    {
+        Step = step;
+    }
+
+    public ProfileStep Step { get; }
+
+    public string Number => (Step.Order + 1).ToString(CultureInfo.InvariantCulture);
+    public string ActionId => Step.ActionId;
+    public string? Label => Step.Label;
 }

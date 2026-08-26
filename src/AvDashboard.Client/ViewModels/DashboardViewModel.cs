@@ -68,7 +68,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     public override string Glyph => "\uE80F";
 
     public ObservableCollection<StatusCardViewModel> Cards { get; } = new();
-    public ObservableCollection<Alert> ActiveAlerts { get; } = new();
+    public ObservableCollection<AlertRow> ActiveAlerts { get; } = new();
     public ObservableCollection<PingSeriesViewModel> PingSeries { get; } = new();
 
     [ObservableProperty]
@@ -112,7 +112,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         ActiveAlerts.Clear();
         foreach (Alert alert in alerts.Value ?? Array.Empty<Alert>())
         {
-            ActiveAlerts.Add(alert);
+            ActiveAlerts.Add(new AlertRow(alert));
         }
 
         PingSeries.Clear();
@@ -394,6 +394,29 @@ public sealed class StatusCardViewModel
             Navigate?.Invoke(Section);
         }
     }
+}
+
+/// <summary>
+/// Una alerta activa en la lista del dashboard.
+///
+/// Solo la hora necesita formato, pero en WinUI los enlaces no tienen <c>StringFormat</c> y
+/// escribirla en el XAML significaria escribirla dos veces, una por interfaz.
+/// </summary>
+public sealed class AlertRow
+{
+    public AlertRow(Alert source)
+    {
+        Alert = source;
+    }
+
+    public Alert Alert { get; }
+
+    public Severity Severity => Alert.Severity;
+    public string Module => Alert.Module;
+    public string Message => Alert.Message;
+
+    /// <summary>Sin fecha: una alerta activa es de hoy, y la hora con segundos es lo que se correlaciona.</summary>
+    public string TimeText => Alert.RaisedAt.LocalDateTime.ToString("HH:mm:ss");
 }
 
 /// <summary>Una serie de ping para el grafico del dashboard.</summary>

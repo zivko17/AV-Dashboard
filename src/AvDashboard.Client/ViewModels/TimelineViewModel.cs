@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
+using AvDashboard.Core.Taxonomy;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AvDashboard.Client.ViewModels;
@@ -19,11 +20,20 @@ public sealed partial class TimelineViewModel : PageViewModel
     public override string Title => "Timeline";
     public override string Glyph => "\uE81C";
 
-    public ObservableCollection<TimelineEvent> Events { get; } = new();
+    public ObservableCollection<TimelineEventRow> Events { get; } = new();
 
     /// <summary>Ventana en minutos. Dos horas por defecto: la duracion de un show.</summary>
     [ObservableProperty]
     private int _windowMinutes = 120;
+
+    /// <summary>
+    /// Ventanas ofrecidas en el desplegable.
+    ///
+    /// Son las cuatro que se piden de verdad: lo que acaba de pasar, la ultima hora, el
+    /// show entero y la jornada de montaje. Escribir un numero a mano delante del cliente
+    /// es una operacion mas de las que hacen falta.
+    /// </summary>
+    public IReadOnlyList<int> WindowOptions { get; } = new[] { 15, 60, 120, 480 };
 
     [ObservableProperty]
     private Severity _minimumSeverity = Severity.Info;
@@ -47,7 +57,7 @@ public sealed partial class TimelineViewModel : PageViewModel
         Events.Clear();
         foreach (TimelineEvent item in timeline.Events.Where(e => e.Severity >= MinimumSeverity))
         {
-            Events.Add(item);
+            Events.Add(new TimelineEventRow(item));
         }
 
         Summary = timeline.Truncated
@@ -64,4 +74,31 @@ public sealed partial class TimelineViewModel : PageViewModel
     partial void OnWindowMinutesChanged(int value) => _ = RefreshAsync();
 
     partial void OnMinimumSeverityChanged(Severity value) => _ = RefreshAsync();
+}
+
+/// <summary>
+/// Una fila del Timeline.
+///
+/// Existe solo para dar formato. WinUI no tiene <c>StringFormat</c> en los enlaces, así que
+/// la hora y el nombre del sector se resuelven aquí y no en cada XAML: si se escribieran en
+/// la vista habría que escribirlos dos veces, una por interfaz, y acabarían divergiendo.
+/// </summary>
+public sealed class TimelineEventRow
+{
+    public TimelineEventRow(TimelineEvent source)
+    {
+        Event = source;
+    }
+
+    public TimelineEvent Event { get; }
+
+    public Severity Severity => Event.Severity;
+    public string Module => Event.Module;
+    public string Kind => Event.Kind;
+    public string Message => Event.Message;
+
+    /// <summary>Día y hora con segundos: el orden dentro del mismo minuto es lo que se lee.</summary>
+    public string TimeText => Event.Timestamp.LocalDateTime.ToString("dd/MM HH:mm:ss");
+
+    public string SectorText => SectorNames.Display(Event.Sector);
 }

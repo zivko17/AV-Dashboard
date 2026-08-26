@@ -4,7 +4,6 @@
              xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
     <UserControl.Resources>
         <controls:SeverityBrushConverter x:Key="SeverityBrush" />
-        <controls:SectorNameConverter x:Key="SectorName" />
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
     </UserControl.Resources>
 
@@ -43,10 +42,10 @@
                             <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
                                      Fill="{Binding Severity, Converter={StaticResource SeverityBrush}}" />
                             <TextBlock Grid.Column="1" Margin="10,0,0,0" FontFamily="{StaticResource MonoFont}"
-                                       Text="{Binding Timestamp, StringFormat='{}{0:dd/MM HH:mm:ss}'}" />
+                                       Text="{Binding TimeText}" />
                             <TextBlock Grid.Column="2" Text="{Binding Module}" Style="{StaticResource CaptionText}" />
                             <TextBlock Grid.Column="3" Style="{StaticResource CaptionText}"
-                                       Text="{Binding Sector, Converter={StaticResource SectorName}}" />
+                                       Text="{Binding SectorText}" />
                             <TextBlock Grid.Column="4" Text="{Binding Kind}" FontFamily="{StaticResource MonoFont}"
                                        Style="{StaticResource CaptionText}" />
                             <TextBlock Grid.Column="5" Text="{Binding Message}" TextWrapping="Wrap" />
