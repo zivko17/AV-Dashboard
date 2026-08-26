@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -180,6 +180,20 @@ public sealed class ApiClient : IDisposable
     public Task<ApiResult<ScanResponse>> ScanAsync(ScanRequest request, CancellationToken ct = default) =>
         PostAsync<ScanResponse>(ApiRoutes.NetworkScan, request, ct);
 
+    public Task<ApiResult<InventoryResponse>> GetDevicesAsync(CancellationToken ct = default) =>
+        GetAsync<InventoryResponse>(ApiRoutes.NetworkDevices, ct);
+
+    /// <summary>
+    /// Alta, renombrado, marcar y desmarcar. Los cuatro son la misma frase —asi queda este
+    /// equipo— y por eso comparten camino.
+    /// </summary>
+    public Task<ApiResult<DiscoveredDevice>> SaveDeviceAsync(
+        DeviceUpsertRequest request, CancellationToken ct = default) =>
+        PostAsync<DiscoveredDevice>(ApiRoutes.NetworkDevices, request, ct);
+
+    public Task<ApiResult<bool>> DeleteDeviceAsync(string address, CancellationToken ct = default) =>
+        DeleteAsync($"{ApiRoutes.NetworkDevices}/{Uri.EscapeDataString(address)}", ct);
+
     public Task<ApiResult<IReadOnlyList<ServiceDiffEntry>>> GetServiceDiffAsync(CancellationToken ct = default) =>
         GetAsync<IReadOnlyList<ServiceDiffEntry>>(ApiRoutes.ServicesBaseline, ct);
 
@@ -212,6 +226,30 @@ public sealed class ApiClient : IDisposable
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             return ApiResult<T>.Offline(Describe(ex));
+        }
+    }
+
+    /// <summary>
+    /// Primer verbo de borrado del cliente. Devuelve un bool y no el cuerpo: lo unico que
+    /// hay que saber de un borrado es si ha ocurrido.
+    /// </summary>
+    private async Task<ApiResult<bool>> DeleteAsync(string route, CancellationToken ct)
+    {
+        try
+        {
+            using HttpResponseMessage response = await _http.DeleteAsync(route, ct).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return ApiResult<bool>.Ok(true);
+            }
+
+            ApiResult<ApiError> error = await ReadAsync<ApiError>(response, ct).ConfigureAwait(false);
+            return ApiResult<bool>.Failed(error.Error ?? "El agente ha rechazado el borrado.");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return ApiResult<bool>.Offline(Describe(ex));
         }
     }
 

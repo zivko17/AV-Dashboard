@@ -263,8 +263,12 @@ public static class AgentEndpoints
     private static void MapInventory(WebApplication app)
     {
         app.MapGet(ApiRoutes.NetworkDevices, async (
-            DeviceRepository devices, CancellationToken cancellationToken) =>
-            Results.Ok(await devices.ListAsync(cancellationToken).ConfigureAwait(false)));
+            DeviceRepository devices, CancellationToken cancellationToken) => Results.Ok(
+            new InventoryResponse
+            {
+                Devices = await devices.ListAsync(cancellationToken).ConfigureAwait(false),
+                LastScanAt = await devices.GetLastScanAsync(cancellationToken).ConfigureAwait(false),
+            }));
 
         app.MapPost(ApiRoutes.NetworkDevices, async (
             DeviceUpsertRequest request,

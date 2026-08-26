@@ -23,13 +23,33 @@ public sealed partial class NetworkViewModel : PageViewModel
 
     public ObservableCollection<NetworkInterfaceRow> Interfaces { get; } = new();
     public ObservableCollection<PingSeriesViewModel> Pings { get; } = new();
-    public ObservableCollection<DiscoveredDevice> Discovered { get; } = new();
+
+    /// <summary>
+    /// El inventario persistido, no el resultado del ultimo barrido.
+    ///
+    /// La diferencia importa: lo que escaneaste hace media hora sigue aqui, con su alias y
+    /// su estrella, y un equipo que hoy no ha contestado al barrido no desaparece de la
+    /// lista solo porque el multicast del venue este filtrado.
+    /// </summary>
+    public ObservableCollection<DeviceRow> Inventory { get; } = new();
 
     [ObservableProperty]
     private string? _scanRange;
 
     [ObservableProperty]
     private string _scanSummary = "Sin escanear.";
+
+    /// <summary>Direccion del alta manual. Solo IP: ver el motivo en el endpoint.</summary>
+    [ObservableProperty]
+    private string? _newAddress;
+
+    [ObservableProperty]
+    private string? _newAlias;
+
+    [ObservableProperty]
+    private string? _inventoryError;
+
+    private DateTimeOffset? _lastScanAt;
 
     public override async Task ActivateAsync()
     {
@@ -76,6 +96,112 @@ public sealed partial class NetworkViewModel : PageViewModel
         {
             Pings.Add(new PingSeriesViewModel(stats));
         }
+
+        await LoadInventoryAsync(pings.Value).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Rehace la tabla del inventario. Las estadisticas de ping entran aqui porque son las
+    /// que deciden si un equipo vigilado esta midiendo, responde o se ha caido.
+    /// </summary>
+    private async Task LoadInventoryAsync(IReadOnlyList<PingStatistics>? pings)
+    {
+        ApiResult<InventoryResponse> result =
+            await Nodes.Api().GetDevicesAsync().ConfigureAwait(true);
+
+        if (!result.Success || result.Value is null)
+        {
+            InventoryError = result.Error;
+            return;
+        }
+
+        InventoryError = null;
+        _lastScanAt = result.Value.LastScanAt;
+
+        // Las estadisticas van por direccion, que es como las publica el colector.
+        Dictionary<string, PingStatistics> byAddress = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (PingStatistics stats in pings ?? Array.Empty<PingStatistics>())
+        {
+            byAddress[stats.Target] = stats;
+        }
+
+        DateTimeOffset now = DateTimeOffset.Now;
+
+        Inventory.Clear();
+        foreach (DiscoveredDevice device in result.Value.Devices)
+        {
+            // El colector etiqueta la serie con el alias cuando lo hay, asi que se busca por
+            // los dos: si no, un equipo con nombre no encontraria nunca sus estadisticas y
+            // saldria «midiendo» para siempre.
+            PingStatistics? stats = null;
+
+            if (!byAddress.TryGetValue(device.IpAddress, out stats) && device.Alias is string alias)
+            {
+                byAddress.TryGetValue(alias, out stats);
+            }
+
+            Inventory.Add(new DeviceRow(
+                device, stats, _lastScanAt, now, SaveDeviceAsync, RemoveDeviceAsync));
+        }
+    }
+
+    /// <summary>
+    /// Da de alta un equipo escrito a mano.
+    ///
+    /// Entra vigilado: si lo escribes tu es porque te importa. Lo que no se hace es marcar
+    /// como criticos los del barrido, que dejaria el ping corriendo contra todo lo que haya
+    /// en la red del venue.
+    /// </summary>
+    [RelayCommand]
+    private async Task AddDeviceAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewAddress))
+        {
+            return;
+        }
+
+        ApiResult<DiscoveredDevice> result = await Nodes.Api().SaveDeviceAsync(new DeviceUpsertRequest
+        {
+            IpAddress = NewAddress.Trim(),
+            Alias = string.IsNullOrWhiteSpace(NewAlias) ? null : NewAlias.Trim(),
+            IsCritical = true,
+        }).ConfigureAwait(true);
+
+        if (!result.Success)
+        {
+            InventoryError = result.Error;
+            return;
+        }
+
+        NewAddress = null;
+        NewAlias = null;
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    private async Task SaveDeviceAsync(DeviceRow row)
+    {
+        ApiResult<DiscoveredDevice> result = await Nodes.Api().SaveDeviceAsync(new DeviceUpsertRequest
+        {
+            IpAddress = row.IpAddress,
+
+            // Cadena vacia borra el alias; null lo dejaria como estaba, y entonces no
+            // habria forma de quitarle el nombre a un equipo.
+            Alias = row.Alias ?? string.Empty,
+            IsCritical = row.IsCritical,
+        }).ConfigureAwait(true);
+
+        InventoryError = result.Success ? null : result.Error;
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    private async Task RemoveDeviceAsync(DeviceRow row)
+    {
+        ApiResult<bool> result = await Nodes.Api()
+            .DeleteDeviceAsync(row.IpAddress).ConfigureAwait(true);
+
+        InventoryError = result.Success ? null : result.Error;
+        await RefreshAsync().ConfigureAwait(true);
     }
 
     [RelayCommand]
@@ -101,15 +227,14 @@ public sealed partial class NetworkViewModel : PageViewModel
 
             ScanResponse scan = result.Value!;
 
-            Discovered.Clear();
-            foreach (DiscoveredDevice device in scan.Devices)
-            {
-                Discovered.Add(device);
-            }
-
             ScanRange ??= scan.Range;
             ScanSummary = $"{scan.Devices.Count} dispositivos en {scan.Range} " +
                           $"({scan.Duration.TotalSeconds:0.#} s).";
+
+            // El barrido ya no pinta su propia lista: vuelca al inventario en el agente y
+            // aqui se recarga. Ensenar el resultado del escaneo aparte del inventario
+            // obligaba a mirar dos tablas para saber si algo estaba marcado.
+            await RefreshAsync().ConfigureAwait(true);
         }
         finally
         {

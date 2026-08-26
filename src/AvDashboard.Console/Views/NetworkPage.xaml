@@ -1,4 +1,4 @@
-<UserControl x:Class="AvDashboard.Console.Views.NetworkPage"
+﻿<UserControl x:Class="AvDashboard.Console.Views.NetworkPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
@@ -6,6 +6,8 @@
         <controls:HealthBrushConverter x:Key="HealthBrush" />
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
         <controls:InverseBooleanConverter x:Key="BoolNot" />
+        <controls:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <controls:CountToVisibilityConverter x:Key="CountToVisibility" />
     </UserControl.Resources>
 
     <StackPanel>
@@ -79,7 +81,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBlock TextWrapping="Wrap"
-                           Text="Sin dispositivos críticos configurados: añádelos en appsettings.json del agente, sección Agent:CriticalDevices, y reinícialo.">
+                           Text="Todavía no vigilas ningún equipo. Márcalo con ★ en el inventario de abajo, o añádelo a mano por su IP.">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
                             <Setter Property="Visibility" Value="Collapsed" />
@@ -96,35 +98,89 @@
 
         <Border Style="{StaticResource Card}" Margin="0,0,0,20">
             <StackPanel>
-                <TextBlock Text="Escaneo del segmento" Style="{StaticResource SectionText}" />
+                <TextBlock Text="Inventario de red" Style="{StaticResource SectionText}" />
+
+                <!--
+                  Alta a mano. Solo IP: el inventario se identifica por direccion, y un
+                  nombre que resuelve distinto cada dia romperia esa identidad.
+                -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBox Width="150" Text="{Binding NewAddress, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="{StaticResource MonoFont}"
+                             ToolTip="Dirección IP, por ejemplo 192.168.1.50. Los nombres de host no valen." />
+                    <TextBox Width="220" Margin="8,0,0,0"
+                             Text="{Binding NewAlias, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Cómo lo quieres leer a las 19:40: «Procesador LED», «Switch Dante»…" />
+                    <Button Content="Añadir y vigilar" Command="{Binding AddDeviceCommand}" Margin="8,0,0,0" />
+                </StackPanel>
+
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBox Width="220" Text="{Binding ScanRange, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox Width="150" Text="{Binding ScanRange, UpdateSourceTrigger=PropertyChanged}"
+                             FontFamily="{StaticResource MonoFont}"
                              ToolTip="CIDR, por ejemplo 172.31.0.0/24. En blanco, se deduce de la interfaz activa." />
-                    <Button Content="Escanear" Command="{Binding ScanCommand}" Margin="10,0,0,0"
+                    <Button Content="Escanear" Command="{Binding ScanCommand}" Margin="8,0,0,0"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}" />
                     <TextBlock Text="{Binding ScanSummary}" Style="{StaticResource CaptionText}"
                                VerticalAlignment="Center" Margin="14,0,0,0" />
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding Discovered}">
+
+                <TextBlock Text="{Binding InventoryError}" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Foreground="{StaticResource CriticalBrush}"
+                           Visibility="{Binding InventoryError, Converter={StaticResource NotNullToVisibility}}" />
+
+                <ItemsControl ItemsSource="{Binding Inventory}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="0,3">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="150" />
-                                    <ColumnDefinition Width="170" />
-                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="130" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="230" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding IpAddress}" FontFamily="{StaticResource MonoFont}" />
-                                <TextBlock Grid.Column="1" Text="{Binding MacAddress}" FontFamily="{StaticResource MonoFont}"
-                                           Style="{StaticResource CaptionText}" />
-                                <TextBlock Grid.Column="2" Text="{Binding Vendor}" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="3" Text="{Binding DisplayName}"
-                                           Style="{StaticResource CaptionText}" />
+
+                                <!--
+                                  La estrella es lo unico que decide si el equipo entra en el
+                                  ping. Es un boton y no una casilla porque lo que hace no es
+                                  marcar un dato, es encender una vigilancia.
+                                -->
+                                <Button Grid.Column="0" Command="{Binding ToggleCriticalCommand}"
+                                        Style="{StaticResource SubtleButton}" Padding="4,0" FontSize="15"
+                                        Content="{Binding StarGlyph}"
+                                        ToolTip="Vigilar con ping continuo y en el check pre-show" />
+
+                                <TextBlock Grid.Column="1" Text="{Binding IpAddress}"
+                                           FontFamily="{StaticResource MonoFont}" VerticalAlignment="Center" />
+
+                                <TextBox Grid.Column="2" Text="{Binding Alias, UpdateSourceTrigger=LostFocus}"
+                                         Margin="6,0" VerticalAlignment="Center"
+                                         ToolTip="El nombre que quieres leer. Enter para guardar.">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Key="Enter" Command="{Binding SaveAliasCommand}" />
+                                    </TextBox.InputBindings>
+                                </TextBox>
+
+                                <TextBlock Grid.Column="3" Text="{Binding Vendor}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" Style="{StaticResource CaptionText}"
+                                           ToolTip="{Binding MacAddress}" />
+
+                                <!-- El texto sale del ViewModel: dice solo lo que se sabe. -->
+                                <TextBlock Grid.Column="4" Text="{Binding SeenText}" VerticalAlignment="Center"
+                                           Style="{StaticResource CaptionText}"
+                                           Foreground="{Binding Health, Converter={StaticResource HealthBrush}}" />
+
+                                <Button Grid.Column="5" Content="Quitar" Command="{Binding RemoveCommand}"
+                                        Style="{StaticResource SubtleButton}" Padding="6,0" />
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <TextBlock TextWrapping="Wrap" Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                           Text="El inventario guarda lo que encuentra cada barrido. De los equipos sin ★ solo se sabe lo que dijo el último escaneo: no hay sondeo automático de fondo."
+                           Visibility="{Binding Inventory.Count, Converter={StaticResource CountToVisibility}}" />
             </StackPanel>
         </Border>
 

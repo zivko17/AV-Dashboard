@@ -73,6 +73,22 @@ public sealed record ScanRequest
 }
 
 /// <summary>
+/// Respuesta de <c>GET /api/v1/network/devices</c>.
+///
+/// Lleva el instante del ultimo barrido y no solo la lista, porque sin el la vista no puede
+/// distinguir «visto en el escaneo de las 17:12» de «visto por ultima vez el 24 de agosto»,
+/// y acabaria diciendo una de las dos sin saber cual. Es la regla de que una fila no puede
+/// afirmar mas de lo que sabe, aplicada al contrato.
+/// </summary>
+public sealed record InventoryResponse
+{
+    public IReadOnlyList<DiscoveredDevice> Devices { get; init; } = Array.Empty<DiscoveredDevice>();
+
+    /// <summary>Null si nunca se ha barrido la red desde este nodo.</summary>
+    public DateTimeOffset? LastScanAt { get; init; }
+}
+
+/// <summary>
 /// Cuerpo de <c>POST /api/v1/network/devices</c>: como queda un equipo del inventario.
 ///
 /// Un solo contrato para alta manual, renombrar, marcar y desmarcar, porque las cuatro son
