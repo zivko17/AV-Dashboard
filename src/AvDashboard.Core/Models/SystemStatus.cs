@@ -20,6 +20,15 @@ public sealed record SystemStatus
     public double? GpuTemperatureC { get; init; }
 
     /// <summary>
+    /// Carga y memoria de la GPU. Null cuando no se ha podido leer, que no es cero.
+    ///
+    /// Es la unica lectura del panel que necesita contadores de rendimiento, y esos se
+    /// corrompen con una frecuencia que sorprende. Un null aqui es «no lo se» y la tarjeta
+    /// lo dice; inventar un cero seria pintar en verde una GPU que puede estar al 98 %.
+    /// </summary>
+    public GpuLoad? Gpu { get; init; }
+
+    /// <summary>
     /// Eventos de throttling termico o por limite de potencia desde el arranque.
     /// Un contador que sube durante un show explica los frames perdidos.
     /// </summary>
@@ -130,4 +139,30 @@ public enum ProcessPriority
     AboveNormal = 3,
     High = 4,
     Realtime = 5,
+}
+
+/// <summary>
+/// Ocupacion de la GPU en un instante.
+///
+/// La memoria puede venir a null aunque la carga no: la VRAM total sale del registro y la
+/// usada de los contadores, y cada una puede fallar por su cuenta.
+/// </summary>
+public sealed record GpuLoad
+{
+    /// <summary>
+    /// Ocupacion del motor mas cargado, como la ensena el Administrador de tareas.
+    ///
+    /// No es la suma de los motores: 3D, copia, codificacion y descodificacion trabajan a la
+    /// vez y son recursos distintos, asi que sumarlos da cifras por encima del 100 %. Lo que
+    /// importa es si alguno esta saturado, no cuantos estan ocupados.
+    /// </summary>
+    public double UsagePercent { get; init; }
+
+    public long? MemoryUsedBytes { get; init; }
+    public long? MemoryTotalBytes { get; init; }
+
+    public double? MemoryUsedPercent =>
+        MemoryUsedBytes is long used && MemoryTotalBytes is long total && total > 0
+            ? used * 100.0 / total
+            : null;
 }

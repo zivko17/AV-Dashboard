@@ -1,4 +1,4 @@
-using AvDashboard.Agent.Hubs;
+﻿using AvDashboard.Agent.Hubs;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Native.System;
@@ -15,6 +15,12 @@ namespace AvDashboard.Agent.Collectors;
 public sealed class SystemCollector : PeriodicCollector
 {
     private readonly SystemTelemetryProvider _telemetry = new();
+
+    /// <summary>
+    /// La GPU va aparte porque cuesta mucho mas de leer. El proveedor cachea a su propio
+    /// ritmo, asi que pedirsela cada segundo no la lee cada segundo.
+    /// </summary>
+    private readonly GpuTelemetryProvider _gpu = new();
     private readonly NodeState _state;
     private readonly NodeIdentity _identity;
     private readonly IHubContext<LiveTelemetryHub> _hub;
@@ -39,7 +45,7 @@ public sealed class SystemCollector : PeriodicCollector
 
     protected override async Task CollectAsync(CancellationToken cancellationToken)
     {
-        SystemStatus status = _telemetry.Read();
+        SystemStatus status = _telemetry.Read() with { Gpu = _gpu.Read() };
         _state.System = status;
 
         if (DateTimeOffset.UtcNow - _lastSettingsRead > SettingsInterval)

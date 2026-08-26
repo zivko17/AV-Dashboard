@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -22,6 +22,12 @@
     <!-- Apagados inesperados: eventos 6008 y 41 del registro del sistema. -->
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
     <PackageReference Include="System.Management" Version="8.0.0" />
+    <!--
+      Solo para la GPU. Windows no publica su ocupacion por ninguna otra via documentada:
+      ni WMI ni una llamada de sistema la dan. Ver GpuTelemetryProvider, que explica por
+      que se lee a otra cadencia que el resto de la telemetria.
+    -->
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
   </ItemGroup>
 
