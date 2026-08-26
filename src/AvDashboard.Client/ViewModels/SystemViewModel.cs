@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Models;
 using AvDashboard.Core.Settings;
@@ -163,6 +163,12 @@ public sealed partial class SystemViewModel : PageViewModel
         }
 
         _audit = audit.Value!;
+
+        // Calculados a partir de _audit, que no es observable: hay que avisar a mano o el
+        // boton de arreglar se queda con el conteo de la auditoria anterior.
+        OnPropertyChanged(nameof(FixableCount));
+        OnPropertyChanged(nameof(FixableText));
+
         RebuildState();
         RebuildSettings();
     }
@@ -307,6 +313,142 @@ public sealed partial class SystemViewModel : PageViewModel
 
         await ApplyAsync(row, target).ConfigureAwait(true);
     }
+
+    /// <summary>
+    /// Deja en su sitio todo lo que está en rojo y se puede arreglar solo.
+    ///
+    /// Siete desviaciones críticas son hoy siete clics repartidos por una página de cuarenta
+    /// y nueve filas, y a las 19:40 eso no se hace. Lo que entra y lo que no lo decide
+    /// <see cref="SettingsRepair"/> en Core, que es donde está probado: aquí no hay ni un
+    /// filtro, porque un `where` escrito en la vista es exactamente como un ajuste de
+    /// seguridad acabaría colándose en un barrido sin que nadie lo viera.
+    ///
+    /// Antes de escribir nada se calcula el cambio en seco contra el agente. La lista que se
+    /// enseña en la confirmación no es lo que el catálogo dice que pasaría, es lo que el
+    /// agente ha respondido que va a pasar: un ajuste que ya estuviera en su sitio, o que
+    /// vaya a fallar por permisos, se ve antes de aceptar y no después.
+    /// </summary>
+    [RelayCommand]
+    private async Task FixCriticalAsync()
+    {
+        if (_audit is not SettingsAudit audit)
+        {
+            return;
+        }
+
+        RepairPlan plan = SettingsRepair.Plan(audit);
+
+        if (!plan.HasWork)
+        {
+            Summary = plan.SkippedNotWritable.Count > 0
+                ? $"Nada que arreglar desde aquí. Quedan {plan.SkippedNotWritable.Count} en rojo " +
+                  "que el agente no puede escribir."
+                : "No hay nada en rojo que se pueda arreglar solo.";
+            return;
+        }
+
+        IsBusy = true;
+
+        try
+        {
+            List<(SettingEvaluation Setting, string Value, SettingWriteResponse Preview)> pending = new();
+            List<string> refused = new();
+
+            foreach (SettingEvaluation setting in plan.Fixable)
+            {
+                string value = setting.Definition.AcceptableValues[0];
+
+                ApiResult<SettingWriteResponse> preview = await Nodes.Api()
+                    .ApplySettingAsync(setting.Definition.Id, value, dryRun: true)
+                    .ConfigureAwait(true);
+
+                if (!preview.Success || preview.Value is null)
+                {
+                    refused.Add($"{setting.Definition.Name}: {preview.Error}");
+                    continue;
+                }
+
+                pending.Add((setting, value, preview.Value));
+            }
+
+            if (pending.Count == 0)
+            {
+                Summary = refused.Count > 0
+                    ? $"Ninguno se puede aplicar. {refused[0]}"
+                    : "No hay nada que aplicar.";
+                return;
+            }
+
+            string detail = string.Join(
+                Environment.NewLine,
+                pending.Select(p =>
+                    $"· {p.Setting.Definition.Name}: {p.Preview.PreviousValue ?? "sin valor"} → {p.Preview.AppliedValue}"));
+
+            if (refused.Count > 0)
+            {
+                detail += Environment.NewLine + Environment.NewLine +
+                          $"No se han podido calcular {refused.Count}: se quedan como están.";
+            }
+
+            bool go = await Shell.ConfirmAsync(
+                $"Arreglar {pending.Count} ajustes en rojo",
+                detail + Environment.NewLine + Environment.NewLine +
+                "Cada cambio queda en el Timeline con su valor anterior.",
+                "Arreglar").ConfigureAwait(true);
+
+            if (!go)
+            {
+                Summary = "Cancelado. No se ha tocado nada.";
+                return;
+            }
+
+            int done = 0;
+            List<string> failed = new();
+
+            foreach ((SettingEvaluation setting, string value, _) in pending)
+            {
+                ApiResult<SettingWriteResponse> result = await Nodes.Api()
+                    .ApplySettingAsync(setting.Definition.Id, value)
+                    .ConfigureAwait(true);
+
+                if (result.Success)
+                {
+                    done++;
+                }
+                else
+                {
+                    // Se sigue con los demas. Que uno falle por permisos no es motivo para
+                    // dejar los otros seis sin arreglar cuando quedan quince minutos.
+                    failed.Add($"{setting.Definition.Name}: {result.Error}");
+                }
+            }
+
+            // Lo que queda en rojo despues del barrido hay que decirlo aqui. En esta maquina
+            // son siete criticos de los que solo tres se pueden escribir: arreglar tres y
+            // dejar cuatro en rojo sin una palabra se lee como que el boton no ha funcionado.
+            string remainder = plan.SkippedNotWritable.Count > 0
+                ? $" Quedan {plan.SkippedNotWritable.Count} en rojo que el agente todavía no " +
+                  "sabe escribir: hay que tocarlos a mano."
+                : string.Empty;
+
+            Summary = failed.Count == 0
+                ? $"{done} ajustes puestos en su sitio.{remainder}"
+                : $"{done} arreglados, {failed.Count} no. {failed[0]}{remainder}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        await RefreshAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>Cuántos ajustes en rojo se pueden arreglar de un clic. Cero oculta el botón.</summary>
+    public int FixableCount => _audit is SettingsAudit audit
+        ? SettingsRepair.Plan(audit).Fixable.Count
+        : 0;
+
+    public string FixableText => $"Arreglar {FixableCount} en rojo";
 
     /// <summary>Lleva la fila a su valor objetivo. Para las que no son un sí o un no.</summary>
     [RelayCommand]

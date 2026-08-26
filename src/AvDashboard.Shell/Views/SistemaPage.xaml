@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="AvDashboard.Shell.Views.SistemaPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -154,10 +154,26 @@
                         </StackPanel>
                     </tk:SettingsCard>
 
-                    <TextBlock Text="Lo que hay que mirar"
-                               Style="{StaticResource BodyStrongTextBlockStyle}"
-                               Margin="2,12,0,0"
-                               Visibility="{Binding Findings.Count, Converter={StaticResource CountToVisibility}}" />
+                    <Grid Margin="2,12,0,0"
+                          Visibility="{Binding Findings.Count, Converter={StaticResource CountToVisibility}}">
+                        <TextBlock Text="Lo que hay que mirar"
+                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                   VerticalAlignment="Center" />
+
+                        <!--
+                          Arreglar todo lo rojo de una vez. Lo que entra y lo que no lo
+                          decide SettingsRepair en Core, no un filtro escrito aqui: un
+                          `where` en la vista es como un ajuste de seguridad acabaria
+                          colandose en un barrido sin que nadie lo viera.
+                        -->
+                        <Button Content="{Binding FixableText}"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Command="{Binding FixCriticalCommand}"
+                                IsEnabled="{Binding IsBusy, Converter={StaticResource BoolNot}}"
+                                ToolTipService.ToolTip="Deja en su sitio lo que está en rojo y se puede escribir. Los de seguridad nunca entran."
+                                Visibility="{Binding FixableCount, Converter={StaticResource CountToVisibility}}" />
+                    </Grid>
                     <ItemsControl ItemsSource="{Binding Findings}"
                                   ItemTemplate="{StaticResource FilaDeAjuste}" />
 
