@@ -120,3 +120,39 @@ public sealed class StringToVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>
+/// Un color en «#RRGGBB» a pincel.
+///
+/// El color de carga lo decide Core, que no puede conocer WPF ni WinUI —y que gracias a eso
+/// se prueba en el CI de Linux—, asi que viaja como texto y cada interfaz lo convierte. Son
+/// estas ocho lineas por interfaz a cambio de que la escala no lineal viva en un solo sitio
+/// y este cubierta por pruebas.
+/// </summary>
+public sealed class HexBrushConverter : IValueConverter
+{
+    private static readonly Dictionary<string, SolidColorBrush> Cache = new(StringComparer.OrdinalIgnoreCase);
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string hex || hex.Length != 7)
+        {
+            return Brushes.Gray;
+        }
+
+        // Se cachean porque el panel repinta cada segundo y crear un pincel por celda y por
+        // vuelta genera basura para nada: los colores del degradado se repiten.
+        if (Cache.TryGetValue(hex, out SolidColorBrush? cached))
+        {
+            return cached;
+        }
+
+        SolidColorBrush brush = new((Color)ColorConverter.ConvertFromString(hex));
+        brush.Freeze();
+
+        return Cache[hex] = brush;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

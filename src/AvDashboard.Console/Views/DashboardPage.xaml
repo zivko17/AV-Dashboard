@@ -1,4 +1,4 @@
-<UserControl x:Class="AvDashboard.Console.Views.DashboardPage"
+﻿<UserControl x:Class="AvDashboard.Console.Views.DashboardPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:AvDashboard.Console.Controls">
@@ -7,6 +7,7 @@
         <controls:SeverityBrushConverter x:Key="SeverityBrush" />
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
         <controls:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
+        <controls:HexBrushConverter x:Key="HexBrush" />
     </UserControl.Resources>
 
     <StackPanel>
@@ -16,6 +17,49 @@
                 Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">
             <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
         </Border>
+
+        <!--
+          Carga. Es lo primero que se mira al llegar a un equipo, asi que va lo primero.
+
+          El color de cada cifra lo decide LoadGrade en Core y no un DataTrigger de aqui: la
+          escala no es lineal y cambia con la magnitud —una CPU al 50 % va sobrada, un enlace
+          de red al 50 % ya se ha movido— y eso no cabe en un umbral escrito en el XAML.
+        -->
+        <ItemsControl ItemsSource="{Binding Load}" Margin="0,0,-8,4">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource Card}" Margin="0,0,8,8" Width="164" Padding="14,12">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Label}" />
+
+                            <!-- La cifra es el color. Un numero grande y teñido se lee de un
+                                 vistazo desde de pie, que es como se mira esto. -->
+                            <TextBlock Text="{Binding PercentText}" FontSize="30" FontWeight="SemiBold"
+                                       Margin="0,4,0,2"
+                                       Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
+
+            <!-- La barra repite el dato en forma y no solo en color: sin ella, quien no
+                 distinga bien el verde del ambar se queda sin la mitad de la informacion. -->
+                            <ProgressBar Height="4" Margin="0,2,0,6" Minimum="0" Maximum="100"
+                                         Value="{Binding Percent, Mode=OneWay, FallbackValue=0}"
+                                         Background="{StaticResource SurfaceRaisedBrush}"
+                                         BorderThickness="0"
+                                         Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
+
+                            <TextBlock Text="{Binding Footnote}" Style="{StaticResource CaptionText}"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Footnote}" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <!-- Tarjetas. Un indicador y dos o tres cifras por tarjeta; nada mas. -->
         <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-8,0">
@@ -85,7 +129,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBlock Margin="0,8,0,0"
-                           Text="Sin dispositivos críticos configurados: añádelos en appsettings.json del agente, sección Agent:CriticalDevices.">
+                           Text="Todavía no vigilas ningún equipo. Añádelos desde la pestaña Red, en el inventario.">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
                             <Setter Property="Visibility" Value="Collapsed" />

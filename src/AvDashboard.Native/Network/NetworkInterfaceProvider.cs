@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.Versioning;
@@ -78,6 +78,7 @@ public sealed class NetworkInterfaceProvider
                 Description = nic.Description,
                 MacAddress = MacAddress.Format(nic.GetPhysicalAddress().ToString()),
                 IsUp = nic.OperationalStatus == OperationalStatus.Up,
+                IsPhysical = IsPhysicalAdapter(nic.NetworkInterfaceType),
                 LinkSpeedBps = nic.Speed,
                 Mtu = v4?.Mtu ?? 0,
                 IsDhcp = properties.GetIPv4Properties()?.IsDhcpEnabled ?? false,
@@ -221,4 +222,23 @@ public sealed class NetworkInterfaceProvider
         public bool? PowerManagementEnabled { get; init; }
         public bool? NagleDisabled { get; init; }
     }
+
+    /// <summary>
+    /// Si el tipo corresponde a una tarjeta de red de verdad.
+    ///
+    /// Lista blanca y no lista negra: Tailscale se declara como propVirtual —ifType 53 de la
+    /// IANA, que ni esta en el enum de .NET y sale como un 53 pelado— y no como Tunnel, asi
+    /// que descartar los tipos virtuales conocidos lo dejaba pasar. Con una lista negra hay
+    /// que ampliarla con cada adaptador virtual nuevo, y eso se descubre siempre tarde.
+    /// </summary>
+    private static bool IsPhysicalAdapter(NetworkInterfaceType type) => type switch
+    {
+        NetworkInterfaceType.Ethernet => true,
+        NetworkInterfaceType.GigabitEthernet => true,
+        NetworkInterfaceType.FastEthernetT => true,
+        NetworkInterfaceType.FastEthernetFx => true,
+        NetworkInterfaceType.Wireless80211 => true,
+        _ => false,
+    };
+
 }

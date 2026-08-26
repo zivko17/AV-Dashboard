@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using AvDashboard.Core.Contracts;
 using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
@@ -68,6 +68,14 @@ public sealed partial class DashboardViewModel : PageViewModel
     public override string Glyph => "\uE80F";
 
     public ObservableCollection<StatusCardViewModel> Cards { get; } = new();
+
+    /// <summary>
+    /// La fila de porcentajes: CPU, GPU, RAM, VRAM, cada disco y cada tarjeta de red.
+    ///
+    /// Es lo primero que se mira al llegar a un equipo, así que va arriba y con el color
+    /// hecho. Ver <see cref="LoadGaugeViewModel"/> para por qué el color no vive en el XAML.
+    /// </summary>
+    public ObservableCollection<LoadGaugeViewModel> Load { get; } = new();
     public ObservableCollection<AlertRow> ActiveAlerts { get; } = new();
     public ObservableCollection<PingSeriesViewModel> PingSeries { get; } = new();
 
@@ -101,6 +109,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         ApiResult<IReadOnlyDictionary<string, IReadOnlyList<PingSample>>> windows =
             await api.GetPingWindowsAsync().ConfigureAwait(true);
 
+        BuildLoadGauges(system.Value, storage.Value, network.Value);
+
         Cards.Clear();
         Cards.Add(BuildSystemCard(system.Value));
         Cards.Add(BuildAudioCard(audio.Value));
@@ -127,6 +137,90 @@ public sealed partial class DashboardViewModel : PageViewModel
             PingSeries.Add(new PingSeriesViewModel(stats, window));
         }
     }
+
+    /// <summary>
+    /// La fila de carga: cada cosa que puede estar apretada, con su porcentaje y su color.
+    ///
+    /// El orden no es alfabetico ni el de la API: es el orden en que se miran cuando algo va
+    /// mal. Primero lo que rinde —CPU y GPU—, despues lo que se llena —RAM, VRAM y discos— y
+    /// al final la red, que es donde miras cuando lo de arriba esta limpio.
+    /// </summary>
+    private void BuildLoadGauges(
+        SystemResponse? system,
+        IReadOnlyList<StorageVolume>? volumes,
+        NetworkResponse? network)
+    {
+        Load.Clear();
+
+        SystemStatus? status = system?.Status;
+
+        Load.Add(new LoadGaugeViewModel(
+            "CPU", LoadMetric.Cpu, status?.CpuTotalPercent,
+            detail: status is null
+                ? null
+                : status.CpuTemperatureC is double temp
+                    ? $"{temp:0} °C · {status.CpuPerCorePercent.Count} hilos"
+                    : $"{status.CpuPerCorePercent.Count} hilos",
+            unavailableReason: status is null ? "el agente aún no ha leído nada" : null));
+
+        Load.Add(new LoadGaugeViewModel(
+            "GPU", LoadMetric.Gpu, status?.Gpu?.UsagePercent,
+            detail: status?.GpuTemperatureC is double gpuTemp ? $"{gpuTemp:0} °C" : null,
+
+            // Los contadores de rendimiento se corrompen a menudo, y esta es la unica
+            // lectura del panel que depende de ellos. Decirlo es mejor que un cero verde.
+            unavailableReason: status is null
+                ? "el agente aún no ha leído nada"
+                : "sin contadores de GPU en esta máquina"));
+
+        Load.Add(new LoadGaugeViewModel(
+            "RAM", LoadMetric.Memory, status?.MemoryUsedPercent,
+            detail: status is null
+                ? null
+                : $"{Gigabytes(status.MemoryUsedBytes)} / {Gigabytes(status.MemoryTotalBytes)} GB",
+            unavailableReason: status is null ? "el agente aún no ha leído nada" : null));
+
+        // La VRAM solo sale si se conoce el total. Sin el, el porcentaje no existe y el
+        // dato en crudo no dice nada por su cuenta.
+        if (status?.Gpu?.MemoryUsedPercent is double vram)
+        {
+            Load.Add(new LoadGaugeViewModel(
+                "VRAM", LoadMetric.VideoMemory, vram,
+                detail: $"{Gigabytes(status.Gpu.MemoryUsedBytes ?? 0)} / " +
+                        $"{Gigabytes(status.Gpu.MemoryTotalBytes ?? 0)} GB"));
+        }
+
+        foreach (StorageVolume volume in volumes ?? Array.Empty<StorageVolume>())
+        {
+            // Ocupado, no libre. Un disco «al 8 %» que significa 8 % libre es la clase de
+            // ambiguedad que se lee mal justo cuando hay prisa.
+            double used = 100 - volume.FreePercent;
+
+            Load.Add(new LoadGaugeViewModel(
+                string.IsNullOrWhiteSpace(volume.Label) ? volume.DriveLetter : $"{volume.DriveLetter} {volume.Label}",
+                LoadMetric.DiskSpace, used,
+                detail: $"{Gigabytes(volume.TotalBytes - volume.FreeBytes)} / {Gigabytes(volume.TotalBytes)} GB"));
+        }
+
+        // Solo tarjetas fisicas, aunque las virtuales sigan en la lista de interfaces:
+        // declaran una velocidad inventada —la de Tailscale dice 95 Gb/s— asi que su
+        // ocupacion sale siempre 0 % y solo ocupa sitio al lado de las que si dicen algo.
+        foreach (NetworkInterfaceInfo nic in (network?.Interfaces ?? Array.Empty<NetworkInterfaceInfo>())
+                     .Where(n => n.IsUp && n.IsPhysical && n.LinkSpeedBps > 0))
+        {
+            // Ocupacion del enlace: lo que pasa por el frente a lo que negocio. Es el numero
+            // que avisa de una tormenta de multicast antes de que NDI empiece a saltar.
+            double megabits = nic.ReceiveMbps + nic.SendMbps;
+            double capacity = nic.LinkSpeedBps / 1_000_000.0;
+
+            Load.Add(new LoadGaugeViewModel(
+                nic.Name, LoadMetric.NetworkLink,
+                capacity > 0 ? Math.Min(megabits * 100 / capacity, 100) : null,
+                detail: $"{megabits:0.0} de {capacity:0} Mb/s"));
+        }
+    }
+
+    private static string Gigabytes(long bytes) => (bytes / 1024.0 / 1024 / 1024).ToString("0.#");
 
     private StatusCardViewModel BuildSystemCard(SystemResponse? system) => new()
     {

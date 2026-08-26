@@ -1,8 +1,9 @@
-using AvDashboard.Core.Models;
+﻿using AvDashboard.Core.Models;
 using AvDashboard.Core.Taxonomy;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 
 namespace AvDashboard.Shell;
 
@@ -184,4 +185,41 @@ internal static class ThemeBrush
         Application.Current.Resources.TryGetValue(key, out object? brush) && brush is Brush found
             ? found
             : new SolidColorBrush(Microsoft.UI.Colors.Gray);
+}
+
+/// <summary>
+/// Un color en «#RRGGBB» a pincel.
+///
+/// El color de carga lo decide Core, que no puede conocer WinUI —y que gracias a eso se
+/// prueba en el CI de Linux—, asi que viaja como texto y cada interfaz lo convierte. Son
+/// unas lineas por interfaz a cambio de que la escala no lineal viva en un solo sitio y
+/// este cubierta por pruebas.
+/// </summary>
+public sealed partial class HexBrushConverter : IValueConverter
+{
+    private static readonly Dictionary<string, SolidColorBrush> Cache = new(StringComparer.OrdinalIgnoreCase);
+
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        if (value is not string hex || hex.Length != 7)
+        {
+            return new SolidColorBrush(Color.FromArgb(255, 110, 120, 118));
+        }
+
+        // Se cachean porque el panel repinta cada cinco segundos y crear un pincel por celda
+        // y por vuelta genera basura para nada: los colores del degradado se repiten.
+        if (Cache.TryGetValue(hex, out SolidColorBrush? cached))
+        {
+            return cached;
+        }
+
+        byte r = System.Convert.ToByte(hex.Substring(1, 2), 16);
+        byte g = System.Convert.ToByte(hex.Substring(3, 2), 16);
+        byte b = System.Convert.ToByte(hex.Substring(5, 2), 16);
+
+        return Cache[hex] = new SolidColorBrush(Color.FromArgb(255, r, g, b));
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
 }

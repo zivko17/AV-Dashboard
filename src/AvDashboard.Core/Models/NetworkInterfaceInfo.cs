@@ -1,4 +1,4 @@
-namespace AvDashboard.Core.Models;
+﻿namespace AvDashboard.Core.Models;
 
 /// <summary>Una interfaz de red con lo que hace falta antes de montar Dante o NDI (M5).</summary>
 public sealed record NetworkInterfaceInfo
@@ -9,6 +9,21 @@ public sealed record NetworkInterfaceInfo
     public string? MacAddress { get; init; }
 
     public bool IsUp { get; init; }
+
+    /// <summary>
+    /// Es una tarjeta fisica y no un adaptador virtual. Tailscale no lo es, y por eso sigue
+    /// en la lista de interfaces pero no en la fila de ocupacion de enlace.
+    ///
+    /// Un adaptador virtual declara una velocidad inventada —el de Tailscale dice 95 Gb/s—
+    /// asi que su porcentaje de ocupacion no significa nada y solo ocupa sitio en el panel al
+    /// lado de los que si lo significan.
+    ///
+    /// Se decide por lista blanca de tipos y no descartando los conocidos. Tailscale no se
+    /// declara como Tunnel sino como propVirtual, que es el ifType 53 de la IANA y ni
+    /// siquiera esta en el enum de .NET: sale como un 53 pelado. Una lista negra habria que
+    /// ampliarla con cada adaptador virtual nuevo, y se descubre siempre tarde.
+    /// </summary>
+    public bool IsPhysical { get; init; }
 
     /// <summary>Velocidad de enlace en bits por segundo. Un gigabit que negocia a 100 Mb se ve aqui.</summary>
     public long LinkSpeedBps { get; init; }
@@ -66,5 +81,20 @@ public sealed record LinkFlapEvent
     public required string InterfaceName { get; init; }
     public DateTimeOffset Timestamp { get; init; }
     public bool IsUp { get; init; }
+
+    /// <summary>
+    /// Es una tarjeta fisica y no un adaptador virtual. Tailscale no lo es, y por eso sigue
+    /// en la lista de interfaces pero no en la fila de ocupacion de enlace.
+    ///
+    /// Un adaptador virtual declara una velocidad inventada —el de Tailscale dice 95 Gb/s—
+    /// asi que su porcentaje de ocupacion no significa nada y solo ocupa sitio en el panel al
+    /// lado de los que si lo significan.
+    ///
+    /// Se decide por lista blanca de tipos y no descartando los conocidos. Tailscale no se
+    /// declara como Tunnel sino como propVirtual, que es el ifType 53 de la IANA y ni
+    /// siquiera esta en el enum de .NET: sale como un 53 pelado. Una lista negra habria que
+    /// ampliarla con cada adaptador virtual nuevo, y se descubre siempre tarde.
+    /// </summary>
+    public bool IsPhysical { get; init; }
     public long? LinkSpeedBps { get; init; }
 }
