@@ -52,6 +52,20 @@ public sealed class NodeState
     }
 
     /// <summary>
+    /// Olvida un dispositivo que ha dejado de vigilarse.
+    ///
+    /// Hasta que los criticos se pudieron quitar en caliente esto no hacia falta y la clase
+    /// solo sabia anadir. Sin ello, un equipo borrado seguia saliendo en la tabla de
+    /// latencia y en el grafico con sus ultimos datos congelados, que es peor que no salir:
+    /// parece que responde.
+    /// </summary>
+    public void RemovePing(string deviceId)
+    {
+        _pingStats.TryRemove(deviceId, out _);
+        _pingWindows.TryRemove(deviceId, out _);
+    }
+
+    /// <summary>
     /// Salud por sector. Es exactamente lo que pinta el dashboard: un indicador por
     /// tarjeta y nada mas. Si hace falta leer un parrafo, la tarjeta esta mal disenada.
     /// </summary>
