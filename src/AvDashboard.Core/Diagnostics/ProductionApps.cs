@@ -13,6 +13,14 @@ public enum ProductionWorkload
 
     /// <summary>Dispara audio con latencia baja. QLab, Ableton.</summary>
     AudioPlayback,
+
+    /// <summary>
+    /// Autoría y control: no pinta la salida, pero manda órdenes contra un reloj.
+    ///
+    /// Se distingue del servidor de medios a propósito. Si el que pinta y el que manda
+    /// compiten por la misma CPU en un equipo, el que tiene que ganar es el que pinta.
+    /// </summary>
+    ShowControl,
 }
 
 /// <summary>Una aplicación de producción conocida.</summary>
@@ -30,9 +38,11 @@ public sealed record ProductionApp(
 /// un ajuste genérico que no se puede auditar: no hay forma de decir si la máquina está
 /// bien si no se sabe qué se espera que corra en ella.
 ///
-/// Vive en Core y no en la capa nativa por lo de siempre: es una decisión con criterio, se
-/// prueba, y la usan tanto la sonda —para decir «vMix está en prioridad normal»— como los
-/// perfiles.
+/// **Los nombres están verificados contra instalaciones reales, no deducidos.** La primera
+/// versión de esta lista los adivinó y falló en dos de los tres casos que importaban:
+/// Resolume Arena es `Arena.exe` y no «Resolume Arena.exe», y Watchout 7 no tiene ningún
+/// `WATCHOUT.exe`. Una lista con nombres inventados no da error: simplemente no encuentra
+/// nada nunca, y la fila sale verde diciendo «ninguna en marcha» con el rig funcionando.
 /// </summary>
 public static class ProductionApps
 {
@@ -48,6 +58,7 @@ public static class ProductionApps
 
     public static IReadOnlyList<ProductionApp> Known { get; } = new ProductionApp[]
     {
+        // ------------------------------------------------------------ mezcladores
         new("vMix64.exe", "vMix", ProductionWorkload.LiveSwitcher,
             "Mezcla, codifica NDI y SRT y mete audio en el mismo hilo de tiempo. Lo que le " +
             "duele son los núcleos aparcados y las interrupciones de la capturadora."),
@@ -56,22 +67,40 @@ public static class ProductionApps
             "Mismo perfil que vMix: codifica en directo y pierde frames en cuanto la CPU " +
             "tiene que competir."),
 
-        new("Resolume Arena.exe", "Resolume Arena", ProductionWorkload.MediaServer,
+        // ------------------------------------------------------- servidores de medios
+        new("Arena.exe", "Resolume Arena", ProductionWorkload.MediaServer,
             "Reproduce DXV a cientos de MB/s y lo presenta con cadencia fija. Lo que le " +
             "duele es cualquier cosa que altere el ritmo de presentación."),
 
-        new("Resolume Avenue.exe", "Resolume Avenue", ProductionWorkload.MediaServer,
+        new("Avenue.exe", "Resolume Avenue", ProductionWorkload.MediaServer,
             "Igual que Arena sin la salida por pared LED, pero con la misma exigencia de " +
             "cadencia."),
 
-        new("WATCHOUT.exe", "Watchout", ProductionWorkload.MediaServer,
-            "Lo de Resolume más sincronía entre nodos: además del ritmo local, le duele la " +
-            "deriva de reloj contra los demás equipos del cluster."),
+        // Watchout 7 es multiproceso y no tiene un ejecutable unico: el que pinta la salida
+        // es visualrenderer, y es el que no puede perder un frame. Los demas mandan y
+        // sirven, y molestan si compiten con el.
+        new("visualrenderer.exe", "Watchout · display", ProductionWorkload.MediaServer,
+            "El motor que pinta la salida de Watchout. Es el proceso que no puede perder un " +
+            "frame, y el único de los de Watchout que compite de verdad por la GPU."),
 
-        new("WATCHNET.exe", "Watchnet", ProductionWorkload.MediaServer,
-            "El control de Watchout. Menos exigente que el display, pero si se queda sin " +
+        new("audiorenderer.exe", "Watchout · audio", ProductionWorkload.AudioPlayback,
+            "La salida de audio de Watchout, contra el mismo reloj que el vídeo. Una pausa " +
+            "aquí se oye antes de que se vea."),
+
+        // ------------------------------------------------------------ control de show
+        new("Producer.exe", "Watchout · producer", ProductionWorkload.ShowControl,
+            "La autoría y el control de Watchout. No pinta la salida, pero si se queda sin " +
             "CPU deja de mandar órdenes a tiempo."),
 
+        new("director.exe", "Watchout · director", ProductionWorkload.ShowControl,
+            "Coordina los nodos del cluster. Su problema no es la cadencia sino llegar a " +
+            "tiempo a los demás equipos."),
+
+        new("runner.exe", "Watchout · runner", ProductionWorkload.ShowControl,
+            "Ejecuta la timeline en cada nodo. Va con el director y se le aplica el mismo " +
+            "criterio."),
+
+        // ------------------------------------------------------------------- audio
         new("QLab.exe", "QLab", ProductionWorkload.AudioPlayback,
             "Dispara audio contra un tiempo. Una pausa de cien milisegundos se oye."),
 
@@ -137,8 +166,8 @@ public sealed record ProductionAppAudit
     /// <summary>
     /// Lo que se lee en la fila.
     ///
-    /// Se nombran las aplicaciones y no se da un número: «vMix» dice dónde mirar, «1
-    /// proceso» no dice nada.
+    /// Se nombran las aplicaciones y no se da un número: «Watchout · display» dice dónde
+    /// mirar, «1 proceso» no dice nada.
     /// </summary>
     public string Describe()
     {

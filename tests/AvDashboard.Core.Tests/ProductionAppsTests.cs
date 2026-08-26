@@ -1,4 +1,4 @@
-using AvDashboard.Core.Diagnostics;
+﻿using AvDashboard.Core.Diagnostics;
 using AvDashboard.Core.Models;
 using Xunit;
 
@@ -17,11 +17,32 @@ public class ProductionAppsTests
         new(imagen, prioridad);
 
     [Fact]
-    public void Las_tres_de_referencia_estan_en_la_lista()
+    public void Los_nombres_de_imagen_son_los_reales_y_no_los_deducidos()
     {
+        // Esta prueba existe por un fallo concreto: la primera version de la lista adivino
+        // los nombres y fallo en dos de los tres casos que importaban. Resolume Arena es
+        // «Arena.exe» y no «Resolume Arena.exe», y Watchout 7 no tiene ningun
+        // «WATCHOUT.exe» —es multiproceso y el que pinta es visualrenderer—.
+        //
+        // Una lista con nombres inventados no da error: no encuentra nada nunca, y la fila
+        // sale verde diciendo «ninguna en marcha» con el rig funcionando.
         Assert.NotNull(ProductionApps.Find("vMix64.exe"));
-        Assert.NotNull(ProductionApps.Find("Resolume Arena.exe"));
-        Assert.NotNull(ProductionApps.Find("WATCHOUT.exe"));
+        Assert.NotNull(ProductionApps.Find("Arena.exe"));
+        Assert.NotNull(ProductionApps.Find("visualrenderer.exe"));
+
+        Assert.Null(ProductionApps.Find("Resolume Arena.exe"));
+        Assert.Null(ProductionApps.Find("WATCHOUT.exe"));
+    }
+
+    [Fact]
+    public void De_watchout_el_que_pinta_se_distingue_del_que_manda()
+    {
+        // Si el que pinta y el que manda compiten por la misma CPU, el que tiene que ganar
+        // es el que pinta. Meterlos en el mismo saco perderia esa distincion.
+        Assert.Equal(ProductionWorkload.MediaServer,
+            ProductionApps.Find("visualrenderer.exe")!.Workload);
+        Assert.Equal(ProductionWorkload.ShowControl,
+            ProductionApps.Find("Producer.exe")!.Workload);
     }
 
     [Fact]
@@ -29,7 +50,7 @@ public class ProductionAppsTests
     {
         // Windows no las distingue y el proceso puede venir de cualquier sitio.
         Assert.NotNull(ProductionApps.Find("VMIX64.EXE"));
-        Assert.NotNull(ProductionApps.Find("resolume arena.exe"));
+        Assert.NotNull(ProductionApps.Find("arena.exe"));
     }
 
     [Fact]
@@ -77,7 +98,7 @@ public class ProductionAppsTests
         // no se quede por debajo.
         ProductionAppAudit audit = ProductionApps.Audit(new[]
         {
-            Proceso("WATCHOUT.exe", ProcessPriority.Realtime),
+            Proceso("visualrenderer.exe", ProcessPriority.Realtime),
         });
 
         Assert.True(audit.IsClean);
@@ -90,7 +111,7 @@ public class ProductionAppsTests
         ProductionAppAudit audit = ProductionApps.Audit(new[]
         {
             Proceso("vMix64.exe", ProcessPriority.Normal),
-            Proceso("Resolume Arena.exe", ProcessPriority.BelowNormal),
+            Proceso("Arena.exe", ProcessPriority.BelowNormal),
             Proceso("vMix64.exe", ProcessPriority.Normal),
         });
 
