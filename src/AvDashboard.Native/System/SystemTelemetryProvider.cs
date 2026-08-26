@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using AvDashboard.Core.Models;
 
@@ -142,6 +142,14 @@ public sealed class SystemTelemetryProvider
             Marshal.FreeHGlobal(buffer);
         }
     }
+
+    /// <summary>
+    /// RAM total en bytes, o 0 si no se puede leer.
+    ///
+    /// Se expone porque el actuador del archivo de paginacion necesita dimensionarlo y la
+    /// alternativa era duplicar la estructura de interop en el escritor.
+    /// </summary>
+    public static long TotalPhysicalMemoryBytes() => ReadMemory().Total;
 
     private static (long Used, long Total, double Percent) ReadMemory()
     {

@@ -605,6 +605,20 @@ public static class SettingsCatalog
         },
 
 
+        new()
+        {
+            Id = SettingIds.PagefileFixed,
+            Group = SettingGroup.Kernel,
+            Name = "Archivo de paginación de tamaño fijo",
+            Source = @"HKLM\...\Memory Management\PagingFiles",
+            AcceptableValues = new[] { PagingFile.Target },
+            TargetDescription = "Mínimo y máximo iguales",
+            Impact = SettingImpact.Medium,
+            Risk = SettingRisk.Disruptive,
+            ActionId = ActionIds.PagefileFixed,
+            Rationale = "Gestionado por Windows arranca pequeño y crece cuando sube la carga comprometida, o sea cuando lanzas la primera capa de vídeo: reservar gigas en disco es una ráfaga de escritura en el peor momento. Con mínimo y máximo iguales el espacio ya está pedido desde el arranque. Desactivarlo del todo tampoco vale: Windows cuenta memoria reservada, no usada, y sin archivo las aplicaciones empiezan a fallar al reservar antes de llenar la RAM.",
+        },
+
         // ------------------------------------------------------ Presentación de vídeo
         new()
         {

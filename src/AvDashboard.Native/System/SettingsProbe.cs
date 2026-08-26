@@ -742,6 +742,7 @@ public static class SettingsProbe
             ReadNicRegistrySettings(readings);
             ReadProductionPriority(readings);
             ReadPresentation(readings);
+            ReadPagefile(readings);
         }
         catch (ManagementException)
         {
@@ -903,6 +904,37 @@ public static class SettingsProbe
             : null;
 
         return SettingReading.Of(id, efectivo, display);
+    }
+
+
+    /// <summary>
+    /// Como esta dimensionado el archivo de paginacion.
+    ///
+    /// Se lee del registro y no de Win32_PageFileSetting a proposito: esa clase **no
+    /// devuelve nada** cuando Windows gestiona el tamano, que es justo el caso que hay que
+    /// detectar. Win32_PageFileUsage si contesta, pero dice cuanto ocupa ahora, no si puede
+    /// crecer. El registro es el unico sitio donde esta la respuesta a la pregunta.
+    /// </summary>
+    private static void ReadPagefile(List<SettingReading> readings)
+    {
+        RegistryValue value = RegistrySettingsReader.Probe(
+            RegistryHive.LocalMachine, MemoryManagementKey, "PagingFiles");
+
+        if (value.Raw is not string[] lines)
+        {
+            readings.Add(SettingReading.Missing(SettingIds.PagefileFixed,
+                value.Outcome == RegistryOutcome.Denied
+                    ? "sin permiso para leer la configuración de memoria"
+                    : "Windows no ha escrito la lista de archivos de paginación"));
+            return;
+        }
+
+        IReadOnlyList<PagingFileEntry> entries = PagingFile.Parse(lines);
+
+        readings.Add(SettingReading.Of(
+            SettingIds.PagefileFixed,
+            PagingFile.Canonical(PagingFile.Classify(entries)),
+            PagingFile.Describe(entries)));
     }
 
     // -------------------------------------------------------------------- Diagnóstico

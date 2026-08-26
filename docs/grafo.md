@@ -77,13 +77,13 @@ graph LR
 | Grupo | Ajustes | Con objetivo | Impacto alto | Fuera de los perfiles |
 |---|---:|---:|---:|---:|
 | Energía | 13 | 13 | 8 | 0 |
-| Kernel y rendimiento | 16 | 13 | 10 | 2 |
+| Kernel y rendimiento | 17 | 14 | 10 | 2 |
 | Interrupciones y actualizaciones | 11 | 11 | 8 | 0 |
 | Seguridad | 3 | 1 | 1 | 0 |
 | Arranque y sesión | 4 | 4 | 3 | 0 |
 | Adaptador de red | 3 | 3 | 2 | 0 |
 | Diagnóstico | 4 | 0 | 0 | 0 |
-| **Total** | **54** | **45** | **32** | **2** |
+| **Total** | **55** | **46** | **32** | **2** |
 
 «Fuera de los perfiles» son los que nunca entran en un cambio automático porque
 tocarlos reduce la seguridad de la máquina de forma real.
@@ -91,7 +91,7 @@ tocarlos reduce la seguridad de la máquina de forma real.
 ## Superficie
 
 - **27 comandos** de CLI y paleta.
-- **26 actuadores** declarados, de los cuales 10 pueden interrumpir una salida en directo.
+- **27 actuadores** declarados, de los cuales 10 pueden interrumpir una salida en directo.
 
 ### Comandos por sector
 

@@ -40,6 +40,9 @@ public static class SettingIds
     public const string MemoryIntegrity = "kernel.memory-integrity";
     public const string CpuMitigations = "kernel.cpu-mitigations";
 
+    /// <summary>Archivo de paginacion de tamano fijo: el que no crece a mitad de show.</summary>
+    public const string PagefileFixed = "kernel.pagefile-fixed";
+
     // --- Interrupciones y actualizaciones ---
     public const string UpdatePaused = "updates.paused";
     public const string RebootPending = "updates.reboot-pending";

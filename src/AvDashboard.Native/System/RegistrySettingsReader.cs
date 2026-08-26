@@ -1,4 +1,4 @@
-using System.Runtime.Versioning;
+﻿using System.Runtime.Versioning;
 using AvDashboard.Core.Models;
 using Microsoft.Win32;
 
@@ -156,6 +156,17 @@ public static class RegistrySettingsReader
 
     public static string? ReadString(RegistryHive hive, string keyPath, string valueName) =>
         ReadValue(hive, keyPath, valueName) as string;
+
+    /// <summary>
+    /// Un REG_MULTI_SZ como lista de lineas.
+    ///
+    /// Devuelve null solo si el valor no esta o no se deja leer. Una lista **vacia** es un
+    /// resultado legitimo y distinto: en PagingFiles significa «sin archivo de paginacion»,
+    /// que es una respuesta, no una falta de respuesta.
+    /// </summary>
+    public static IReadOnlyList<string>? ReadMultiString(
+        RegistryHive hive, string keyPath, string valueName) =>
+        ReadValue(hive, keyPath, valueName) as string[];
 
     /// <summary>
     /// true si el valor existe, sin importar su contenido. PendingFileRenameOperations es

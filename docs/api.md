@@ -6,7 +6,7 @@ puente con Companion las consumen desde la misma constante.
 
 **Base:** `http://127.0.0.1:47821/api/v1` — y la IP de Tailscale, si la hay. Nunca `0.0.0.0`.
 
-> El agente **escribe**. Treinta y cuatro ajustes del catálogo tienen actuador, todos
+> El agente **escribe**. Treinta y nueve ajustes del catálogo tienen actuador, todos
 > aceptan `dryRun`, y una escritura suelta se puede **deshacer** desde su línea del
 > Timeline. Lo que no hay es rollback de una ejecución de perfil entera:
 > `/runs/{id}/rollback` sigue devolviendo 501.
@@ -53,8 +53,8 @@ como `?access_token=`. Es la única excepción y está documentada aquí a prop�
 | Método | Ruta | Estado |
 |---|---|---|
 | GET | `/system` | ✅ Telemetría y ajustes de M1 |
-| GET | `/system/audit` | ✅ Los 49 ajustes del catálogo contra su objetivo, con impacto y motivo |
-| POST | `/system/{setting}?value=&dryRun=` | ✅ Escribe uno de los 34 con actuador. Lista blanca compilada: un id que no esté en `SettingsWriter.Apply` se rechaza aunque la petición venga bien formada |
+| GET | `/system/audit` | ✅ Los 55 ajustes del catálogo contra su objetivo, con impacto y motivo |
+| POST | `/system/{setting}?value=&dryRun=` | ✅ Escribe uno de los 39 con actuador. Lista blanca compilada: un id que no esté en `SettingsWriter.Apply` se rechaza aunque la petición venga bien formada |
 | GET | `/system/processes` | 501 — Fase 2 |
 
 ### Audio

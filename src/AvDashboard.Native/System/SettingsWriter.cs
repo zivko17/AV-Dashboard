@@ -105,6 +105,9 @@ public static class SettingsWriter
         // Presentación de vídeo
         SettingIds.FullscreenOptimizations,
         SettingIds.VariableRefreshRate,
+
+        // Memoria
+        SettingIds.PagefileFixed,
     };
 
     /// <summary>
@@ -258,6 +261,8 @@ public static class SettingsWriter
                 SettingIds.VariableRefreshRate => ApplyPresentation(
                     SettingIds.VariableRefreshRate,
                     DirectXGlobalSettings.VariableRefreshRate, value, dryRun),
+
+                SettingIds.PagefileFixed => ApplyPagefile(value, dryRun),
 
                 // ScreenSaveActive se guarda como cadena «1» o «0», no como entero.
                 SettingIds.ScreenSaver => Text(id, value, dryRun,
@@ -423,6 +428,135 @@ public static class SettingsWriter
         string applied = Count(result.DryRun ? 0 : result.Remaining.Count);
 
         return Ok(id, previous, applied, dryRun);
+    }
+
+    /// <summary>
+    /// Fija el tamano del archivo de paginacion, o lo devuelve a Windows.
+    ///
+    /// Se escribe la lista del registro y nada mas. Es exactamente lo que hace el dialogo de
+    /// memoria virtual al desmarcar «administrar automaticamente»: la entrada comodin
+    /// «?:\pagefile.sys» **es** esa casilla, no un reflejo suyo, asi que sustituirla por una
+    /// ruta con dos numeros la desmarca. Por eso no hace falta tocar
+    /// Win32_ComputerSystem.AutomaticManagedPagefile, que ademas obligaria a traerse WMI
+    /// para escribir algo que ya esta escrito.
+    ///
+    /// **No surte efecto hasta reiniciar.** El archivo actual sigue en marcha; el nuevo
+    /// tamano se reserva en el siguiente arranque. Se dice en el mensaje porque una fila que
+    /// se pone verde y un rig que se comporta igual que antes es la manera de perder la
+    /// confianza en el panel entero.
+    /// </summary>
+    private static SettingWriteResult ApplyPagefile(string value, bool dryRun)
+    {
+        string id = SettingIds.PagefileFixed;
+
+        IReadOnlyList<string>? current = RegistrySettingsReader.ReadMultiString(
+            RegistryHive.LocalMachine, MemoryManagementKey, "PagingFiles");
+
+        if (current is null)
+        {
+            return Failed(id, "No se ha podido leer la configuración de memoria actual.");
+        }
+
+        IReadOnlyList<PagingFileEntry> entries = PagingFile.Parse(current);
+        string previous = PagingFile.Canonical(PagingFile.Classify(entries));
+
+        string[] target;
+
+        if (string.Equals(value, PagingFile.Target, StringComparison.Ordinal))
+        {
+            // El disco: el que ya lo aloja si hay uno elegido, y si no el del sistema. No se
+            // mueve a otra unidad por iniciativa propia: en un rig la segunda unidad suele
+            // ser la de medios, y ponerselo encima cambia un problema por otro peor.
+            string drive = entries.FirstOrDefault(e => !e.IsAutomatic)?.Drive
+                ?? Path.GetPathRoot(Environment.SystemDirectory)?.TrimEnd('\\')
+                ?? "C:";
+
+            long free;
+
+            try
+            {
+                free = new DriveInfo(drive).AvailableFreeSpace;
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException
+                                          or UnauthorizedAccessException)
+            {
+                return Failed(id, $"No se ha podido mirar el espacio libre de {drive}.");
+            }
+
+            int? size = PagingFile.RecommendMb(
+                SystemTelemetryProvider.TotalPhysicalMemoryBytes(), free);
+
+            if (size is null)
+            {
+                return Failed(id,
+                    $"No hay sitio en {drive} para un archivo de paginación decente. "
+                    + "Libera espacio antes de fijarlo.");
+            }
+
+            target = new[]
+            {
+                new PagingFileEntry($@"{drive}\pagefile.sys", size.Value, size.Value).ToString(),
+            };
+        }
+        else if (string.Equals(value, PagingFile.SystemManagedValue, StringComparison.Ordinal))
+        {
+            // El camino de vuelta si existe, al reves que en las filas de la NIC: devolverselo
+            // a Windows no rompe nada y es lo que hace falta para que deshacer funcione.
+            target = new[] { @"?:\pagefile.sys" };
+        }
+        else
+        {
+            return Failed(id,
+                "Desde aquí solo se fija el tamaño o se le devuelve a Windows. "
+                + "Desactivar la paginación del todo no se ofrece: Windows cuenta memoria "
+                + "reservada y las aplicaciones fallarían al reservar antes de llenar la RAM.");
+        }
+
+        string applied = PagingFile.Canonical(PagingFile.Classify(target));
+
+        if (dryRun)
+        {
+            return Ok(id, previous, applied, dryRun: true);
+        }
+
+        try
+        {
+            using RegistryKey baseKey = RegistryKey.OpenBaseKey(
+                RegistryHive.LocalMachine, RegistryView.Registry64);
+
+            using RegistryKey? key = baseKey.OpenSubKey(MemoryManagementKey, writable: true);
+
+            if (key is null)
+            {
+                return Failed(id, "No existe la clave de memoria del sistema.");
+            }
+
+            key.SetValue("PagingFiles", target, RegistryValueKind.MultiString);
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException
+                                      or global::System.Security.SecurityException)
+        {
+            return Failed(id, "Hace falta que el agente corra como servicio para tocar esto.");
+        }
+
+        // Se relee. Es la regla que costo siete esquemas de energia basura.
+        IReadOnlyList<string>? after = RegistrySettingsReader.ReadMultiString(
+            RegistryHive.LocalMachine, MemoryManagementKey, "PagingFiles");
+
+        if (PagingFile.Canonical(PagingFile.Classify(after)) != applied)
+        {
+            return Failed(id, "El valor no se ha quedado escrito.");
+        }
+
+        return new SettingWriteResult
+        {
+            Id = id,
+            Success = true,
+            Message = "Aplicado. No surte efecto hasta reiniciar: el archivo que hay ahora "
+                + "sigue funcionando y el nuevo tamaño se reserva en el próximo arranque.",
+            PreviousValue = previous,
+            AppliedValue = applied,
+        };
     }
 
     private static bool Boolean(string value) =>
@@ -722,6 +856,8 @@ public static class SettingsWriter
     private const string GameConfigStoreKey = @"System\GameConfigStore";
     private const string GameDvrPolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\GameDVR";
     private const string DirectXPreferencesKey = @"Software\Microsoft\DirectX\UserGpuPreferences";
+    private const string MemoryManagementKey =
+        @"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management";
     private const string BackgroundAppsKey =
         @"SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications";
     private const string WindowsUpdatePolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate";

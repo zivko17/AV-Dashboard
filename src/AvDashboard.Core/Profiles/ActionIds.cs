@@ -50,6 +50,9 @@ public static class ActionIds
     /// <summary>Frecuencia de actualizacion variable, que rompe la cadencia fija.</summary>
     public const string VariableRefreshRate = "video.variable-refresh-rate";
 
+    /// <summary>Fija el archivo de paginacion. Necesita reinicio para surtir efecto.</summary>
+    public const string PagefileFixed = "kernel.pagefile-fixed";
+
     // --- M5 Red ---
     public const string NetworkProfile = "network.profile";
     public const string NicPowerManagement = "network.nic-power-management";
@@ -69,7 +72,7 @@ public static class ActionIds
         FirewallProfile, FirewallAvPreset,
         AudioDefaultDevice, AudioSessionRoute,
         DisplayLayoutRestore, WindowLayoutRestore, RestartGraphicsDriver,
-        FullscreenOptimizations, VariableRefreshRate,
+        FullscreenOptimizations, VariableRefreshRate, PagefileFixed,
         NetworkProfile, NicPowerManagement, NicNagle, NdiDiscovery,
         ServiceState, ServiceStartMode,
     };
