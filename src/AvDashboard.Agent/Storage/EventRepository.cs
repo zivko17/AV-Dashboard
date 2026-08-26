@@ -1,4 +1,4 @@
-using AvDashboard.Core.Models;
+﻿using AvDashboard.Core.Models;
 using AvDashboard.Core.Taxonomy;
 using Microsoft.Data.Sqlite;
 
@@ -44,6 +44,32 @@ public sealed class EventRepository
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }, cancellationToken);
 
+    /// <summary>
+    /// Un evento concreto por su identificador.
+    ///
+    /// Lo pide deshacer: el cliente manda el id de la linea del Timeline y el agente vuelve
+    /// a leerla de la base en vez de fiarse de lo que le hayan mandado. Lo que se deshace
+    /// tiene que ser lo que consta escrito, no lo que diga la peticion.
+    /// </summary>
+    public async Task<TimelineEvent?> FindAsync(long id, CancellationToken cancellationToken = default)
+    {
+        await using SqliteConnection connection = _database.OpenConnection();
+        await using SqliteCommand command = connection.CreateCommand();
+
+        command.CommandText = """
+            SELECT id, ts, module, sector, severity, kind, message, payload_json
+            FROM events WHERE id = $id AND node_id = $node;
+            """;
+
+        command.Parameters.AddWithValue("$id", id);
+        command.Parameters.AddWithValue("$node", _nodeId);
+
+        await using SqliteDataReader reader =
+            await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+
+        return await reader.ReadAsync(cancellationToken).ConfigureAwait(false) ? ReadEvent(reader) : null;
+    }
+
     public async Task<IReadOnlyList<TimelineEvent>> QueryAsync(
         DateTimeOffset from,
         DateTimeOffset to,
@@ -86,22 +112,29 @@ public sealed class EventRepository
 
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            events.Add(new TimelineEvent
-            {
-                Id = reader.GetInt64(0),
-                NodeId = _nodeId,
-                Timestamp = DateTimeOffset.Parse(reader.GetString(1)),
-                Module = reader.GetString(2),
-                Sector = Enum.TryParse(reader.GetString(3), out Sector sector) ? sector : Sector.Unclassified,
-                Severity = (Severity)reader.GetInt32(4),
-                Kind = reader.GetString(5),
-                Message = reader.GetString(6),
-                PayloadJson = reader.IsDBNull(7) ? null : reader.GetString(7),
-            });
+            events.Add(ReadEvent(reader));
         }
 
         return events;
     }
+
+    /// <summary>
+    /// Una fila de `events`. Las dos consultas seleccionan las mismas columnas en el mismo
+    /// orden a proposito: con dos constructores separados, anadir una columna a una y no a
+    /// la otra no da error, da un dato en blanco donde deberia haber uno.
+    /// </summary>
+    private TimelineEvent ReadEvent(SqliteDataReader reader) => new()
+    {
+        Id = reader.GetInt64(0),
+        NodeId = _nodeId,
+        Timestamp = DateTimeOffset.Parse(reader.GetString(1)),
+        Module = reader.GetString(2),
+        Sector = Enum.TryParse(reader.GetString(3), out Sector sector) ? sector : Sector.Unclassified,
+        Severity = (Severity)reader.GetInt32(4),
+        Kind = reader.GetString(5),
+        Message = reader.GetString(6),
+        PayloadJson = reader.IsDBNull(7) ? null : reader.GetString(7),
+    };
 
     /// <summary>
     /// Levanta una alerta si no hay ya una activa del mismo tipo. La deduplicacion es

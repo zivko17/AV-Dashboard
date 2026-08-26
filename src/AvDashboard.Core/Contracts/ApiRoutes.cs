@@ -1,4 +1,4 @@
-namespace AvDashboard.Core.Contracts;
+﻿namespace AvDashboard.Core.Contracts;
 
 /// <summary>
 /// Rutas de la API del agente, en un solo sitio. El agente las sirve y la consola,
@@ -87,6 +87,15 @@ public static class ApiRoutes
     public const string Manifest = Base + "/manifest";
 
     public const string Timeline = Base + "/timeline";
+
+    /// <summary>
+    /// Devuelve un ajuste al valor que tenia antes de una escritura concreta.
+    ///
+    /// Se identifica por el evento del Timeline y no por el ajuste: lo que se deshace es
+    /// «ese cambio», no «lo ultimo que le paso a esta fila». Si alguien lo toco despues, el
+    /// agente lo detecta y se niega.
+    /// </summary>
+    public const string TimelineUndo = Timeline + "/{eventId:long}/undo";
     public const string Alerts = Base + "/alerts";
     public const string ReportPreShow = Base + "/report/preshow";
     public const string CompanionVariables = Base + "/companion/variables";

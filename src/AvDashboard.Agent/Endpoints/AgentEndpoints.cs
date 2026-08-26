@@ -1,6 +1,7 @@
 ﻿using AvDashboard.Agent.Modules;
 using AvDashboard.Agent.Storage;
 using AvDashboard.Agent.Video;
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using AvDashboard.Core.Profiles;
@@ -434,6 +435,30 @@ public static class AgentEndpoints
         };
     }
 
+    /// <summary>
+    /// El id del ajuste que toco una escritura, leido de su propio payload.
+    ///
+    /// Devuelve null si la linea no es una escritura o el payload no se entiende, que es lo
+    /// que hace que la auditoria no encuentre nada y SettingUndo se niegue con su motivo.
+    /// </summary>
+    private static string? ReadSettingId(TimelineEvent entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.PayloadJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer
+                .Deserialize<SettingWriteRecord>(entry.PayloadJson, new JsonSerializerOptions(JsonSerializerDefaults.Web))?.Id;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static string? Trim(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -524,6 +549,81 @@ public static class AgentEndpoints
                 To = end,
                 Truncated = found.Count >= cap,
             });
+        });
+
+        // Deshacer una escritura concreta del Timeline.
+        //
+        // Se identifica por el evento y no por el ajuste: lo que se deshace es «ese cambio»
+        // y no «lo ultimo que le paso a esta fila». Y el agente relee el evento de su propia
+        // base en vez de fiarse de lo que le manden: lo que se deshace tiene que ser lo que
+        // consta escrito.
+        app.MapPost(ApiRoutes.TimelineUndo, async (
+            long eventId,
+            bool? dryRun,
+            EventRepository events,
+            CancellationToken cancellationToken) =>
+        {
+            TimelineEvent? entry = await events.FindAsync(eventId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (entry is null)
+            {
+                return Results.NotFound(new ApiError
+                {
+                    Code = "event_not_found",
+                    Message = "Esa línea del Timeline no existe en este nodo.",
+                    Detail = eventId.ToString(CultureInfo.InvariantCulture),
+                });
+            }
+
+            // El valor actual sale de una auditoria fresca, no de una cacheada: la pregunta
+            // que decide si se puede deshacer es «que vale ahora», y una lectura de hace
+            // treinta segundos no la contesta.
+            SettingsAudit audit = SettingsCatalog.Evaluate(
+                SettingsProbe.Read(), SettingsWriter.SupportedIds);
+
+            string? current = audit.All
+                .FirstOrDefault(s => s.Definition.Id == ReadSettingId(entry))?.Current;
+
+            UndoPlan plan = SettingUndo.Plan(entry, current, SettingsWriter.SupportedIds);
+
+            if (!plan.CanUndo)
+            {
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "undo_refused",
+                    Message = plan.Reason ?? "No se puede deshacer.",
+                    Detail = plan.Refusal.ToString(),
+                });
+            }
+
+            SettingWriteResult result = SettingsWriter.Apply(
+                plan.SettingId!, plan.TargetValue!, dryRun == true);
+
+            if (!result.Success)
+            {
+                return Results.BadRequest(new ApiError
+                {
+                    Code = "setting_write_failed",
+                    Message = result.Message,
+                    Detail = plan.SettingId,
+                });
+            }
+
+            if (!result.DryRun)
+            {
+                // Se anota como setting.undone y no como setting.changed: deshacer tambien
+                // es una escritura y tiene que dejar rastro, pero un Timeline donde no se
+                // distingue lo que se hizo de lo que se desanduvo no sirve para reconstruir
+                // que paso a las 21:04, que es para lo que existe.
+                await events.AppendAsync("M1", Sector.SystemEssential, Severity.Warning,
+                    SettingUndo.UndoneKind,
+                    $"{plan.Name}: deshecho, {result.PreviousValue ?? "sin valor"} → {result.AppliedValue}",
+                    payloadJson: JsonSerializer.Serialize(result),
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+
+            return Results.Ok(result);
         });
 
         app.MapPost(ApiRoutes.ReportPreShow, (NodeState state, NodeIdentity identity) =>

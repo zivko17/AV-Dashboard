@@ -357,14 +357,18 @@ public static class SettingsProbe
         bool? policyDvr = RegistrySettingsReader.ReadBool(
             RegistryHive.LocalMachine, GameDvrPolicyKey, "AllowGameDVR");
 
+        // La regla —una directiva que dice «no» gana siempre— vive en Core porque el
+        // actuador la necesita tambien: escribiendo la preferencia sin mirar la directiva,
+        // anunciaba en el Timeline un cambio que la maquina no hacia.
         readings.Add(SettingReading.Of(
             SettingIds.GameDvr,
+            PolicyOverride.Effective(userDvr, policyDvr),
             (userDvr, policyDvr) switch
             {
-                (_, false) => false,
-                (false, _) => false,
-                (null, null) => (bool?)null,
-                _ => true,
+                (_, false) => "desactivado por directiva",
+                (false, _) => (string?)null,
+                (null, null) => null,
+                _ => null,
             }));
 
         // GlobalUserDisabled = 1 significa que estan desactivadas, que es lo que queremos.

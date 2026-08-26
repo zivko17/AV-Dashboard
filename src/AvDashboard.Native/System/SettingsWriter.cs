@@ -195,8 +195,7 @@ public static class SettingsWriter
                     RegistryHive.CurrentUser, PersonalizeKey, "EnableTransparency"),
                 SettingIds.GameMode => Flag(id, value, dryRun,
                     RegistryHive.CurrentUser, GameBarKey, "AutoGameModeEnabled"),
-                SettingIds.GameDvr => Flag(id, value, dryRun,
-                    RegistryHive.CurrentUser, GameConfigStoreKey, "GameDVR_Enabled"),
+                SettingIds.GameDvr => ApplyGameDvr(value, dryRun),
 
                 // Tambien invertido: «desactivadas globalmente».
                 SettingIds.BackgroundApps => Flag(id, value, dryRun,
@@ -295,6 +294,30 @@ public static class SettingsWriter
 
     private static string Count(int value) =>
         value.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Game DVR, mirando antes si una directiva de maquina lo tiene prohibido.
+    ///
+    /// Se lee de dos sitios y la directiva gana. Escribiendo solo la preferencia del
+    /// usuario, la clave cambiaba, el actuador devolvia exito y el Timeline anotaba
+    /// «off → on»… mientras la maquina seguia con Game DVR apagado porque la directiva lo
+    /// prohibia. Una escritura que ocurre y no sirve de nada es tan mentira como una que no
+    /// ocurre: lo que se anota tiene que ser lo que pasa.
+    /// </summary>
+    private static SettingWriteResult ApplyGameDvr(string value, bool dryRun)
+    {
+        bool? policy = RegistrySettingsReader.ReadBool(
+            RegistryHive.LocalMachine, GameDvrPolicyKey, "AllowGameDVR");
+
+        if (PolicyOverride.IsBlockedByPolicy(policy, Boolean(value)))
+        {
+            return Failed(SettingIds.GameDvr, PolicyOverride.BlockedMessage(
+                SettingsCatalog.Find(SettingIds.GameDvr)?.Name ?? "Game DVR"));
+        }
+
+        return Flag(SettingIds.GameDvr, value, dryRun,
+            RegistryHive.CurrentUser, GameConfigStoreKey, "GameDVR_Enabled");
+    }
 
     private static bool Boolean(string value) =>
         string.Equals(value, SettingReading.BooleanOn, StringComparison.OrdinalIgnoreCase);
@@ -591,6 +614,7 @@ public static class SettingsWriter
         @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize";
     private const string GameBarKey = @"SOFTWARE\Microsoft\GameBar";
     private const string GameConfigStoreKey = @"System\GameConfigStore";
+    private const string GameDvrPolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\GameDVR";
     private const string BackgroundAppsKey =
         @"SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications";
     private const string WindowsUpdatePolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate";
