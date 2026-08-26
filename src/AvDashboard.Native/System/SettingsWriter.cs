@@ -55,6 +55,8 @@ public static class SettingsWriter
     {
         // Energía
         SettingIds.PowerPlan,
+        SettingIds.UltimateAvailable,
+        SettingIds.Hibernation,
         SettingIds.ProcessorMin,
         SettingIds.ProcessorMax,
         SettingIds.CoreParking,
@@ -71,6 +73,7 @@ public static class SettingsWriter
         SettingIds.ProAudioPriority,
         SettingIds.PrioritySeparation,
         SettingIds.PowerThrottling,
+        SettingIds.VisualEffects,
         SettingIds.Transparency,
         SettingIds.GameMode,
         SettingIds.GameDvr,
@@ -128,6 +131,8 @@ public static class SettingsWriter
             return id switch
             {
                 SettingIds.PowerPlan => ApplyPowerPlan(value, dryRun),
+                SettingIds.UltimateAvailable => ApplyUltimateAvailable(value, dryRun),
+                SettingIds.Hibernation => ApplyHibernation(value, dryRun),
 
                 SettingIds.ProcessorMin => Power(id, value, dryRun,
                     PowerConfiguration.Settings.ProcessorSubGroup,
@@ -178,6 +183,8 @@ public static class SettingsWriter
                 SettingIds.PowerThrottling => Flag(id, value, dryRun,
                     RegistryHive.LocalMachine, PowerThrottlingKey, "PowerThrottlingOff",
                     inverted: true),
+
+                SettingIds.VisualEffects => ApplyVisualEffects(value, dryRun),
 
                 SettingIds.Transparency => Flag(id, value, dryRun,
                     RegistryHive.CurrentUser, PersonalizeKey, "EnableTransparency"),
@@ -283,6 +290,121 @@ public static class SettingsWriter
         return PowerConfiguration.SetActiveScheme(target)
             ? Ok(SettingIds.PowerPlan, previous, value)
             : Failed(SettingIds.PowerPlan, "Windows ha rechazado el cambio de plan.");
+    }
+
+    /// <summary>
+    /// Deja Ultimate Performance presente en la lista de planes.
+    ///
+    /// Es la unica fila del catalogo cuyo objetivo es «que exista», no «que valga tal
+    /// cosa»: sin el esquema duplicado, el objetivo de la fila de arriba —el plan activo—
+    /// no se puede cumplir en las ediciones de Windows que no lo traen. Apagarlo no se
+    /// ofrece: borrar un esquema de energia del que puede colgar el plan activo no es algo
+    /// que deba hacer un interruptor.
+    /// </summary>
+    private static SettingWriteResult ApplyUltimateAvailable(string value, bool dryRun)
+    {
+        bool present = PowerConfiguration.IsUltimatePerformanceAvailable();
+        string previous = present ? SettingReading.BooleanOn : SettingReading.BooleanOff;
+
+        if (!Boolean(value))
+        {
+            return Failed(SettingIds.UltimateAvailable,
+                "Quitar el esquema Ultimate Performance no se hace desde aquí: si es el " +
+                "plan activo, la máquina se queda sin plan.");
+        }
+
+        if (present)
+        {
+            return Ok(SettingIds.UltimateAvailable, previous, SettingReading.BooleanOn, dryRun);
+        }
+
+        if (dryRun)
+        {
+            return Ok(SettingIds.UltimateAvailable, previous, SettingReading.BooleanOn, dryRun: true);
+        }
+
+        return PowerConfiguration.TryDuplicateUltimatePerformance()
+            ? Ok(SettingIds.UltimateAvailable, previous, SettingReading.BooleanOn)
+            : Failed(SettingIds.UltimateAvailable,
+                "Windows no ha dejado duplicar el esquema. Hace falta que el agente corra " +
+                "como servicio.");
+    }
+
+    /// <summary>
+    /// Enciende o apaga la hibernacion.
+    ///
+    /// Va por la API de energia y no escribiendo HibernateEnabled: el registro deja el
+    /// valor puesto pero el hiberfil.sys sigue ocupando tanto como la RAM, y el inicio
+    /// rapido puede seguir usandolo. Es la diferencia entre que la fila se ponga verde y
+    /// que la maquina arranque limpia de verdad.
+    /// </summary>
+    private static SettingWriteResult ApplyHibernation(string value, bool dryRun)
+    {
+        bool target = Boolean(value);
+
+        string? previous = RegistrySettingsReader
+            .ReadBool(RegistryHive.LocalMachine, HibernationKey, "HibernateEnabled") switch
+        {
+            true => SettingReading.BooleanOn,
+            false => SettingReading.BooleanOff,
+            null => null,
+        };
+
+        if (dryRun)
+        {
+            return Ok(SettingIds.Hibernation, previous,
+                target ? SettingReading.BooleanOn : SettingReading.BooleanOff, dryRun: true);
+        }
+
+        return PowerConfiguration.TrySetHibernation(target)
+            ? Ok(SettingIds.Hibernation, previous,
+                target ? SettingReading.BooleanOn : SettingReading.BooleanOff)
+            : Failed(SettingIds.Hibernation,
+                "Windows ha rechazado el cambio. Hace falta que el agente corra como servicio.");
+    }
+
+    /// <summary>
+    /// Efectos visuales.
+    ///
+    /// El catalogo ya declaraba un actuador para esta fila, pero el conmutador no la
+    /// tenia: la fila salia como no escribible mientras el perfil «Evento» prometia
+    /// cambiarla. El valor viaja con el nombre que usa Windows y no con su numero, que es
+    /// como se lee en la vista, asi que la traduccion vive aqui.
+    /// </summary>
+    private static SettingWriteResult ApplyVisualEffects(string value, bool dryRun)
+    {
+        uint? target = value switch
+        {
+            "LetWindowsChoose" => 0u,
+            "BestAppearance" => 1u,
+            "BestPerformance" => 2u,
+            "Custom" => 3u,
+            _ => null,
+        };
+
+        if (target is not uint setting)
+        {
+            return Failed(SettingIds.VisualEffects, $"«{value}» no es un modo de efectos visuales.");
+        }
+
+        string? before = RegistrySettingsReader
+            .ReadInt(RegistryHive.CurrentUser, VisualEffectsKey, "VisualFXSetting") switch
+        {
+            0 => "LetWindowsChoose",
+            1 => "BestAppearance",
+            2 => "BestPerformance",
+            3 => "Custom",
+            _ => null,
+        };
+
+        if (dryRun)
+        {
+            return Ok(SettingIds.VisualEffects, before, value, dryRun: true);
+        }
+
+        WriteDword(RegistryHive.CurrentUser, VisualEffectsKey, "VisualFXSetting", setting);
+
+        return Ok(SettingIds.VisualEffects, before, value);
     }
 
     private static SettingWriteResult Power(
@@ -405,6 +527,12 @@ public static class SettingsWriter
     // ------------------------------------------------------------------------ Claves
 
     private const string PowerKey = @"SYSTEM\CurrentControlSet\Control\Session Manager\Power";
+
+    /// <summary>Ver la nota de SettingsProbe: HibernateEnabled no cuelga de la de arriba.</summary>
+    private const string HibernationKey = @"SYSTEM\CurrentControlSet\Control\Power";
+
+    private const string VisualEffectsKey =
+        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects";
     private const string MmcssKey =
         @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile";
     private const string ProAudioKey = MmcssKey + @"\Tasks\Pro Audio";

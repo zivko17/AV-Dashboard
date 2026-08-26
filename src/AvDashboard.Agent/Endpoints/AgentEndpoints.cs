@@ -99,10 +99,24 @@ public static class AgentEndpoints
             {
                 // Toda escritura deja rastro con el valor anterior. Es el registro de
                 // auditoria del diseno, y ademas es lo unico que permite deshacer.
-                await events.AppendAsync("M1", Sector.SystemEssential, Severity.Warning,
-                    "setting.changed",
-                    $"{SettingsCatalog.Find(setting)?.Name ?? setting}: " +
-                    $"{result.PreviousValue ?? "sin valor"} → {result.AppliedValue}",
+                //
+                // Pero una escritura que deja el valor como estaba no es un cambio, y
+                // anotarla como «setting.changed» en ambar llenaba el Timeline de lineas
+                // del tipo «Estado maximo del procesador: 100 → 100». El Timeline existe
+                // para reconstruir que paso a las 21:04, y cada linea que no es un cambio
+                // resta a esa capacidad. Se sigue dejando rastro —la escritura ocurrio—,
+                // pero con otro tipo y en informativo, para que se pueda filtrar.
+                string name = SettingsCatalog.Find(setting)?.Name ?? setting;
+
+                bool changed = !string.Equals(
+                    result.PreviousValue, result.AppliedValue, StringComparison.Ordinal);
+
+                await events.AppendAsync("M1", Sector.SystemEssential,
+                    changed ? Severity.Warning : Severity.Info,
+                    changed ? "setting.changed" : "setting.unchanged",
+                    changed
+                        ? $"{name}: {result.PreviousValue ?? "sin valor"} → {result.AppliedValue}"
+                        : $"{name}: ya estaba en {result.AppliedValue}",
                     payloadJson: JsonSerializer.Serialize(result)).ConfigureAwait(false);
             }
 

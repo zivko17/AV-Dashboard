@@ -127,7 +127,13 @@ public static class PowerConfiguration
 
     /// <summary>
     /// Duplica el esquema Ultimate Performance para que aparezca en la lista.
-    /// No hay API publica para esto, asi que aqui si se invoca powercfg, una sola vez.
+    ///
+    /// Antes esto lanzaba `powercfg /duplicatescheme` con un comentario que decia que no
+    /// habia API publica. Si la hay: PowerDuplicateScheme, documentada desde Windows 8. Y
+    /// aunque el comando era fijo y no arbitrario, arrancar un proceso para esto tenia dos
+    /// costes que la P/Invoke no tiene: no se sabe por que ha fallado —solo un codigo de
+    /// salida— y en una maquina con la ejecucion de procesos vigilada por el antivirus del
+    /// cliente, un servicio lanzando powercfg es justo lo que dispara la alerta.
     /// </summary>
     public static bool TryDuplicateUltimatePerformance()
     {
@@ -136,32 +142,45 @@ public static class PowerConfiguration
             return true;
         }
 
-        ProcessStartInfo info = new()
-        {
-            FileName = "powercfg.exe",
-            Arguments = $"/duplicatescheme {UltimatePerformanceScheme:D}",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
+        Guid source = UltimatePerformanceScheme;
 
-        try
-        {
-            using Process? process = Process.Start(info);
-            if (process is null)
-            {
-                return false;
-            }
-
-            process.WaitForExit(10_000);
-            return process.ExitCode == 0;
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
-        {
-            return false;
-        }
+        // El destino se pasa como puntero nulo para que Windows genere el GUID: duplicar
+        // sobre el mismo GUID de origen es justo lo que hace powercfg /duplicatescheme, y
+        // es lo que deja el esquema con su nombre de siempre.
+        return PowerDuplicateScheme(IntPtr.Zero, ref source, out IntPtr created) == 0
+               && Free(created);
     }
+
+    /// <summary>
+    /// Enciende o apaga la hibernacion.
+    ///
+    /// No basta con poner HibernateEnabled a 0 en el registro: eso deja el hiberfil.sys
+    /// ocupando tanto como la RAM y el inicio rapido puede seguir usandolo. SystemReserveHiberFile
+    /// es lo que hace `powercfg /h off` por dentro, reserva o libera el fichero, y es una
+    /// llamada normal de la API de energia.
+    /// </summary>
+    public static bool TrySetHibernation(bool enabled)
+    {
+        // BOOLEAN de la API son ocho bits, no los cuatro de un BOOL de Win32.
+        byte[] input = { enabled ? (byte)1 : (byte)0 };
+
+        return CallNtPowerInformation(
+            SystemReserveHiberFile, input, (uint)input.Length, IntPtr.Zero, 0) == 0;
+    }
+
+    /// <summary>Libera un GUID devuelto por la API de energia. true siempre: es un helper de expresion.</summary>
+    private static bool Free(IntPtr guid)
+    {
+        if (guid != IntPtr.Zero)
+        {
+            LocalFree(guid);
+        }
+
+        return true;
+    }
+
+    /// <summary>InformationLevel de CallNtPowerInformation para reservar o soltar el hiberfil.</summary>
+    private const int SystemReserveHiberFile = 10;
 
     /// <summary>
     /// Valor de un ajuste del plan activo, con la maquina enchufada a la red.
@@ -273,6 +292,15 @@ public static class PowerConfiguration
     private static extern uint PowerReadACValueIndex(
         IntPtr rootPowerKey, ref Guid schemeGuid, ref Guid subGroupOfPowerSettingsGuid,
         ref Guid powerSettingGuid, out uint acValueIndex);
+
+    [DllImport("powrprof.dll")]
+    private static extern uint PowerDuplicateScheme(
+        IntPtr rootPowerKey, ref Guid sourceSchemeGuid, out IntPtr destinationSchemeGuid);
+
+    [DllImport("powrprof.dll")]
+    private static extern uint CallNtPowerInformation(
+        int informationLevel, byte[] inputBuffer, uint inputBufferLength,
+        IntPtr outputBuffer, uint outputBufferLength);
 
     [DllImport("kernel32.dll")]
     private static extern IntPtr LocalFree(IntPtr handle);
