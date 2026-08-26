@@ -110,9 +110,20 @@ public static class SettingsProbe
             v => (v == 0 ? SettingReading.BooleanOff : SettingReading.BooleanOn,
                   v switch { 0 => "desactivados", 1 => "activados", 2 => "solo importantes", _ => null }));
 
-        readings.Add(SettingReading.Of(
-            SettingIds.Hibernation,
-            RegistrySettingsReader.ReadBool(RegistryHive.LocalMachine, PowerKey, "HibernateEnabled")));
+        // HibernateEnabled cuelga de Control\Power, no de Control\Session Manager\Power, que
+        // es donde vive HiberbootEnabled. Estaban leyendose de la misma constante y por eso
+        // la hibernacion salia siempre sin lectura mientras el inicio rapido salia bien.
+        RegistryValue hibernate = RegistrySettingsReader.Probe(
+            RegistryHive.LocalMachine, HibernationKey, "HibernateEnabled");
+
+        readings.Add(hibernate.Outcome switch
+        {
+            RegistryOutcome.Read => SettingReading.Of(SettingIds.Hibernation, hibernate.AsBool),
+            _ => SettingReading.Missing(SettingIds.Hibernation,
+                hibernate.Outcome == RegistryOutcome.Denied
+                    ? "sin permiso para leer la clave de energia"
+                    : "la clave de energia no declara HibernateEnabled"),
+        });
 
         readings.Add(ReadWakeArmedTasks());
     }
@@ -156,6 +167,41 @@ public static class SettingsProbe
         if (raw is not uint value)
         {
             readings.Add(SettingReading.Missing(id, "el plan activo no expone este ajuste"));
+            return;
+        }
+
+        (string canonical, string? display) = format(value);
+        readings.Add(SettingReading.Of(id, canonical, display));
+    }
+
+    /// <summary>
+    /// Anade una lectura cuyo valor ausente en el registro significa algo, y no «no se sabe».
+    ///
+    /// La mitad de estas claves solo existen cuando alguien ha tocado el ajuste: mientras
+    /// nadie lo toque, Windows se comporta segun su valor por defecto, y ese comportamiento
+    /// esta documentado. Tratar esa ausencia como desconocido dejaba en gris seis filas de
+    /// una maquina recien instalada -justo las que mas falta hace ver- con la excusa de no
+    /// inventarse nada, cuando el dato se sabia.
+    ///
+    /// Un fallo de permisos si es desconocido de verdad, y por eso <see cref="RegistryValue"/>
+    /// los distingue. Solo se rellena por defecto lo que esta documentado: el ajuste cuyo
+    /// valor de fabrica no es estable entre versiones se queda sin lectura, pero diciendo
+    /// por que.
+    /// </summary>
+    private static void AddOrDefault(
+        List<SettingReading> readings, string id, RegistryValue probe,
+        Func<int, (string Value, string? Display)> format,
+        (string Value, string? Display) whenAbsent)
+    {
+        if (probe.Outcome == RegistryOutcome.Denied)
+        {
+            readings.Add(SettingReading.Missing(id, "sin permiso para leer la clave"));
+            return;
+        }
+
+        if (probe.AsInt is not int value)
+        {
+            readings.Add(SettingReading.Of(id, whenAbsent.Value, whenAbsent.Display));
             return;
         }
 
@@ -321,12 +367,13 @@ public static class SettingsProbe
             }));
 
         // GlobalUserDisabled = 1 significa que estan desactivadas, que es lo que queremos.
-        bool? backgroundDisabled = RegistrySettingsReader.ReadBool(
-            RegistryHive.CurrentUser, BackgroundAppsKey, "GlobalUserDisabled");
-
-        readings.Add(SettingReading.Of(
-            SettingIds.BackgroundApps,
-            backgroundDisabled is null ? null : !backgroundDisabled));
+        AddOrDefault(readings, SettingIds.BackgroundApps,
+            RegistrySettingsReader.Probe(RegistryHive.CurrentUser, BackgroundAppsKey,
+                "GlobalUserDisabled"),
+            v => (v != 0 ? SettingReading.BooleanOff : SettingReading.BooleanOn, null),
+            // El valor solo se escribe cuando alguien mueve el interruptor. Mientras nadie
+            // lo toque, las aplicaciones de la Store pueden correr en segundo plano.
+            (SettingReading.BooleanOn, "permitidas (valor por defecto)"));
 
         readings.Add(SettingReading.Of(
             SettingIds.MemoryIntegrity,
@@ -367,23 +414,29 @@ public static class SettingsProbe
 
     private static void ReadUpdates(List<SettingReading> readings)
     {
-        string? pausedRaw = RegistrySettingsReader.ReadString(
+        RegistryValue pause = RegistrySettingsReader.Probe(
             RegistryHive.LocalMachine, WindowsUpdateSettingsKey, "PauseUpdatesExpiryTime");
 
-        bool? paused = null;
-        string? pausedDisplay = null;
-
-        if (pausedRaw is not null && DateTimeOffset.TryParse(pausedRaw, out DateTimeOffset until))
+        if (pause.Outcome == RegistryOutcome.Denied)
         {
-            paused = until > DateTimeOffset.UtcNow;
-            pausedDisplay = paused == true ? $"hasta {until.LocalDateTime:d MMM}" : "caducada";
+            readings.Add(SettingReading.Missing(SettingIds.UpdatePaused,
+                "sin permiso para leer los ajustes de Windows Update"));
         }
-        else if (pausedRaw is not null)
+        else if (pause.AsString is string pausedRaw &&
+                 DateTimeOffset.TryParse(pausedRaw, out DateTimeOffset until))
         {
-            paused = false;
+            bool active = until > DateTimeOffset.UtcNow;
+            readings.Add(SettingReading.Of(SettingIds.UpdatePaused, active,
+                active ? $"hasta {until.LocalDateTime:d MMM}" : "caducada"));
         }
-
-        readings.Add(SettingReading.Of(SettingIds.UpdatePaused, paused, pausedDisplay));
+        else
+        {
+            // Windows borra el valor al levantar la pausa, asi que ausente es «no pausado».
+            // Una fecha que no se parsea tambien: lo que no se puede afirmar es que siga en
+            // pausa, y esa es la lectura que importa.
+            readings.Add(SettingReading.Of(SettingIds.UpdatePaused, false,
+                pause.Absent ? "sin pausa" : null));
+        }
 
         readings.Add(SettingReading.Of(
             SettingIds.RebootPending, RebootPending(), RebootPendingDetail()));
@@ -395,11 +448,13 @@ public static class SettingsProbe
 
         // La directiva se llama «excluir drivers»: activa significa que Windows NO los toca,
         // que es lo que queremos. El catalogo pide «off» para la fila «drivers via Update».
-        bool? excluded = RegistrySettingsReader.ReadBool(
-            RegistryHive.LocalMachine, WindowsUpdatePolicyKey, "ExcludeWUDriversInQualityUpdate");
-
-        readings.Add(SettingReading.Of(
-            SettingIds.DriversViaUpdate, excluded is null ? null : !excluded));
+        AddOrDefault(readings, SettingIds.DriversViaUpdate,
+            RegistrySettingsReader.Probe(RegistryHive.LocalMachine, WindowsUpdatePolicyKey,
+                "ExcludeWUDriversInQualityUpdate"),
+            v => (v != 0 ? SettingReading.BooleanOff : SettingReading.BooleanOn, null),
+            // Directiva no configurada es el caso normal, y significa que Windows si los
+            // instala con las actualizaciones de calidad.
+            (SettingReading.BooleanOn, "sin directiva: Windows los instala"));
 
         // La directiva manda sobre la configuracion; si no hay directiva se mira la otra.
         int? downloadMode =
@@ -427,9 +482,17 @@ public static class SettingsProbe
             SettingIds.Notifications,
             RegistrySettingsReader.ReadBool(RegistryHive.CurrentUser, PushNotificationsKey, "ToastEnabled")));
 
-        readings.Add(SettingReading.Of(
-            SettingIds.StoreAutoUpdate,
-            RegistrySettingsReader.ReadInt(RegistryHive.CurrentUser, StoreUpdateKey, "AutoDownload")));
+        AddOrDefault(readings, SettingIds.StoreAutoUpdate,
+            RegistrySettingsReader.Probe(RegistryHive.CurrentUser, StoreUpdateKey, "AutoDownload"),
+            v => (v.ToString(), v switch
+            {
+                2 => "desactivadas",
+                4 => "automaticas",
+                _ => null,
+            }),
+            // La clave no existe hasta que se toca el interruptor de la Store, y hasta
+            // entonces la Store se actualiza sola: eso es un 4, no un desconocido.
+            ("4", "automaticas (valor por defecto)"));
 
         // DisableCoInstallers = 1 significa que estan desactivados.
         bool? coInstallersDisabled = RegistrySettingsReader.ReadBool(
@@ -520,22 +583,65 @@ public static class SettingsProbe
                 "clave protegida: hace falta ejecutar el agente como servicio"),
         });
 
+        readings.Add(ReadRealTimeProtection());
+
+        AddOrDefault(readings, SettingIds.ControlledFolderAccess,
+            RegistrySettingsReader.Probe(RegistryHive.LocalMachine, ControlledFolderAccessKey,
+                "EnableControlledFolderAccess"),
+            v => (v == 0 ? SettingReading.BooleanOff : SettingReading.BooleanOn, v switch
+            {
+                1 => "activado",
+                2 => "solo auditoria",
+                _ => null,
+            }),
+            // Defender crea la clave vacia; el valor aparece la primera vez que se activa.
+            (SettingReading.BooleanOff, "desactivado (valor por defecto)"));
+    }
+
+    /// <summary>
+    /// Estado real de la proteccion en tiempo real.
+    ///
+    /// Antes se deducia de DisableAntiSpyware, que es una directiva: sin directiva -el caso
+    /// normal- la fila salia vacia, y ademas la directiva no dice si alguien ha apagado la
+    /// proteccion desde la propia interfaz de Defender. MSFT_MpComputerStatus si lo dice, y
+    /// se lee sin privilegios. La directiva se conserva porque manda sobre el estado.
+    /// </summary>
+    private static SettingReading ReadRealTimeProtection()
+    {
         int? disabledByPolicy = RegistrySettingsReader.ReadInt(
             RegistryHive.LocalMachine, DefenderPolicyKey, "DisableAntiSpyware");
 
-        readings.Add(SettingReading.Of(
-            SettingIds.RealTimeProtection,
-            disabledByPolicy switch { 1 => false, 0 => true, _ => (bool?)null }));
+        if (disabledByPolicy == 1)
+        {
+            return SettingReading.Of(SettingIds.RealTimeProtection, false, "desactivada por directiva");
+        }
 
-        readings.Add(SettingReading.Of(
-            SettingIds.ControlledFolderAccess,
-            RegistrySettingsReader.ReadInt(RegistryHive.LocalMachine, ControlledFolderAccessKey,
-                "EnableControlledFolderAccess") switch
+        try
+        {
+            ManagementScope scope = new(@"root\Microsoft\Windows\Defender");
+            ObjectQuery query = new("SELECT RealTimeProtectionEnabled FROM MSFT_MpComputerStatus");
+
+            using ManagementObjectSearcher searcher = new(scope, query);
+
+            foreach (ManagementBaseObject status in searcher.Get())
             {
-                0 => false,
-                null => null,
-                _ => true,
-            }));
+                using (status)
+                {
+                    if (status["RealTimeProtectionEnabled"] is bool enabled)
+                    {
+                        return SettingReading.Of(SettingIds.RealTimeProtection, enabled);
+                    }
+                }
+            }
+
+            return SettingReading.Missing(SettingIds.RealTimeProtection,
+                "Defender no publica su estado: puede haber otro antivirus al mando");
+        }
+        catch (ManagementException)
+        {
+            return SettingReading.Missing(SettingIds.RealTimeProtection,
+                "el espacio de nombres de Defender no ha respondido");
+        }
     }
 
     // ---------------------------------------------------------------- Arranque y sesión
@@ -554,22 +660,27 @@ public static class SettingsProbe
             SettingIds.ScreenSaver,
             screenSaver switch { "1" => true, "0" => false, _ => (bool?)null }));
 
-        int? inactivity = RegistrySettingsReader.ReadInt(
-            RegistryHive.LocalMachine, PoliciesSystemKey, "InactivityTimeoutSecs");
+        // RestartApps es el unico de este grupo que no se completa con su valor por defecto:
+        // el interruptor de «relanzar aplicaciones» no escribe nada hasta que se toca y el
+        // valor de fabrica ha cambiado entre versiones de Windows 11. Suponerlo apagado
+        // pintaria la fila en verde sin haberla leido, que es peor que dejarla en gris.
+        RegistryValue restartApps = RegistrySettingsReader.Probe(
+            RegistryHive.CurrentUser, WinlogonKey, "RestartApps");
 
-        readings.Add(SettingReading.Of(
-            SettingIds.RestartApps,
-            RegistrySettingsReader.ReadBool(RegistryHive.CurrentUser, WinlogonKey, "RestartApps")));
+        readings.Add(restartApps.AsBool is bool restart
+            ? SettingReading.Of(SettingIds.RestartApps, restart)
+            : SettingReading.Missing(SettingIds.RestartApps,
+                restartApps.Outcome == RegistryOutcome.Denied
+                    ? "sin permiso para leer la clave de Winlogon"
+                    : "el interruptor no se ha tocado nunca y Windows no escribe el valor hasta entonces"));
 
-        readings.Add(SettingReading.Of(
-            SettingIds.InactivityLock,
-            inactivity,
-            inactivity switch
-            {
-                0 => "nunca",
-                int seconds => $"{seconds} s",
-                null => null,
-            }));
+        AddOrDefault(readings, SettingIds.InactivityLock,
+            RegistrySettingsReader.Probe(RegistryHive.LocalMachine, PoliciesSystemKey,
+                "InactivityTimeoutSecs"),
+            v => (v.ToString(), v == 0 ? "nunca" : $"{v} s"),
+            // La directiva «limite de inactividad del equipo» sin configurar equivale a 0:
+            // Windows no bloquea la sesion por su cuenta.
+            ("0", "nunca (sin directiva)"));
     }
 
     // ------------------------------------------------------------- Adaptador de red
@@ -812,6 +923,9 @@ public static class SettingsProbe
     // ------------------------------------------------------------------------- Claves
 
     private const string PowerKey = @"SYSTEM\CurrentControlSet\Control\Session Manager\Power";
+
+    /// <summary>No es la de arriba: HiberbootEnabled y HibernateEnabled viven en claves distintas.</summary>
+    private const string HibernationKey = @"SYSTEM\CurrentControlSet\Control\Power";
     private const string SessionManagerKey = @"SYSTEM\CurrentControlSet\Control\Session Manager";
     private const string MemoryManagementKey =
         @"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management";

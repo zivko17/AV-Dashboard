@@ -180,19 +180,80 @@ public static class RegistrySettingsReader
         }
     }
 
-    private static object? ReadValue(RegistryHive hive, string keyPath, string valueName)
+    private static object? ReadValue(RegistryHive hive, string keyPath, string valueName) =>
+        Probe(hive, keyPath, valueName).Raw;
+
+    /// <summary>
+    /// Lectura que además dice por qué no ha habido valor, cuando no lo ha habido.
+    ///
+    /// Los helpers de arriba devuelven null para los tres casos y eso basta cuando el
+    /// ajuste no tiene comportamiento por defecto. Cuando lo tiene —y la mitad de las
+    /// claves de esta capa solo existen si alguien ha tocado el interruptor— hace falta
+    /// separar «no está» de «no me dejan»: en el primer caso Windows se comporta según su
+    /// valor por defecto, que se conoce, y en el segundo no se sabe nada.
+    /// </summary>
+    public static RegistryValue Probe(RegistryHive hive, string keyPath, string valueName)
     {
         try
         {
             using RegistryKey baseKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
             using RegistryKey? key = baseKey.OpenSubKey(keyPath);
-            return key?.GetValue(valueName);
+
+            if (key is null)
+            {
+                return new RegistryValue(null, RegistryOutcome.KeyAbsent);
+            }
+
+            object? raw = key.GetValue(valueName);
+
+            return raw is null
+                ? new RegistryValue(null, RegistryOutcome.ValueAbsent)
+                : new RegistryValue(raw, RegistryOutcome.Read);
         }
         catch (Exception ex) when (ex is global::System.Security.SecurityException
                                       or UnauthorizedAccessException
                                       or IOException)
         {
-            return null;
+            return new RegistryValue(null, RegistryOutcome.Denied);
         }
     }
+}
+
+/// <summary>Resultado de intentar leer un valor del registro.</summary>
+public enum RegistryOutcome
+{
+    /// <summary>El valor estaba ahí.</summary>
+    Read,
+
+    /// <summary>La clave existe pero el valor no. Casi siempre significa «nadie lo ha tocado».</summary>
+    ValueAbsent,
+
+    /// <summary>No existe ni la clave. Misma lectura que la anterior, pero se distinguen al depurar.</summary>
+    KeyAbsent,
+
+    /// <summary>La ACL no ha dejado abrirla. Esto sí es desconocido de verdad.</summary>
+    Denied,
+}
+
+/// <summary>Lo leído del registro, con el motivo cuando no hay valor.</summary>
+public readonly record struct RegistryValue(object? Raw, RegistryOutcome Outcome)
+{
+    /// <summary>true cuando el valor no está pero se ha podido mirar.</summary>
+    public bool Absent => Outcome is RegistryOutcome.ValueAbsent or RegistryOutcome.KeyAbsent;
+
+    public int? AsInt => Raw switch
+    {
+        int i => i,
+        long l => unchecked((int)l),
+        _ => null,
+    };
+
+    public bool? AsBool => AsInt switch
+    {
+        0 => false,
+        null => null,
+        _ => true,
+    };
+
+    public string? AsString => Raw as string;
 }
