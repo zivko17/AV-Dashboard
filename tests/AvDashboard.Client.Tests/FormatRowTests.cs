@@ -37,7 +37,19 @@ public class FormatRowTests
         // no la ve nadie.
         Assert.Equal("1 Gb/s", new NetworkInterfaceRow(Nic(1_000_000_000)).LinkSpeedText);
         Assert.Equal("100 Mb/s", new NetworkInterfaceRow(Nic(100_000_000)).LinkSpeedText);
-        Assert.Equal("2,5 Gb/s", new NetworkInterfaceRow(Nic(2_500_000_000)).LinkSpeedText);
+    }
+
+    [Fact]
+    public void Una_velocidad_con_decimal_se_escribe_con_el_separador_del_sistema()
+    {
+        // El esperado se compone con el mismo formato en vez de escribir «2,5 Gb/s» a mano.
+        // La fila usa la cultura del usuario —que es lo correcto en una interfaz— asi que la
+        // cadena literal solo vale en una maquina en espanol: escrita a mano, esta prueba
+        // pasaba aqui y fallaba en el CI, que corre en cultura invariante.
+        //
+        // Es el mismo fallo que el de la hora de la alerta, y este se colo. Lo que se fija
+        // aqui es el formato —un decimal como mucho, y la unidad— y no el idioma.
+        Assert.Equal($"{2.5:0.#} Gb/s", new NetworkInterfaceRow(Nic(2_500_000_000)).LinkSpeedText);
     }
 
     [Fact]
