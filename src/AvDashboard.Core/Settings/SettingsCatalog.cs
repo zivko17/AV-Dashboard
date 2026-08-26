@@ -554,6 +554,49 @@ public static class SettingsCatalog
             Rationale = "Large Send Offload, moderación de interrupciones y Energy Efficient Ethernet rompen la temporización de Dante y de NDI, y no aparecen en ninguna pantalla de red normal.",
         },
 
+
+        new()
+        {
+            Id = SettingIds.NicPowerManagement,
+            Group = SettingGroup.Network,
+            Name = "Ahorro de energía del adaptador",
+            Source = @"...\Class\{4d36e972-...} X\PnPCapabilities",
+            AcceptableValues = new[] { "0" },
+            TargetDescription = "Ningún adaptador con ahorro de energía",
+            Impact = SettingImpact.High,
+
+            // Mismo motivo que los offloads: escribirlo reinicia el adaptador.
+            Risk = SettingRisk.Disruptive,
+            ActionId = ActionIds.NicPowerManagement,
+            Rationale = "Windows puede apagar la tarjeta de red «para ahorrar energía» en mitad de un show. Dante y NDI se caen sin dejar rastro en ningún log, y al volver el enlace ya has perdido el evento.",
+        },
+        new()
+        {
+            Id = SettingIds.NicNagle,
+            Group = SettingGroup.Network,
+            Name = "Algoritmo de Nagle",
+            Source = @"...\Interfaces\{guid}\TcpAckFrequency y TCPNoDelay",
+            AcceptableValues = new[] { "0" },
+            TargetDescription = "Desactivado en las interfaces de producción",
+            Impact = SettingImpact.Medium,
+            ActionId = ActionIds.NicNagle,
+            Rationale = "Nagle junta paquetes pequeños antes de mandarlos para no desperdiciar cabecera. En Art-Net, sACN y el control de Watchout, esos paquetes pequeños son justo los que no pueden esperar.",
+        },
+
+        // ------------------------------------------------- Aplicaciones de producción
+        new()
+        {
+            Id = SettingIds.ProductionPriority,
+            Group = SettingGroup.Kernel,
+            Name = "Prioridad de las aplicaciones de producción",
+            Source = "Prioridad del proceso en marcha",
+            AcceptableValues = new[] { "0" },
+            TargetDescription = "vMix, Resolume o Watchout en prioridad alta",
+            Impact = SettingImpact.High,
+            ActionId = ActionIds.ProcessPriority,
+            Rationale = "Es lo que separa optimizar Windows de optimizar Windows para esto. En prioridad normal, la aplicación que estás mirando compite con el indexador y con cualquier actualizador que se despierte.",
+        },
+
         // ----------------------------------------------------------------- Diagnóstico
         new()
         {

@@ -77,13 +77,13 @@ graph LR
 | Grupo | Ajustes | Con objetivo | Impacto alto | Fuera de los perfiles |
 |---|---:|---:|---:|---:|
 | Energía | 13 | 13 | 8 | 0 |
-| Kernel y rendimiento | 13 | 10 | 7 | 2 |
+| Kernel y rendimiento | 14 | 11 | 8 | 2 |
 | Interrupciones y actualizaciones | 11 | 11 | 8 | 0 |
 | Seguridad | 3 | 1 | 1 | 0 |
 | Arranque y sesión | 4 | 4 | 3 | 0 |
-| Adaptador de red | 1 | 1 | 1 | 0 |
+| Adaptador de red | 3 | 3 | 2 | 0 |
 | Diagnóstico | 4 | 0 | 0 | 0 |
-| **Total** | **49** | **40** | **28** | **2** |
+| **Total** | **52** | **43** | **30** | **2** |
 
 «Fuera de los perfiles» son los que nunca entran en un cambio automático porque
 tocarlos reduce la seguridad de la máquina de forma real.

@@ -1,6 +1,11 @@
 ﻿using System.Management;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.ComponentModel;
+using System.Diagnostics;
+using AvDashboard.Core.Diagnostics;
+using AvDashboard.Core.Models;
+using AvDashboard.Native.Network;
 using AvDashboard.Core.Networking;
 using AvDashboard.Core.Settings;
 using Microsoft.Win32;
@@ -733,6 +738,9 @@ public static class SettingsProbe
 
             readings.Add(SettingReading.Of(
                 SettingIds.NicOffloads, plan.Adapters.Count, plan.Describe()));
+
+            ReadNicRegistrySettings(readings);
+            ReadProductionPriority(readings);
         }
         catch (ManagementException)
         {
@@ -742,6 +750,114 @@ public static class SettingsProbe
                 "el driver no publica propiedades avanzadas"));
         }
     }
+
+
+    /// <summary>
+    /// Ahorro de energia y Nagle, por adaptador.
+    ///
+    /// Las dos ya se leian para la pagina de Red y se tiraban: entraban al modelo de
+    /// interfaz y no las ensenaba nadie. Ahora tienen fila en el catalogo, que es donde se
+    /// pueden auditar contra un objetivo.
+    /// </summary>
+    private static void ReadNicRegistrySettings(List<SettingReading> readings)
+    {
+        IReadOnlyList<NetworkInterfaceInfo> nics = new NetworkInterfaceProvider().GetInterfaces();
+
+        // Solo las fisicas y activas. Un adaptador virtual o desconectado no tiene nada que
+        // decir aqui, y contarlo llenaria la fila de ruido.
+        List<NetworkInterfaceInfo> real = nics.Where(n => n.IsUp && n.IsPhysical).ToList();
+
+        List<string> conAhorro = real
+            .Where(n => n.PowerManagementEnabled != false)
+            .Select(n => n.Name).ToList();
+
+        // «Distinto de true» y no «igual a false»: si algun dia vuelve a haber un null por
+        // no poder leer la clave, un adaptador sin dato tiene que contar como pendiente de
+        // mirar y no como correcto. El verde se gana, no se hereda.
+        List<string> conNagle = real
+            .Where(n => n.NagleDisabled != true)
+            .Select(n => n.Name).ToList();
+
+        readings.Add(Nic(SettingIds.NicPowerManagement, real.Count, conAhorro));
+        readings.Add(Nic(SettingIds.NicNagle, real.Count, conNagle));
+    }
+
+    /// <summary>
+    /// Una fila por adaptador: cuantos infringen, y cuales.
+    ///
+    /// Sin ninguna tarjeta fisica activa no se dice «cero», se dice que no hay nada que
+    /// mirar: un cero afirma que esta bien algo que ni siquiera existe.
+    /// </summary>
+    private static SettingReading Nic(string id, int total, IReadOnlyList<string> offenders)
+    {
+        if (total == 0)
+        {
+            return SettingReading.Missing(id, "sin tarjetas de red físicas activas");
+        }
+
+        return SettingReading.Of(id, offenders.Count,
+            offenders.Count == 0
+                ? "ninguno"
+                : string.Join(", ", offenders.Take(3)) + (offenders.Count > 3 ? "…" : string.Empty));
+    }
+
+    /// <summary>
+    /// Si las aplicaciones de produccion que estan corriendo van en la prioridad que les toca.
+    ///
+    /// Se mira lo que corre y no lo que esta instalado: un rig con vMix cerrado no tiene
+    /// ningun problema, y decir que si es el falso positivo que hace que se deje de mirar la
+    /// pantalla.
+    /// </summary>
+    private static void ReadProductionPriority(List<SettingReading> readings)
+    {
+        try
+        {
+            List<RunningProcess> running = new();
+
+            foreach (global::System.Diagnostics.Process process in global::System.Diagnostics.Process.GetProcesses())
+            {
+                using (process)
+                {
+                    try
+                    {
+                        string image = process.ProcessName + ".exe";
+
+                        if (ProductionApps.Find(image) is null)
+                        {
+                            continue;
+                        }
+
+                        running.Add(new RunningProcess(image, Map(process.PriorityClass)));
+                    }
+                    catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+                    {
+                        // El proceso ha terminado entre enumerarlo y preguntarle, o es de
+                        // otra sesion y no deja mirarlo. Ninguna de las dos es un fallo.
+                    }
+                }
+            }
+
+            ProductionAppAudit audit = ProductionApps.Audit(running);
+
+            readings.Add(SettingReading.Of(
+                SettingIds.ProductionPriority, audit.BelowTarget.Count, audit.Describe()));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+        {
+            readings.Add(SettingReading.Missing(
+                SettingIds.ProductionPriority, "no se ha podido enumerar los procesos"));
+        }
+    }
+
+    private static ProcessPriority Map(global::System.Diagnostics.ProcessPriorityClass priority) => priority switch
+    {
+        global::System.Diagnostics.ProcessPriorityClass.Idle => ProcessPriority.Idle,
+        global::System.Diagnostics.ProcessPriorityClass.BelowNormal => ProcessPriority.BelowNormal,
+        global::System.Diagnostics.ProcessPriorityClass.AboveNormal => ProcessPriority.AboveNormal,
+        global::System.Diagnostics.ProcessPriorityClass.High => ProcessPriority.High,
+        global::System.Diagnostics.ProcessPriorityClass.RealTime => ProcessPriority.Realtime,
+        _ => ProcessPriority.Normal,
+    };
 
     // -------------------------------------------------------------------- Diagnóstico
 

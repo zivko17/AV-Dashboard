@@ -165,11 +165,18 @@ public sealed class NetworkInterfaceProvider
                     }
 
                     // PnPCapabilities: el bit 0x18 desactiva la gestion de energia.
-                    // Ausente significa «Windows decide», que en la practica es activo.
+                    //
+                    // Ausente **no** es desconocido: la clave se ha abierto bien y el valor
+                    // no esta, y eso significa que manda el valor por defecto de Windows,
+                    // que es dejar que el sistema apague el adaptador —la casilla «permitir
+                    // que el equipo apague este dispositivo» viene marcada—.
+                    //
+                    // Devolviendo null aqui, la fila del catalogo salia en verde diciendo
+                    // «ningun adaptador con ahorro de energia» en una maquina donde ningun
+                    // adaptador lo tenia desactivado. Una fila verde que miente es peor que
+                    // una roja: es la que hace que no mires.
                     int? capabilities = adapter.GetValue("PnPCapabilities") as int?;
-                    bool? powerManagement = capabilities is int caps
-                        ? (caps & 0x18) != 0x18
-                        : null;
+                    bool powerManagement = capabilities is not int caps || (caps & 0x18) != 0x18;
 
                     settings[instanceId] = new RegistryAdapterSettings
                     {
@@ -189,12 +196,13 @@ public sealed class NetworkInterfaceProvider
                         continue;
                     }
 
+                    // Mismo caso: sin estos dos valores, Nagle esta activo, que es el
+                    // comportamiento por defecto de TCP en Windows. Ausente es «activo», no
+                    // «no se sabe».
                     int? ackFrequency = interfaceKey.GetValue("TcpAckFrequency") as int?;
                     int? noDelay = interfaceKey.GetValue("TCPNoDelay") as int?;
 
-                    bool? nagleDisabled = ackFrequency is null && noDelay is null
-                        ? null
-                        : ackFrequency == 1 && noDelay == 1;
+                    bool nagleDisabled = ackFrequency == 1 && noDelay == 1;
 
                     settings.TryGetValue(interfaceGuid, out RegistryAdapterSettings existing);
                     settings[interfaceGuid] = existing with { NagleDisabled = nagleDisabled };

@@ -1,4 +1,4 @@
-namespace AvDashboard.Core.Settings;
+﻿namespace AvDashboard.Core.Settings;
 
 /// <summary>
 /// Identificadores estables de las filas del catálogo.
@@ -74,4 +74,13 @@ public static class SettingIds
 
     /// <summary>Descargas de proceso y ahorro de energia en la NIC.</summary>
     public const string NicOffloads = "network.offloads";
+
+    /// <summary>Ahorro de energia del adaptador: Windows puede apagarlo para ahorrar.</summary>
+    public const string NicPowerManagement = "network.nic-power-management";
+
+    /// <summary>Nagle: agrupa paquetes pequenos y anade latencia a los protocolos de control.</summary>
+    public const string NicNagle = "network.nic-nagle";
+
+    /// <summary>Las aplicaciones de produccion corriendo en la prioridad que les toca.</summary>
+    public const string ProductionPriority = "system.production-priority";
 }
