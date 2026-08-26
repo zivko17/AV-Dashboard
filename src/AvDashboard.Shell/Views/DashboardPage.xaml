@@ -12,6 +12,7 @@
         <local:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <local:CountToVisibilityConverter x:Key="CountToVisibility" />
         <local:HexBrushConverter x:Key="HexBrush" />
+        <local:BoolToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
 
     <ScrollViewer>
@@ -29,102 +30,104 @@
                 Message="{Binding Error}" />
 
             <!--
-              Carga. Es lo primero que se mira al llegar a un equipo, asi que va lo primero.
+              Una tarjeta por seccion, con lo que se puede medir de ella dentro.
 
-              El color de cada cifra lo decide LoadGrade en Core y no un conversor de aqui:
-              la escala no es lineal y cambia con la magnitud —una CPU al 50 % va sobrada, un
-              enlace de red al 50 % ya se ha movido— y eso no cabe en un umbral del XAML.
-
-              ItemsRepeater con UniformGridLayout porque WinUI no tiene WrapPanel.
-            -->
-            <ItemsRepeater ItemsSource="{Binding Load}" Margin="0,4,0,8">
-                <ItemsRepeater.Layout>
-                    <UniformGridLayout MinItemWidth="164" MinItemHeight="118"
-                                       MinColumnSpacing="8" MinRowSpacing="8" />
-                </ItemsRepeater.Layout>
-                <ItemsRepeater.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="14,12">
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                           TextTrimming="CharacterEllipsis"
-                                           ToolTipService.ToolTip="{Binding Label}" />
-
-                                <!-- La cifra es el color: un numero grande y tenido se lee de
-                                     un vistazo desde de pie, que es como se mira esto. -->
-                                <TextBlock Text="{Binding PercentText}" FontSize="30" FontWeight="SemiBold"
-                                           Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
-
-                                <!-- La barra repite el dato en forma y no solo en color: sin
-                                     ella, quien no distinga bien el verde del ambar se queda
-                                     sin la mitad de la informacion. -->
-                                <ProgressBar Height="4" Minimum="0" Maximum="100"
-                                             Value="{Binding Percent, Mode=OneWay, FallbackValue=0}"
-                                             Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}"
-                                             Margin="0,4,0,4" />
-
-                                <TextBlock Text="{Binding Footnote}"
-                                           Style="{StaticResource CaptionTextBlockStyle}"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                           TextTrimming="CharacterEllipsis"
-                                           ToolTipService.ToolTip="{Binding Footnote}" />
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsRepeater.ItemTemplate>
-            </ItemsRepeater>
-
-            <!--
-                Las tarjetas. Un indicador y dos o tres cifras cada una; nada más.
-
-                ItemsRepeater con UniformGridLayout en vez del UniformGrid de columnas fijas
-                que usaba WPF: aquí las tarjetas se recolocan solas cuando el panel de
-                navegación se despliega y roba ciento cincuenta píxeles de ancho.
+              Antes esto eran dos filas: una de medidores y otra de tarjetas, y la CPU salia
+              en las dos. La seccion es la unidad porque es a donde te lleva el clic; las
+              medidas son de la seccion, no al reves.
             -->
             <ItemsRepeater ItemsSource="{Binding Cards}" Margin="0,4,0,8">
                 <ItemsRepeater.Layout>
-                    <UniformGridLayout
-                        MinItemWidth="196"
-                        MinItemHeight="146"
-                        MinRowSpacing="8"
-                        MinColumnSpacing="8"
-                        ItemsStretch="Fill" />
+                    <UniformGridLayout MinItemWidth="252" MinItemHeight="192"
+                                       MinColumnSpacing="10" MinRowSpacing="10" />
                 </ItemsRepeater.Layout>
-
                 <ItemsRepeater.ItemTemplate>
                     <DataTemplate>
-                        <Button
-                            Style="{StaticResource TarjetaBotonStyle}"
-                            Command="{Binding ActivateCommand}"
-                            ToolTipService.ToolTip="Ir a la sección con el contexto ya filtrado">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
-                                    <Ellipse Width="10" Height="10" VerticalAlignment="Center"
+                        <Button Style="{StaticResource TarjetaBotonStyle}"
+                                Command="{Binding ActivateCommand}"
+                                ToolTipService.ToolTip="Ir a la seccion con el contexto ya filtrado">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8"
+                                            Margin="0,0,0,12">
+                                    <Ellipse Width="9" Height="9" VerticalAlignment="Center"
                                              Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
-                                    <TextBlock Text="{Binding Title}"
-                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
 
-                                <TextBlock Text="{Binding Primary}"
-                                           Style="{StaticResource SubtitleTextBlockStyle}"
-                                           TextTrimming="CharacterEllipsis" />
-
-                                <ItemsControl ItemsSource="{Binding Lines}" Margin="0,8,0,0">
+                                <!-- Las secciones que se miden: sus medidores. -->
+                                <ItemsControl Grid.Row="1" ItemsSource="{Binding Gauges}"
+                                              Visibility="{Binding HasGauges, Converter={StaticResource BoolToVisibility}}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding}"
-                                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                       Margin="0,2,0,0"
-                                                       TextTrimming="CharacterEllipsis" />
+                                            <Grid Margin="0,0,0,10" ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                                           VerticalAlignment="Bottom"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTipService.ToolTip="{Binding Footnote}" />
+
+                                                <TextBlock Grid.Column="1" Text="{Binding PercentText}"
+                                                           Style="{StaticResource CifraDeMedidor}"
+                                                           VerticalAlignment="Bottom"
+                                                           Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
+
+                                                <!-- La barra repite el dato en forma y no solo
+                                                     en color: sin ella, quien no distinga bien
+                                                     el verde del ambar se queda sin la mitad. -->
+                                                <ProgressBar Grid.Row="1" Grid.ColumnSpan="2"
+                                                             Height="4" Minimum="0" Maximum="100"
+                                                             Margin="0,4,0,0"
+                                                             Value="{Binding Percent, Mode=OneWay, FallbackValue=0}"
+                                                             Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
+                                            </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </StackPanel>
+
+                                <!-- Las que no se miden en porcentaje: su veredicto, sin
+                                     inventarse un numero que no existe. -->
+                                <TextBlock Grid.Row="1" Text="{Binding Primary}"
+                                           Style="{StaticResource CifraDeTarjeta}"
+                                           VerticalAlignment="Top"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTipService.ToolTip="{Binding Primary}"
+                                           Visibility="{Binding HasGauges, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
+
+                                <StackPanel Grid.Row="2">
+                                    <TextBlock Text="{Binding MoreText}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Margin="0,0,0,4"
+                                               Visibility="{Binding MoreText, Converter={StaticResource NotNullToVisibility}}" />
+
+                                    <ItemsControl ItemsSource="{Binding Lines}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                           Margin="0,2,0,0"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Grid>
                         </Button>
                     </DataTemplate>
                 </ItemsRepeater.ItemTemplate>

@@ -8,6 +8,7 @@
         <controls:StringToVisibilityConverter x:Key="StringToVisibility" />
         <controls:NotNullToVisibilityConverter x:Key="NotNullToVisibility" />
         <controls:HexBrushConverter x:Key="HexBrush" />
+        <controls:BoolToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
 
     <StackPanel>
@@ -19,80 +20,105 @@
         </Border>
 
         <!--
-          Carga. Es lo primero que se mira al llegar a un equipo, asi que va lo primero.
+          Una tarjeta por seccion, con lo que se puede medir de ella dentro.
 
-          El color de cada cifra lo decide LoadGrade en Core y no un DataTrigger de aqui: la
-          escala no es lineal y cambia con la magnitud —una CPU al 50 % va sobrada, un enlace
-          de red al 50 % ya se ha movido— y eso no cabe en un umbral escrito en el XAML.
+          Antes esto eran dos filas: una de medidores y otra de tarjetas, y la CPU salia en
+          las dos. La seccion es la unidad porque es a donde te lleva el clic; las medidas
+          son de la seccion, no al reves.
         -->
-        <ItemsControl ItemsSource="{Binding Load}" Margin="0,0,-8,4">
+        <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-10,0">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <WrapPanel />
+                    <UniformGrid Columns="3" />
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border Style="{StaticResource Card}" Margin="0,0,8,8" Width="164" Padding="14,12">
-                        <StackPanel>
-                            <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextMutedBrush}"
-                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Label}" />
-
-                            <!-- La cifra es el color. Un numero grande y teñido se lee de un
-                                 vistazo desde de pie, que es como se mira esto. -->
-                            <TextBlock Text="{Binding PercentText}" FontSize="30" FontWeight="SemiBold"
-                                       Margin="0,4,0,2"
-                                       Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
-
-            <!-- La barra repite el dato en forma y no solo en color: sin ella, quien no
-                 distinga bien el verde del ambar se queda sin la mitad de la informacion. -->
-                            <ProgressBar Height="4" Margin="0,2,0,6" Minimum="0" Maximum="100"
-                                         Value="{Binding Percent, Mode=OneWay, FallbackValue=0}"
-                                         Background="{StaticResource SurfaceRaisedBrush}"
-                                         BorderThickness="0"
-                                         Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
-
-                            <TextBlock Text="{Binding Footnote}" Style="{StaticResource CaptionText}"
-                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Footnote}" />
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <!-- Tarjetas. Un indicador y dos o tres cifras por tarjeta; nada mas. -->
-        <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,-8,0">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <UniformGrid Columns="5" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Style="{StaticResource Card}" Margin="0,0,8,8" MinHeight="150" Cursor="Hand"
+                    <Border Style="{StaticResource Card}" Margin="0,0,10,10" MinHeight="184"
+                            Cursor="Hand" Padding="18,16"
                             ToolTip="Ir a la sección con el contexto ya filtrado">
                         <Border.InputBindings>
                             <MouseBinding MouseAction="LeftClick" Command="{Binding ActivateCommand}" />
                         </Border.InputBindings>
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Ellipse Width="10" Height="10" VerticalAlignment="Center"
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                                <Ellipse Width="9" Height="9" VerticalAlignment="Center"
                                          Fill="{Binding Health, Converter={StaticResource HealthBrush}}" />
                                 <TextBlock Text="{Binding Title}" Margin="8,0,0,0" FontWeight="SemiBold"
                                            FontSize="12" Foreground="{StaticResource TextMutedBrush}" />
                             </StackPanel>
-                            <TextBlock Text="{Binding Primary}" Style="{StaticResource MetricText}"
-                                       TextTrimming="CharacterEllipsis" />
-                            <ItemsControl ItemsSource="{Binding Lines}" Margin="0,8,0,0">
+
+                            <!-- Las secciones que se miden: sus medidores, lo peor primero. -->
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding Gauges}"
+                                          Visibility="{Binding HasGauges, Converter={StaticResource BoolToVisibility}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding}" Style="{StaticResource CaptionText}"
-                                                   Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                                       VerticalAlignment="Bottom" Margin="0,0,8,0"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Footnote}" />
+
+                                            <!-- La cifra es el color: se lee de un vistazo de pie. -->
+                                            <TextBlock Grid.Column="1" Text="{Binding PercentText}"
+                                                       Style="{StaticResource GaugeText}"
+                                                       VerticalAlignment="Bottom"
+                                                       Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
+
+                                            <!-- La barra repite el dato en forma y no solo en
+                                                 color: sin ella, quien no distinga bien el verde
+                                                 del ambar se queda sin la mitad del dato. -->
+                                            <ProgressBar Grid.Row="1" Grid.ColumnSpan="2"
+                                                         Style="{StaticResource GaugeBar}"
+                                                         VerticalAlignment="Bottom" Margin="0,4,0,0"
+                                                         Value="{Binding Percent, Mode=OneWay, FallbackValue=0}"
+                                                         Foreground="{Binding ColorHex, Converter={StaticResource HexBrush}}" />
+
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                        </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </StackPanel>
+
+                            <!-- Las que no se miden en porcentaje: su veredicto, sin inventarse
+                                 un numero que no existe. -->
+                            <TextBlock Grid.Row="1" Text="{Binding Primary}"
+                                       Style="{StaticResource MetricText}" FontSize="22"
+                                       VerticalAlignment="Top" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding Primary}"
+                                       Visibility="{Binding HasGauges, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
+
+                            <StackPanel Grid.Row="2">
+                                <TextBlock Text="{Binding MoreText}" Style="{StaticResource CaptionText}"
+                                           Margin="0,0,0,4"
+                                           Visibility="{Binding MoreText, Converter={StaticResource NotNullToVisibility}}" />
+
+                                <ItemsControl ItemsSource="{Binding Lines}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Style="{StaticResource CaptionText}"
+                                                       Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
                     </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

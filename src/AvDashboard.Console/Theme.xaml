@@ -86,6 +86,15 @@
     -->
     <FontFamily x:Key="BodyFont">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+
+    <!--
+      La tercera optica, que faltaba. Segoe UI Variable trae tres cortes —Small, Text y
+      Display— y no son el mismo dibujo a distinto tamano: Small lleva mas espaciado y los
+      remates mas abiertos para que a 12 px no se empaste. Los pies de tarjeta usaban Text,
+      que es el corte de 14 a 18, y por eso la letra pequena se leia como de otra aplicacion
+      al lado de una ventana del sistema.
+    -->
+    <FontFamily x:Key="SmallFont">Segoe UI Variable Small, Segoe UI</FontFamily>
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas</FontFamily>
 
@@ -100,7 +109,7 @@
 
     <Style x:Key="CaptionText" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-        <Setter Property="FontFamily" Value="{StaticResource BodyFont}" />
+        <Setter Property="FontFamily" Value="{StaticResource SmallFont}" />
         <Setter Property="FontSize" Value="12" />
     </Style>
 
@@ -129,11 +138,62 @@
         <Setter Property="Margin" Value="2,0,0,8" />
     </Style>
 
+    <!--
+      La cifra grande de una tarjeta. Display y no Text: por encima de unos 18 px Windows
+      cambia al corte optico ancho, y usar el de cuerpo a 28 se ve estrecho y apretado.
+
+      Los numerales tabulares no son un detalle: sin ellos, un 12 % que pasa a 9 % cambia de
+      ancho y la caja entera se mueve en cada refresco. Un panel que baila cada segundo se
+      lee como roto aunque el dato sea correcto.
+    -->
     <Style x:Key="MetricText" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
         <Setter Property="FontSize" Value="28" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+
+    <!-- La cifra de un medidor: misma idea, un punto mas pequena. -->
+    <Style x:Key="GaugeText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+
+    <!--
+      La barra de un medidor. La ProgressBar de serie de WPF trae su propio cromo —borde,
+      esquinas rectas, un canal mas claro— que no se parece a nada de Windows 11. Esto es lo
+      que es: un canal a blanco 8 % y encima el relleno, los dos con radio completo.
+    -->
+    <Style x:Key="GaugeBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="4" />
+        <Setter Property="Minimum" Value="0" />
+        <Setter Property="Maximum" Value="100" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="#14FFFFFF" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Border CornerRadius="2" Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="True">
+                        <!--
+                          Los dos nombres son obligatorios y no decorativos: ProgressBar
+                          busca PART_Track y PART_Indicator por nombre y calcula el ancho
+                          del segundo contra el primero. Con cualquier otro nombre la barra
+                          se queda vacia para siempre, sin dar ningun error.
+                        -->
+                        <Grid x:Name="PART_Track" ClipToBounds="True">
+                            <Border x:Name="PART_Indicator" CornerRadius="2"
+                                    HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}" />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="MonoText" TargetType="TextBlock">

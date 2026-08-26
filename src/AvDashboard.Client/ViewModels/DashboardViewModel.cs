@@ -69,13 +69,6 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     public ObservableCollection<StatusCardViewModel> Cards { get; } = new();
 
-    /// <summary>
-    /// La fila de porcentajes: CPU, GPU, RAM, VRAM, cada disco y cada tarjeta de red.
-    ///
-    /// Es lo primero que se mira al llegar a un equipo, así que va arriba y con el color
-    /// hecho. Ver <see cref="LoadGaugeViewModel"/> para por qué el color no vive en el XAML.
-    /// </summary>
-    public ObservableCollection<LoadGaugeViewModel> Load { get; } = new();
     public ObservableCollection<AlertRow> ActiveAlerts { get; } = new();
     public ObservableCollection<PingSeriesViewModel> PingSeries { get; } = new();
 
@@ -109,15 +102,13 @@ public sealed partial class DashboardViewModel : PageViewModel
         ApiResult<IReadOnlyDictionary<string, IReadOnlyList<PingSample>>> windows =
             await api.GetPingWindowsAsync().ConfigureAwait(true);
 
-        BuildLoadGauges(system.Value, storage.Value, network.Value);
-
         Cards.Clear();
         Cards.Add(BuildSystemCard(system.Value));
-        Cards.Add(BuildAudioCard(audio.Value));
-        Cards.Add(BuildVideoCard(displays.Value));
+        Cards.Add(BuildVideoCard(displays.Value, system.Value));
         Cards.Add(BuildNetworkCard(network.Value, pings.Value));
-        Cards.Add(BuildServicesCard(services.Value));
         Cards.Add(BuildStorageCard(storage.Value));
+        Cards.Add(BuildAudioCard(audio.Value));
+        Cards.Add(BuildServicesCard(services.Value));
 
         ActiveAlerts.Clear();
         foreach (Alert alert in alerts.Value ?? Array.Empty<Alert>())
@@ -138,87 +129,109 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
     }
 
+    /// <summary>Como mucho tres medidores por tarjeta, o la rejilla se rompe.</summary>
+    private const int MaxGauges = 3;
+
     /// <summary>
-    /// La fila de carga: cada cosa que puede estar apretada, con su porcentaje y su color.
+    /// Los medidores de una seccion, recortados a los que caben.
     ///
-    /// El orden no es alfabetico ni el de la API: es el orden en que se miran cuando algo va
-    /// mal. Primero lo que rinde —CPU y GPU—, despues lo que se llena —RAM, VRAM y discos— y
-    /// al final la red, que es donde miras cuando lo de arriba esta limpio.
+    /// <paramref name="bySeverity"/> distingue los dos casos, y la distincion importa. Una
+    /// lista de cosas iguales —tres tarjetas de red, cuatro discos— no tiene orden natural,
+    /// y ahi si hay que ensenar la peor: con tres NIC, la que hay que ver es la saturada y
+    /// no la primera que enumere Windows.
+    ///
+    /// Pero CPU y RAM, o GPU y VRAM, no son intercambiables: cada tarjeta tiene su titular.
+    /// Ordenarlas por porcentaje hacia que la tarjeta se rebarajara sola en cada refresco
+    /// —hoy CPU arriba, dentro de un minuto RAM— y un panel que cambia de sitio sus filas no
+    /// se puede leer de memoria, que es justo como se lee cuando hay prisa.
     /// </summary>
-    private void BuildLoadGauges(
-        SystemResponse? system,
-        IReadOnlyList<StorageVolume>? volumes,
-        NetworkResponse? network)
+    private static (IReadOnlyList<LoadGaugeViewModel> Shown, string? More) Rank(
+        IEnumerable<LoadGaugeViewModel> gauges, bool bySeverity = false)
     {
-        Load.Clear();
+        List<LoadGaugeViewModel> all = bySeverity
+            ? gauges.OrderByDescending(g => g.Percent ?? -1).ToList()
+            : gauges.ToList();
 
-        SystemStatus? status = system?.Status;
+        if (all.Count <= MaxGauges)
+        {
+            return (all, null);
+        }
 
-        Load.Add(new LoadGaugeViewModel(
+        int hidden = all.Count - MaxGauges;
+
+        return (all.Take(MaxGauges).ToList(),
+            hidden == 1 ? "y 1 más" : $"y {hidden} más");
+    }
+
+    private static IEnumerable<LoadGaugeViewModel> SystemGauges(SystemStatus? status)
+    {
+        yield return new LoadGaugeViewModel(
             "CPU", LoadMetric.Cpu, status?.CpuTotalPercent,
             detail: status is null
                 ? null
                 : status.CpuTemperatureC is double temp
                     ? $"{temp:0} °C · {status.CpuPerCorePercent.Count} hilos"
                     : $"{status.CpuPerCorePercent.Count} hilos",
-            unavailableReason: status is null ? "el agente aún no ha leído nada" : null));
+            unavailableReason: "el agente aún no ha leído nada");
 
-        Load.Add(new LoadGaugeViewModel(
+        yield return new LoadGaugeViewModel(
+            "RAM", LoadMetric.Memory, status?.MemoryUsedPercent,
+            detail: status is null
+                ? null
+                : $"{Gigabytes(status.MemoryUsedBytes)} / {Gigabytes(status.MemoryTotalBytes)} GB",
+            unavailableReason: "el agente aún no ha leído nada");
+    }
+
+    private static IEnumerable<LoadGaugeViewModel> VideoGauges(SystemStatus? status)
+    {
+        yield return new LoadGaugeViewModel(
             "GPU", LoadMetric.Gpu, status?.Gpu?.UsagePercent,
-            detail: status?.GpuTemperatureC is double gpuTemp ? $"{gpuTemp:0} °C" : null,
+            detail: status?.GpuTemperatureC is double temp ? $"{temp:0} °C" : null,
 
             // Los contadores de rendimiento se corrompen a menudo, y esta es la unica
             // lectura del panel que depende de ellos. Decirlo es mejor que un cero verde.
             unavailableReason: status is null
                 ? "el agente aún no ha leído nada"
-                : "sin contadores de GPU en esta máquina"));
+                : "sin contadores de GPU");
 
-        Load.Add(new LoadGaugeViewModel(
-            "RAM", LoadMetric.Memory, status?.MemoryUsedPercent,
-            detail: status is null
-                ? null
-                : $"{Gigabytes(status.MemoryUsedBytes)} / {Gigabytes(status.MemoryTotalBytes)} GB",
-            unavailableReason: status is null ? "el agente aún no ha leído nada" : null));
-
-        // La VRAM solo sale si se conoce el total. Sin el, el porcentaje no existe y el
-        // dato en crudo no dice nada por su cuenta.
+        // La VRAM solo sale si se conoce el total: sin el no hay porcentaje, y el dato en
+        // crudo no dice nada por su cuenta.
         if (status?.Gpu?.MemoryUsedPercent is double vram)
         {
-            Load.Add(new LoadGaugeViewModel(
+            yield return new LoadGaugeViewModel(
                 "VRAM", LoadMetric.VideoMemory, vram,
                 detail: $"{Gigabytes(status.Gpu.MemoryUsedBytes ?? 0)} / " +
-                        $"{Gigabytes(status.Gpu.MemoryTotalBytes ?? 0)} GB"));
-        }
-
-        foreach (StorageVolume volume in volumes ?? Array.Empty<StorageVolume>())
-        {
-            // Ocupado, no libre. Un disco «al 8 %» que significa 8 % libre es la clase de
-            // ambiguedad que se lee mal justo cuando hay prisa.
-            double used = 100 - volume.FreePercent;
-
-            Load.Add(new LoadGaugeViewModel(
-                string.IsNullOrWhiteSpace(volume.Label) ? volume.DriveLetter : $"{volume.DriveLetter} {volume.Label}",
-                LoadMetric.DiskSpace, used,
-                detail: $"{Gigabytes(volume.TotalBytes - volume.FreeBytes)} / {Gigabytes(volume.TotalBytes)} GB"));
-        }
-
-        // Solo tarjetas fisicas, aunque las virtuales sigan en la lista de interfaces:
-        // declaran una velocidad inventada —la de Tailscale dice 95 Gb/s— asi que su
-        // ocupacion sale siempre 0 % y solo ocupa sitio al lado de las que si dicen algo.
-        foreach (NetworkInterfaceInfo nic in (network?.Interfaces ?? Array.Empty<NetworkInterfaceInfo>())
-                     .Where(n => n.IsUp && n.IsPhysical && n.LinkSpeedBps > 0))
-        {
-            // Ocupacion del enlace: lo que pasa por el frente a lo que negocio. Es el numero
-            // que avisa de una tormenta de multicast antes de que NDI empiece a saltar.
-            double megabits = nic.ReceiveMbps + nic.SendMbps;
-            double capacity = nic.LinkSpeedBps / 1_000_000.0;
-
-            Load.Add(new LoadGaugeViewModel(
-                nic.Name, LoadMetric.NetworkLink,
-                capacity > 0 ? Math.Min(megabits * 100 / capacity, 100) : null,
-                detail: $"{megabits:0.0} de {capacity:0} Mb/s"));
+                        $"{Gigabytes(status.Gpu.MemoryTotalBytes ?? 0)} GB");
         }
     }
+
+    private static IEnumerable<LoadGaugeViewModel> NetworkGauges(NetworkResponse? network) =>
+        (network?.Interfaces ?? Array.Empty<NetworkInterfaceInfo>())
+            // Solo tarjetas fisicas: un adaptador virtual declara una velocidad inventada
+            // —el de Tailscale dice 95 Gb/s— asi que su ocupacion sale siempre 0 % y solo
+            // ocupa sitio al lado de las que si dicen algo.
+            .Where(n => n.IsUp && n.IsPhysical && n.LinkSpeedBps > 0)
+            .Select(nic =>
+            {
+                double megabits = nic.ReceiveMbps + nic.SendMbps;
+                double capacity = nic.LinkSpeedBps / 1_000_000.0;
+
+                return new LoadGaugeViewModel(
+                    nic.Name, LoadMetric.NetworkLink,
+                    Math.Min(megabits * 100 / capacity, 100),
+                    detail: $"{megabits:0.0} de {capacity:0} Mb/s");
+            });
+
+    private static IEnumerable<LoadGaugeViewModel> StorageGauges(IReadOnlyList<StorageVolume>? volumes) =>
+        (volumes ?? Array.Empty<StorageVolume>()).Select(volume => new LoadGaugeViewModel(
+            string.IsNullOrWhiteSpace(volume.Label)
+                ? volume.DriveLetter
+                : $"{volume.DriveLetter} {volume.Label}",
+
+            // Ocupado, no libre. «Al 8 %» queriendo decir 8 % libre es la clase de
+            // ambiguedad que se lee al reves justo cuando hay prisa.
+            LoadMetric.DiskSpace, 100 - volume.FreePercent,
+            detail: $"{Gigabytes(volume.TotalBytes - volume.FreeBytes)} / {Gigabytes(volume.TotalBytes)} GB"));
 
     private static string Gigabytes(long bytes) => (bytes / 1024.0 / 1024 / 1024).ToString("0.#");
 
@@ -230,12 +243,14 @@ public sealed partial class DashboardViewModel : PageViewModel
         Health = system is null
             ? HealthState.Unknown
             : system.Status.CpuTotalPercent > 95 ? HealthState.Warning : HealthState.Ok,
-        Primary = system is null ? "—" : $"CPU {system.Status.CpuTotalPercent:0}%",
+        // La CPU y la RAM ya no van aqui como texto: son los medidores de la tarjeta. Lo
+        // que queda son los datos que no se miden en porcentaje.
+        Gauges = Rank(SystemGauges(system?.Status)).Shown,
+        Primary = string.Empty,
         Lines = system is null
             ? new[] { "sin datos" }
             : new[]
             {
-                $"RAM {system.Status.MemoryUsedPercent:0}%",
                 system.Settings.ActivePowerPlanName ?? "plan de energía desconocido",
                 system.Settings.FastStartupEnabled == true ? "⚠ Fast Startup activo" : "Fast Startup off",
             },
@@ -254,7 +269,8 @@ public sealed partial class DashboardViewModel : PageViewModel
             ? new[] { "sin datos" }
             : new[]
             {
-                $"{audio.Devices.Count(d => d.State == AudioDeviceState.Active)} endpoints activos",
+                Plural(audio.Devices.Count(d => d.State == AudioDeviceState.Active),
+                    "endpoint activo", "endpoints activos"),
                 audio.SampleRateMismatches.Count == 0
                     ? "sample rates alineados"
                     : $"⚠ {audio.SampleRateMismatches.Count} con mismatch",
@@ -270,19 +286,25 @@ public sealed partial class DashboardViewModel : PageViewModel
 
         double? worstRtt = pings?.Where(p => p.AverageMs is not null).Max(p => p.AverageMs);
 
+        (IReadOnlyList<LoadGaugeViewModel> gauges, string? more) = Rank(NetworkGauges(network), bySeverity: true);
+
         return new StatusCardViewModel
         {
             Title = "RED",
             Section = "Red",
             Navigate = _navigate,
             Health = network?.Health ?? HealthState.Unknown,
-            Primary = primary is null ? "sin enlace" : $"{primary.Name} {primary.Ipv4Addresses[0]}",
+            Gauges = gauges,
+            MoreText = more,
+            Primary = gauges.Count > 0
+                ? string.Empty
+                : primary is null ? "sin enlace" : $"{primary.Name} {primary.Ipv4Addresses[0]}",
             Lines = network is null
                 ? new[] { "sin datos" }
                 : new[]
                 {
+                    primary is null ? "sin enlace" : $"{primary.Name} {primary.Ipv4Addresses[0]}",
                     worstRtt is double rtt ? $"peor RTT {rtt:0.#} ms" : "sin ping continuo",
-                    $"{network.Interfaces.Count(i => i.IsUp)} interfaces activas",
                     network.Interfaces.Any(i => i.IsUp && i.PowerManagementEnabled == true)
                         ? "⚠ power mgmt activo en una NIC"
                         : "power mgmt correcto",
@@ -346,15 +368,19 @@ public sealed partial class DashboardViewModel : PageViewModel
     /// entero: es el dato que delata un procesador a 50 y un render a 59,94, y redondeado
     /// a «60 Hz» no delata nada.
     /// </summary>
-    private StatusCardViewModel BuildVideoCard(DisplayTopology? topology)
+    private StatusCardViewModel BuildVideoCard(DisplayTopology? topology, SystemResponse? system)
     {
+        (IReadOnlyList<LoadGaugeViewModel> gauges, string? more) = Rank(VideoGauges(system?.Status));
+
         if (topology is null || topology.Outputs.Count == 0)
         {
             return new StatusCardViewModel
             {
                 Title = "VÍDEO",
                 Health = HealthState.Unknown,
-                Primary = "sin datos",
+                Primary = "sin salidas leídas",
+                Gauges = gauges,
+                MoreText = more,
                 Section = "Vídeo",
                 Navigate = _navigate,
             };
@@ -394,10 +420,15 @@ public sealed partial class DashboardViewModel : PageViewModel
             Health = topology.ActiveCount == 0 ? HealthState.Critical
                 : withoutEdid > 0 ? HealthState.Warning
                 : HealthState.Ok,
-            Primary = topology.ActiveCount == 1
+            Primary = string.Empty,
+            Gauges = gauges,
+            MoreText = more,
+
+            // La cuenta de salidas baja a las lineas: el titular de esta tarjeta ahora son
+            // los medidores de GPU y VRAM.
+            Lines = lines.Prepend(topology.ActiveCount == 1
                 ? "1 salida activa"
-                : $"{topology.ActiveCount} salidas activas",
-            Lines = lines,
+                : $"{topology.ActiveCount} salidas activas").Take(3).ToList(),
             Section = "Vídeo",
             Navigate = _navigate,
         };
@@ -407,8 +438,12 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         StorageVolume? tightest = volumes?.OrderBy(v => v.FreePercent).FirstOrDefault();
 
+        (IReadOnlyList<LoadGaugeViewModel> gauges, string? more) = Rank(StorageGauges(volumes), bySeverity: true);
+
         return new StatusCardViewModel
         {
+            Gauges = gauges,
+            MoreText = more,
             Title = "ALMACENAMIENTO",
             Section = "Sistema",
             Navigate = _navigate,
@@ -420,8 +455,8 @@ public sealed partial class DashboardViewModel : PageViewModel
                     < 15 => HealthState.Warning,
                     _ => HealthState.Ok,
                 },
-            Primary = tightest is null
-                ? "—"
+            Primary = gauges.Count > 0 ? string.Empty
+                : tightest is null ? "sin unidades leídas"
                 : $"{tightest.DriveLetter} {tightest.FreeBytes / 1_000_000_000.0:0} GB",
             Lines = volumes is null || volumes.Count == 0
                 ? new[] { "sin datos" }
@@ -456,13 +491,26 @@ public sealed partial class DashboardViewModel : PageViewModel
         ? $"{uptime.Days} d {uptime.Hours} h"
         : $"{uptime.Hours} h {uptime.Minutes} min";
 
+    /// <summary>
+    /// «1 endpoints activos» delata que nadie ha mirado la pantalla con un solo dispositivo,
+    /// y en un rig con una sola salida se ve el primer dia.
+    /// </summary>
+    private static string Plural(int count, string singular, string plural) =>
+        $"{count} {(count == 1 ? singular : plural)}";
+
     private static string Shorten(string value, int max = 22) =>
         value.Length <= max ? value : value[..(max - 1)] + "…";
 }
 
 /// <summary>
-/// Una tarjeta del dashboard: un indicador de estado y dos o tres cifras. Nada mas.
-/// Si necesitas leer un parrafo para saber si algo va bien, la tarjeta esta mal disenada.
+/// Una tarjeta del dashboard: una seccion, lo que se puede medir de ella y dos o tres
+/// cifras de contexto. Si necesitas leer un parrafo para saber si algo va bien, la tarjeta
+/// esta mal disenada.
+///
+/// Antes esto convivia con una fila de medidores aparte, y la CPU salia dos veces: en su
+/// medidor y otra vez dentro de la tarjeta de Sistema. Lo mismo la RAM y el disco. Ahora la
+/// seccion es la unidad y las medidas viven dentro de ella, que es lo que evita tener que
+/// mirar dos sitios para lo mismo.
 /// </summary>
 public sealed class StatusCardViewModel
 {
@@ -470,7 +518,28 @@ public sealed class StatusCardViewModel
 
     public required string Title { get; init; }
     public required HealthState Health { get; init; }
+
+    /// <summary>
+    /// El titular de las secciones que no se miden en porcentaje.
+    ///
+    /// Audio y Servicios no tienen uno y no se les inventa: un numero falso es peor que
+    /// ninguno. Esas tarjetas ensenan su veredicto aqui y las demas ensenan sus medidores.
+    /// </summary>
     public required string Primary { get; init; }
+
+    /// <summary>
+    /// Lo medible de esta seccion, lo peor primero.
+    ///
+    /// El orden no es el de la API: si tienes tres tarjetas de red y la tercera esta
+    /// saturada, es esa la que tiene que verse, no la primera por orden de enumeracion.
+    /// </summary>
+    public IReadOnlyList<LoadGaugeViewModel> Gauges { get; init; } = Array.Empty<LoadGaugeViewModel>();
+
+    public bool HasGauges => Gauges.Count > 0;
+
+    /// <summary>Cuando hay mas medidas de las que caben, se dice cuantas quedan fuera.</summary>
+    public string? MoreText { get; init; }
+
     public IReadOnlyList<string> Lines { get; init; } = Array.Empty<string>();
 
     /// <summary>Seccion a la que navega al hacer clic.</summary>
