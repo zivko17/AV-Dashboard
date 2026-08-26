@@ -17,9 +17,10 @@
     Se salta la compilación. Para relanzar rápido sin haber tocado código.
 
 .PARAMETER Nueva
-    Abre la interfaz de WinUI 3 en lugar de la de WPF. Está a medio portar: hoy solo la
-    página Sistema es real y el resto dice que sigue en la otra. La de WPF es la que
-    funciona entera y por eso es la de por defecto.
+    Abre la interfaz de WinUI 3 en lugar de la de WPF. Ya están portadas las ocho secciones
+    que existen; las tres que siguen diciendo «pendiente» —Producción, Nodos e Informes— no
+    existen tampoco en la de WPF. La de WPF sigue siendo la de por defecto hasta que la
+    nueva se haya usado en un montaje de verdad.
 
 .EXAMPLE
     .\scripts\Start-Dev.ps1
@@ -104,7 +105,7 @@ if (-not $SinConsola) {
     $proyecto = if ($Nueva) { 'src/AvDashboard.Shell' } else { 'src/AvDashboard.Console' }
 
     if ($Nueva) {
-        Write-Host 'Arrancando la interfaz de WinUI 3 (a medio portar)…' -ForegroundColor DarkGray
+        Write-Host 'Arrancando la interfaz de WinUI 3…' -ForegroundColor DarkGray
     } else {
         Write-Host 'Arrancando la consola…' -ForegroundColor DarkGray
     }

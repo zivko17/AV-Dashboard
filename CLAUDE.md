@@ -94,15 +94,25 @@ el `--check` no podría comprobar nada.
 
 ## El estado real, sin adornos
 
-**Nada del interop está verificado contra hardware.** `QueryDisplayConfig`, la lectura de
-EDID del registro, las tareas programadas por COM, los offloads de la NIC, el reinicio de
-GPU por SetupAPI y todas las escrituras de registro y de powercfg compilan, y eso es todo lo
-que se sabe de ellas. La verificación es `Get-Diagnostico.ps1` en una máquina de verdad.
+**Las lecturas están verificadas contra una máquina; las escrituras no.** La sonda de
+ajustes, `QueryDisplayConfig`, la lectura de EDID del registro y el recorrido de tareas
+programadas por COM han corrido contra un equipo real y se han contrastado valor a valor con
+el registro. Las **escrituras** —powercfg, los offloads de la NIC, el reinicio de GPU por
+SetupAPI y todas las escrituras de registro— siguen sin verificar: compilan, y eso es todo
+lo que se sabe de ellas. La verificación es `Get-Diagnostico.ps1` en una máquina de verdad.
+
+Un valor ausente en el registro no es lo mismo que un valor que no se deja leer, y la sonda
+los distingue (`RegistrySettingsReader.Probe`). La mitad de las claves de M1 solo existen
+cuando alguien ha tocado el ajuste, así que la ausencia se resuelve al valor por defecto
+documentado. La excepción es la que no lo tiene estable entre versiones: esa se queda sin
+lectura, pero declarando el motivo. **Una fila sin valor y sin motivo es un fallo.**
 
 Nueve módulos funcionan, uno espera a Npcap y diez están declarados y devuelven `501` con la
 fase en la que llegan. Cuarenta y nueve ajustes en el catálogo, treinta escribibles.
 
-La interfaz de WinUI 3 está a medio portar: hoy solo la página Sistema es real.
+La interfaz de WinUI 3 tiene portadas las ocho secciones que existen. Las tres que dicen
+«pendiente» —Producción, Nodos e Informes— tampoco existen en la de WPF. La de WPF sigue
+siendo la de por defecto hasta que la nueva se use en un montaje de verdad.
 
 ## Diferencias entre WPF y WinUI 3 que cuestan tiempo
 
@@ -113,7 +123,16 @@ Si tocas `AvDashboard.Shell`, esto es lo que no se porta y hay que rehacer:
   conversor.
 - No hay `RelativeSource AncestorType`. Por eso los comandos de fila viven en la fila.
 - No hay plantillas implícitas por tipo: hace falta un `DataTemplateSelector`.
-- Los enlaces no tienen `StringFormat`. El texto formateado sale del ViewModel.
+- Los enlaces no tienen `StringFormat`. El texto formateado sale del ViewModel, y por eso
+  hay filas (`TimelineEventRow`, `NetworkInterfaceRow`, `ServiceRow`…) que solo existen para
+  dar formato. Viven en Client y las usan las dos interfaces: escribir el formato en el XAML
+  significaría escribirlo dos veces y verlas divergir.
+- No hay `UniformGrid` ni `WrapPanel`. Para una rejilla que se recoloca, `ItemsRepeater` con
+  `UniformGridLayout`.
+- No existe `OnRender` ni `DrawingContext`: lo que se dibuja a mano se construye con formas
+  del árbol visual. Ver `Controls/PingSparkline.cs`.
+- Un enlace sin ruta —`{Binding}`— sobre un `DataContext` nulo no llega a llamar al
+  conversor. La visibilidad se enlaza en el padre y el `DataContext` se cambia en el hijo.
 - `ToolTip="x"` es `ToolTipService.ToolTip="x"`.
 - `EnableMsixTooling` va en `true` aunque la aplicación no se empaquete. En `false`, MrtCore
   busca sus tareas donde las deja Visual Studio y `dotnet build` revienta con `MSB4062`.
