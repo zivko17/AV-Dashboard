@@ -23,19 +23,23 @@
             <Border Style="{StaticResource TableRow}" Height="68" MinHeight="68" Padding="16,0">
                 <Grid>
                     <!--
-                        El valor va en columna automatica y no fija a proposito. Con una
-                        columna fija, entre el final de la descripcion y el valor quedaba un
-                        hueco muerto que cambiaba de tamano en cada fila, y la fila se leia
-                        como tres islas sueltas en vez de como una linea.
+                        El valor va en columna fija y alineado a la derecha, para que todos
+                        terminen en la misma vertical: es la alineacion que sirve para
+                        recorrer la tabla con la vista.
 
-                        Automatica y alineada a la derecha, el valor queda pegado al control
-                        y todos los valores terminan en la misma vertical, que es la
-                        alineacion que de verdad sirve para recorrer la tabla con la vista.
+                        Estuvo en Auto con MaxWidth y no funcionaba de las dos formas. La
+                        alineacion no la daba: cada fila es su propio Grid, asi que una
+                        columna automatica se ajusta al contenido de esa fila y no de la
+                        tabla. Y sobre todo, una columna Auto mide su contenido con ancho
+                        infinito, asi que el TextBlock nunca supo que tenia un limite y
+                        TextTrimming no podia poner la elipsis: el texto se cortaba en seco
+                        contra el borde de la columna y se leia «Equilib» en vez de
+                        «Equilibrado». Fija, la medida es finita y el recorte se ve.
                     -->
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" MinWidth="220" />
-                        <ColumnDefinition Width="Auto" MaxWidth="270" />
+                        <ColumnDefinition Width="270" />
                         <ColumnDefinition Width="150" />
                     </Grid.ColumnDefinitions>
 

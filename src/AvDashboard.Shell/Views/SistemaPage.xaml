@@ -43,7 +43,15 @@
                         <TextBlock Text="{Binding RiskChip}" Style="{StaticResource ChipTextStyle}" />
                     </Border>
 
-                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="140">
+                    <!--
+                      MaxWidth no es decoracion: un StackPanel horizontal mide a sus hijos
+                      con ancho infinito, asi que sin un limite el TextBlock nunca sabe que
+                      lo van a recortar y TextTrimming no puede poner la elipsis. El texto
+                      se corta en seco y se lee «Equilib» en vez de «Equilibrado». Mismo
+                      motivo que la columna fija de la version de WPF.
+                    -->
+                    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center"
+                                MinWidth="140" MaxWidth="270">
                         <TextBlock Text="{Binding Current}"
                                    Style="{StaticResource MonoTextBlockStyle}"
                                    TextAlignment="Right"
