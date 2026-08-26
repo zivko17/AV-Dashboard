@@ -116,7 +116,7 @@ documentado. La excepción es la que no lo tiene estable entre versiones: esa se
 lectura, pero declarando el motivo. **Una fila sin valor y sin motivo es un fallo.**
 
 Nueve módulos funcionan, uno espera a Npcap y diez están declarados y devuelven `501` con la
-fase en la que llegan. Cincuenta y dos ajustes en el catálogo, treinta y cuatro escribibles.
+fase en la que llegan. Cincuenta y cuatro ajustes en el catálogo, treinta y seis escribibles.
 
 La interfaz de WinUI 3 tiene portadas las ocho secciones que existen. Las tres que dicen
 «pendiente» —Producción, Nodos e Informes— tampoco existen en la de WPF. La de WPF sigue

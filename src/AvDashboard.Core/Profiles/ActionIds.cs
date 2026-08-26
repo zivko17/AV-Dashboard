@@ -1,4 +1,4 @@
-namespace AvDashboard.Core.Profiles;
+﻿namespace AvDashboard.Core.Profiles;
 
 /// <summary>
 /// Identificadores estables de los actuadores.
@@ -44,6 +44,12 @@ public static class ActionIds
     /// </summary>
     public const string RestartGraphicsDriver = "video.restart-graphics-driver";
 
+    /// <summary>Optimizaciones de pantalla completa: un frame de latencia de mas.</summary>
+    public const string FullscreenOptimizations = "video.fullscreen-optimizations";
+
+    /// <summary>Frecuencia de actualizacion variable, que rompe la cadencia fija.</summary>
+    public const string VariableRefreshRate = "video.variable-refresh-rate";
+
     // --- M5 Red ---
     public const string NetworkProfile = "network.profile";
     public const string NicPowerManagement = "network.nic-power-management";
@@ -63,6 +69,7 @@ public static class ActionIds
         FirewallProfile, FirewallAvPreset,
         AudioDefaultDevice, AudioSessionRoute,
         DisplayLayoutRestore, WindowLayoutRestore, RestartGraphicsDriver,
+        FullscreenOptimizations, VariableRefreshRate,
         NetworkProfile, NicPowerManagement, NicNagle, NdiDiscovery,
         ServiceState, ServiceStartMode,
     };

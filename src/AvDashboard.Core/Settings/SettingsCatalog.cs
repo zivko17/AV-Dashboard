@@ -214,10 +214,17 @@ public static class SettingsCatalog
             Group = SettingGroup.Kernel,
             Name = "Win32PrioritySeparation",
             Source = @"HKLM\SYSTEM\CCS\Control\PriorityControl",
-            AcceptableValues = new[] { "38", "24" },
-            TargetDescription = "0x26 (programas) o 0x18",
+            // 0x18 = 24: quantum corto, fijo, sin premio al primer plano.
+            //
+            // Estaba como «0x26 o 0x18», y ese «o» no ayuda a nadie: son dos respuestas a
+            // dos preguntas distintas. 0x26 es el valor de un escritorio, donde quieres que
+            // la ventana que estas mirando responda mejor. En un rig la ventana que miras es
+            // la interfaz de Watchout, y la que no puedes penalizar es el renderer que pinta
+            // en la otra pantalla. Quantum fijo y sin boost es lo que reparte igual.
+            AcceptableValues = new[] { "24" },
+            TargetDescription = "0x18 — quantum corto, fijo y sin premio al primer plano",
             Impact = SettingImpact.Medium,
-            Rationale = "Reparto de quantum entre primer plano y fondo.",
+            Rationale = "Con el valor de escritorio, Windows le regala CPU a la ventana que tienes delante. En un rig eso castiga justo al proceso que pinta en la pantalla que no estás mirando, que es la que ve el público.",
         },
         new()
         {
@@ -595,6 +602,33 @@ public static class SettingsCatalog
             Impact = SettingImpact.High,
             ActionId = ActionIds.ProcessPriority,
             Rationale = "Es lo que separa optimizar Windows de optimizar Windows para esto. En prioridad normal, la aplicación que estás mirando compite con el indexador y con cualquier actualizador que se despierte.",
+        },
+
+
+        // ------------------------------------------------------ Presentación de vídeo
+        new()
+        {
+            Id = SettingIds.FullscreenOptimizations,
+            Group = SettingGroup.Kernel,
+            Name = "Optimizaciones de pantalla completa",
+            Source = @"HKCU\...\DirectX\UserGpuPreferences\SwapEffectUpgradeEnable",
+            AcceptableValues = new[] { SettingReading.BooleanOff },
+            TargetDescription = "Desactivadas",
+            Impact = SettingImpact.High,
+            ActionId = ActionIds.FullscreenOptimizations,
+            Rationale = "Windows envuelve la pantalla completa exclusiva en su compositor «para optimizarla». Anade un frame de latencia y cambia cuando se presenta cada uno, que es justo lo que un servidor de medios no puede permitirse.",
+        },
+        new()
+        {
+            Id = SettingIds.VariableRefreshRate,
+            Group = SettingGroup.Kernel,
+            Name = "Frecuencia de actualización variable (VRR)",
+            Source = @"HKCU\...\DirectX\UserGpuPreferences\VRROptimizeEnable",
+            AcceptableValues = new[] { SettingReading.BooleanOff },
+            TargetDescription = "Desactivada",
+            Impact = SettingImpact.High,
+            ActionId = ActionIds.VariableRefreshRate,
+            Rationale = "VRR hace que la pantalla siga al ordenador en vez de al reves. En un monitor de escritorio es una mejora; contra una pared LED o un proyector la cadencia deja de ser fija, y el material a 25 o 50 fps empieza a dar tirones.",
         },
 
         // ----------------------------------------------------------------- Diagnóstico

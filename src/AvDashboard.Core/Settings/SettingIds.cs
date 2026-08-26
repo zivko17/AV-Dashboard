@@ -83,4 +83,10 @@ public static class SettingIds
 
     /// <summary>Las aplicaciones de produccion corriendo en la prioridad que les toca.</summary>
     public const string ProductionPriority = "system.production-priority";
+
+    /// <summary>Optimizaciones de pantalla completa: cambian como se presenta cada frame.</summary>
+    public const string FullscreenOptimizations = "video.fullscreen-optimizations";
+
+    /// <summary>Frecuencia de actualizacion variable. En un servidor de medios, apagada.</summary>
+    public const string VariableRefreshRate = "video.variable-refresh-rate";
 }

@@ -741,6 +741,7 @@ public static class SettingsProbe
 
             ReadNicRegistrySettings(readings);
             ReadProductionPriority(readings);
+            ReadPresentation(readings);
         }
         catch (ManagementException)
         {
@@ -858,6 +859,51 @@ public static class SettingsProbe
         global::System.Diagnostics.ProcessPriorityClass.RealTime => ProcessPriority.Realtime,
         _ => ProcessPriority.Normal,
     };
+
+
+    /// <summary>
+    /// Como presenta Windows cada frame: optimizaciones de pantalla completa y VRR.
+    ///
+    /// Los dos viven en la misma cadena del registro, asi que se leen de una vez. Ausente no
+    /// es apagado: los dos vienen activados de fabrica, y una maquina donde nadie ha abierto
+    /// nunca esa pantalla de Configuracion los tiene puestos.
+    /// </summary>
+    private static void ReadPresentation(List<SettingReading> readings)
+    {
+        RegistryValue value = RegistrySettingsReader.Probe(
+            RegistryHive.CurrentUser, DirectXPreferencesKey, "DirectXUserGlobalSettings");
+
+        if (value.Outcome == RegistryOutcome.Denied)
+        {
+            readings.Add(SettingReading.Missing(SettingIds.FullscreenOptimizations,
+                "sin permiso para leer las preferencias de DirectX"));
+            readings.Add(SettingReading.Missing(SettingIds.VariableRefreshRate,
+                "sin permiso para leer las preferencias de DirectX"));
+            return;
+        }
+
+        string? raw = value.AsString;
+
+        readings.Add(Presentation(SettingIds.FullscreenOptimizations, raw,
+            DirectXGlobalSettings.SwapEffectUpgrade));
+
+        readings.Add(Presentation(SettingIds.VariableRefreshRate, raw,
+            DirectXGlobalSettings.VariableRefreshRate));
+    }
+
+    private static SettingReading Presentation(string id, string? raw, string key)
+    {
+        bool efectivo = DirectXGlobalSettings.Effective(raw, key);
+
+        // Se dice si el valor viene de la cadena o del valor de fabrica. Ensenar «activado»
+        // sin mas en una maquina que nunca lo ha tocado invita a buscar donde se cambio, y
+        // no se cambio en ninguna parte.
+        string? display = DirectXGlobalSettings.Read(raw, key) is null
+            ? (efectivo ? "activadas (valor por defecto)" : null)
+            : null;
+
+        return SettingReading.Of(id, efectivo, display);
+    }
 
     // -------------------------------------------------------------------- Diagnóstico
 
@@ -1056,6 +1102,7 @@ public static class SettingsProbe
     private const string GameBarKey = @"SOFTWARE\Microsoft\GameBar";
     private const string GameConfigStoreKey = @"System\GameConfigStore";
     private const string GameDvrPolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\GameDVR";
+    private const string DirectXPreferencesKey = @"Software\Microsoft\DirectX\UserGpuPreferences";
 
     private const string WindowsUpdateSettingsKey = @"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings";
     private const string WindowsUpdatePolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate";

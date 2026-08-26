@@ -98,6 +98,10 @@ public static class SettingsWriter
 
         // Red
         SettingIds.NicOffloads,
+
+        // Presentación de vídeo
+        SettingIds.FullscreenOptimizations,
+        SettingIds.VariableRefreshRate,
     };
 
     /// <summary>
@@ -232,6 +236,14 @@ public static class SettingsWriter
 
                 SettingIds.NicOffloads => ApplyNicOffloads(value, dryRun),
 
+                SettingIds.FullscreenOptimizations => ApplyPresentation(
+                    SettingIds.FullscreenOptimizations,
+                    DirectXGlobalSettings.SwapEffectUpgrade, value, dryRun),
+
+                SettingIds.VariableRefreshRate => ApplyPresentation(
+                    SettingIds.VariableRefreshRate,
+                    DirectXGlobalSettings.VariableRefreshRate, value, dryRun),
+
                 // ScreenSaveActive se guarda como cadena «1» o «0», no como entero.
                 SettingIds.ScreenSaver => Text(id, value, dryRun,
                     RegistryHive.CurrentUser, DesktopKey, "ScreenSaveActive",
@@ -317,6 +329,49 @@ public static class SettingsWriter
 
         return Flag(SettingIds.GameDvr, value, dryRun,
             RegistryHive.CurrentUser, GameConfigStoreKey, "GameDVR_Enabled");
+    }
+
+    /// <summary>
+    /// Enciende o apaga uno de los interruptores de presentacion de DirectX.
+    ///
+    /// Los tres viven en la misma cadena del registro, asi que escribir uno significa
+    /// reescribirla entera conservando los otros. La composicion la hace Core, que es donde
+    /// esta probada: hacerlo a mano aqui es la manera de llevarse por delante la preferencia
+    /// de GPU por aplicacion que el usuario tenga puesta al lado.
+    ///
+    /// No corta nada mientras se aplica, pero **no surte efecto hasta que la aplicacion
+    /// vuelve a crear su swapchain**: con Resolume abierto hay que reiniciarlo.
+    /// </summary>
+    private static SettingWriteResult ApplyPresentation(
+        string id, string key, string value, bool dryRun)
+    {
+        string? raw = RegistrySettingsReader.ReadString(
+            RegistryHive.CurrentUser, DirectXPreferencesKey, "DirectXUserGlobalSettings");
+
+        bool previous = DirectXGlobalSettings.Effective(raw, key);
+        bool target = Boolean(value);
+
+        string previousText = previous ? SettingReading.BooleanOn : SettingReading.BooleanOff;
+        string targetText = target ? SettingReading.BooleanOn : SettingReading.BooleanOff;
+
+        if (dryRun)
+        {
+            return Ok(id, previousText, targetText, dryRun: true);
+        }
+
+        using (RegistryKey subKey = Open(RegistryHive.CurrentUser, DirectXPreferencesKey))
+        {
+            subKey.SetValue("DirectXUserGlobalSettings",
+                DirectXGlobalSettings.With(raw, key, target), RegistryValueKind.String);
+        }
+
+        // Se comprueba releyendo. Es la regla que costo siete esquemas de energia basura.
+        string? after = RegistrySettingsReader.ReadString(
+            RegistryHive.CurrentUser, DirectXPreferencesKey, "DirectXUserGlobalSettings");
+
+        return DirectXGlobalSettings.Effective(after, key) == target
+            ? Ok(id, previousText, targetText)
+            : Failed(id, "El valor no se ha quedado escrito.");
     }
 
     private static bool Boolean(string value) =>
@@ -615,6 +670,7 @@ public static class SettingsWriter
     private const string GameBarKey = @"SOFTWARE\Microsoft\GameBar";
     private const string GameConfigStoreKey = @"System\GameConfigStore";
     private const string GameDvrPolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\GameDVR";
+    private const string DirectXPreferencesKey = @"Software\Microsoft\DirectX\UserGpuPreferences";
     private const string BackgroundAppsKey =
         @"SOFTWARE\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications";
     private const string WindowsUpdatePolicyKey = @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate";
